@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap length-effect chunking-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -30,6 +30,7 @@ help:
 	@echo "  check-bm25   сверка своей реализации BM25 с rank_bm25"
 	@echo "  check-alignment  сверка: тот ли текст под эталонным фрагментом"
 	@echo "  remap        перенести эталоны на другую нарезку (CHUNKS=size-256)"
+	@echo "  gate         ворота по живым вопросам (CAND=... BASE=...)"
 	@echo "  length-effect    растёт ли отставание с длиной эталона (DENSE=...)"
 	@echo "  chunking-effect  меняется ли разрыв при смене нарезки (CHUNKS=...)"
 	@echo "  corpus       сбор корпуса: выпуски «Вестника» -> акты"
@@ -90,6 +91,15 @@ check-alignment:
 # означать «эталона тут нет», а не «нарезка плохая».
 remap:
 	$(PY) scripts/remap_qrels.py --from $(FROM) --to $(CHUNKS)
+
+# Ворота по живым вопросам. Синтетический dev ранжирует кандидатов, живые
+# отвечают на единственный вопрос, не стало ли хуже настоящему пользователю.
+# Каждое применение пишется в docs/raw/gate_log.txt: ворота, применённые
+# три раза, и ворота, применённые тридцать раз, это разные инструменты.
+CAND ?= dense-rufin
+BASE ?= dense-e5-small
+gate:
+	$(PY) scripts/gate.py --candidate $(CAND) --baseline $(BASE) $(if $(NOTE),--note "$(NOTE)",)
 
 # Обе проверки читают уже посчитанные выдачи и выносят вердикт с интервалом:
 # без него столбик цифр легко прочитать глазами как закономерность.
