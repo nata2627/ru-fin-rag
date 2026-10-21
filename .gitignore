@@ -27,10 +27,16 @@ logs/
 
 data/index/
 data/vectors/
-data/corpus/
+data/corpus/*
 data/chunks/
 qdrant_storage/
 mlruns/
 .ruff_cache/
 .pytest_cache/
 *.log
+
+# Данные сервиса. Фрагменты корпуса и эталонный набор едут в репозиторий
+# (DECISIONS, решение 8), остальное пересобирается кодом или слишком велико
+# для git.
+!data/corpus/chunks.jsonl.gz
+data/models/
