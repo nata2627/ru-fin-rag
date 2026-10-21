@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/rufinrag/__init__.py
+src/rufinrag/config.py
+src/rufinrag.egg-info/PKG-INFO
+src/rufinrag.egg-info/SOURCES.txt
+src/rufinrag.egg-info/dependency_links.txt
+src/rufinrag.egg-info/requires.txt
+src/rufinrag.egg-info/top_level.txt
+tests/test_config.py
