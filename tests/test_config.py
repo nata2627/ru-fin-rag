@@ -54,3 +54,14 @@ def test_empty_required_env_fails_loudly(monkeypatch):
     with pytest.raises(ConfigError, match="RUFINRAG_TEST_KEY"):
         env("RUFINRAG_TEST_KEY", required=True)
     assert env("RUFINRAG_TEST_KEY") == ""
+
+
+def test_default_config_can_be_overridden_by_env(monkeypatch):
+    monkeypatch.setenv("RUFINRAG_DEFAULT_CONFIG", "bm25")
+    assert load_catalog().default == "bm25"
+
+
+def test_unknown_override_fails_loudly(monkeypatch):
+    monkeypatch.setenv("RUFINRAG_DEFAULT_CONFIG", "bm25-fast")
+    with pytest.raises(ConfigError, match="такой связки нет"):
+        load_catalog()
