@@ -109,6 +109,8 @@ def health():
             "degraded": current.degraded,
         }
     )
+    if current.dense_off:
+        body["dense_off_reason"] = current.dense_off
     if current.degraded:
         body["status"] = "degraded"
     return body
