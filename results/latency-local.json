@@ -4,77 +4,77 @@
   "python": "3.11.6",
   "device": "cpu",
   "corpus_version": "chunks62594-acts1554",
-  "load_seconds": 4.62,
-  "rss_after_load_mb": 1080.7,
+  "load_seconds": 4.05,
+  "rss_after_load_mb": 1083.9,
   "configs": {
     "bm25": {
       "config_version": "bm25+bm25+cand50",
       "queries": 20,
       "warmup_queries": 3,
-      "p50_ms": 1.31,
-      "p95_ms": 1.92,
-      "max_ms": 2.3,
+      "p50_ms": 1.06,
+      "p95_ms": 2.5,
+      "max_ms": 3.33,
       "stages_p50_ms": {
-        "bm25": 1.31
+        "bm25": 1.06
       },
-      "rss_peak_mb": 1196.5
+      "rss_peak_mb": 989.2
     },
     "dense": {
       "config_version": "dense+dense+cand50+rufin",
       "queries": 20,
       "warmup_queries": 3,
-      "p50_ms": 196.25,
-      "p95_ms": 334.74,
-      "max_ms": 370.83,
+      "p50_ms": 87.86,
+      "p95_ms": 162.51,
+      "max_ms": 201.54,
       "stages_p50_ms": {
-        "encode": 117.32,
-        "dense": 61.04
+        "encode": 83.45,
+        "dense": 3.35
       },
-      "rss_peak_mb": 1196.5
+      "rss_peak_mb": 989.2
     },
     "hybrid": {
       "config_version": "hybrid+hybrid+cand50+rufin",
       "queries": 20,
       "warmup_queries": 3,
-      "p50_ms": 239.77,
-      "p95_ms": 340.08,
-      "max_ms": 390.93,
+      "p50_ms": 92.17,
+      "p95_ms": 202.62,
+      "max_ms": 216.56,
       "stages_p50_ms": {
-        "bm25": 1.43,
-        "encode": 184.11,
-        "dense": 57.84,
+        "bm25": 1.16,
+        "encode": 88.26,
+        "dense": 3.23,
         "fusion": 0.04
       },
-      "rss_peak_mb": 1196.5
+      "rss_peak_mb": 989.2
     },
     "bm25-rerank": {
       "config_version": "bm25-rerank+bm25+cand50+rerank50",
       "queries": 5,
       "warmup_queries": 1,
-      "p50_ms": 56132.27,
-      "p95_ms": 64946.92,
-      "max_ms": 64946.92,
+      "p50_ms": 43924.04,
+      "p95_ms": 46620.12,
+      "max_ms": 46620.12,
       "stages_p50_ms": {
-        "bm25": 30.89,
-        "rerank": 56101.38
+        "bm25": 18.65,
+        "rerank": 43911.07
       },
-      "rss_peak_mb": 1902.6
+      "rss_peak_mb": 1924.4
     },
     "hybrid-rerank": {
       "config_version": "hybrid-rerank+hybrid+cand50+rufin+rerank50",
       "queries": 5,
       "warmup_queries": 1,
-      "p50_ms": 55758.78,
-      "p95_ms": 58459.25,
-      "max_ms": 58459.25,
+      "p50_ms": 43944.78,
+      "p95_ms": 44562.56,
+      "max_ms": 44562.56,
       "stages_p50_ms": {
-        "bm25": 5.6,
-        "encode": 109.55,
-        "dense": 112.79,
-        "fusion": 0.12,
-        "rerank": 55549.04
+        "bm25": 3.21,
+        "encode": 88.73,
+        "dense": 49.15,
+        "fusion": 0.07,
+        "rerank": 43758.53
       },
-      "rss_peak_mb": 1975.3
+      "rss_peak_mb": 2177.4
     }
   }
 }
