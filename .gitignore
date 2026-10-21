@@ -1,0 +1,36 @@
+# agent working files, never published
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+.claude/
+orchestration/
+
+# secrets
+.env
+.env.*
+!.env.example
+*.session
+*.pem
+
+# session exports carry everything the session saw, secrets included
+*-session-export*.txt
+exports/
+
+# tooling
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+logs/
+.vscode/
+.DS_Store
+
+data/index/
+data/vectors/
+data/corpus/
+data/chunks/
+qdrant_storage/
+mlruns/
+.ruff_cache/
+.pytest_cache/
+*.log
