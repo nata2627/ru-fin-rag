@@ -18,6 +18,7 @@ exports/
 
 # tooling
 .venv/
+*.egg-info/
 __pycache__/
 *.pyc
 node_modules/
