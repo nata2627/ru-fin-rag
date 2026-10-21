@@ -1,0 +1,80 @@
+{
+  "measured_at": "2026-10-21",
+  "machine": "arm64 Darwin 25.6.0",
+  "python": "3.11.6",
+  "device": "cpu",
+  "corpus_version": "chunks62594-acts1554",
+  "load_seconds": 4.02,
+  "rss_after_load_mb": 1203.3,
+  "configs": {
+    "bm25": {
+      "config_version": "bm25+bm25+cand50",
+      "queries": 20,
+      "warmup_queries": 3,
+      "p50_ms": 1.27,
+      "p95_ms": 4.81,
+      "max_ms": 5.15,
+      "stages_p50_ms": {
+        "bm25": 1.27
+      },
+      "rss_peak_mb": 1106.5
+    },
+    "dense": {
+      "config_version": "dense+dense+cand50+rufin",
+      "queries": 20,
+      "warmup_queries": 3,
+      "p50_ms": 168.93,
+      "p95_ms": 225.72,
+      "max_ms": 240.35,
+      "stages_p50_ms": {
+        "encode": 115.3,
+        "dense": 55.25
+      },
+      "rss_peak_mb": 1106.5
+    },
+    "hybrid": {
+      "config_version": "hybrid+hybrid+cand50+rufin",
+      "queries": 20,
+      "warmup_queries": 3,
+      "p50_ms": 187.75,
+      "p95_ms": 319.41,
+      "max_ms": 325.04,
+      "stages_p50_ms": {
+        "bm25": 1.37,
+        "encode": 123.11,
+        "dense": 55.54,
+        "fusion": 0.04
+      },
+      "rss_peak_mb": 1106.5
+    },
+    "bm25-rerank": {
+      "config_version": "bm25-rerank+bm25+cand50+rerank50",
+      "queries": 5,
+      "warmup_queries": 1,
+      "p50_ms": 53520.32,
+      "p95_ms": 57786.52,
+      "max_ms": 57786.52,
+      "stages_p50_ms": {
+        "bm25": 24.31,
+        "rerank": 53488.53
+      },
+      "rss_peak_mb": 1861.9
+    },
+    "hybrid-rerank": {
+      "config_version": "hybrid-rerank+hybrid+cand50+rufin+rerank50",
+      "queries": 5,
+      "warmup_queries": 1,
+      "p50_ms": 62600.21,
+      "p95_ms": 70616.76,
+      "max_ms": 70616.76,
+      "stages_p50_ms": {
+        "bm25": 6.49,
+        "encode": 109.7,
+        "dense": 118.58,
+        "fusion": 0.09,
+        "rerank": 62356.25
+      },
+      "rss_peak_mb": 1861.9
+    }
+  }
+}

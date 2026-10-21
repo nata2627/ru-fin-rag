@@ -7,7 +7,7 @@ from rufinrag.config import ConfigError, env, load_catalog
 def test_project_catalog_loads():
     catalog = load_catalog()
     assert catalog.default == "hybrid"
-    assert set(catalog.configs) == {"bm25", "hybrid", "hybrid-rerank"}
+    assert set(catalog.configs) == {"bm25", "dense", "bm25-rerank", "hybrid", "hybrid-rerank"}
 
 
 def test_default_config_has_no_online_rerank():
