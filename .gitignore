@@ -1,10 +1,3 @@
-# agent working files, never published
-CLAUDE.md
-CLAUDE.local.md
-AGENTS.md
-.claude/
-orchestration/
-
 # secrets
 .env
 .env.*
