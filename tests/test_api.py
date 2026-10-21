@@ -99,3 +99,15 @@ def test_top_is_bounded(client):
     assert client.post("/search", json={"query": "норматив H1", "top": 500}).status_code == 422
     body = client.post("/search", json={"query": "норматив H1", "top": 3}).json()
     assert len(body["results"]) == 3
+
+
+def test_lexical_only_install_is_healthy_not_broken(client):
+    """Базовая установка без плотной части это рабочий режим, а не поломка.
+
+    Иначе проверка здоровья на хостинге считает рабочий сервис сломанным.
+    """
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert body["dense"] == "off"
+    assert body["dense_off_reason"]
+    assert body["degraded"] == []

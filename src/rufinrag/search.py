@@ -86,6 +86,7 @@ class SearchService:
     rerankers: dict[str, Reranker] = field(default_factory=dict)
     load_seconds: float = 0.0
     degraded: list[str] = field(default_factory=list)
+    dense_off: str = ""
 
     @classmethod
     def build(
@@ -112,11 +113,19 @@ class SearchService:
             bm25 = BM25Index.build(corpus.ids, corpus.texts)
 
         degraded: list[str] = []
+        dense_off: str = ""
         dense = None
         encoder = None
-        if with_dense:
-            vectors = base / VECTORS_FILE
-            model_dir = base / DENSE_MODEL_DIR
+        vectors = base / VECTORS_FILE
+        model_dir = base / DENSE_MODEL_DIR
+        if not with_dense:
+            dense_off = "выключен переменной RUFINRAG_DISABLE_DENSE"
+        elif not vectors.exists() or not model_dir.exists():
+            # Базовая установка без плотной части это штатный режим, а не
+            # поломка: иначе проверка здоровья на хостинге считает рабочий
+            # сервис сломанным и перезапускает контейнер по кругу.
+            dense_off = f"нет артефактов плотной части: {vectors.name}, {model_dir.name}"
+        else:
             try:
                 # Модель грузится до индекса: при бэкенде faiss обратный
                 # порядок роняет процесс (докстринг retrieval/dense.py).
@@ -134,9 +143,8 @@ class SearchService:
             except SearchError:
                 raise
             except Exception as exc:
-                # Плотная часть это не весь поиск: без нее сервис отвечает
-                # лексически и честно говорит об этом в ответе и в `/health`
-                # (SPEC, раздел 6).
+                # Артефакты на месте, а поиск не поднялся: это уже поломка, и
+                # она попадает в `/health` как деградация (SPEC, раздел 6).
                 degraded.append(f"плотный поиск недоступен: {exc}")
                 dense = None
                 encoder = None
@@ -149,6 +157,7 @@ class SearchService:
             encoder=encoder,
             load_seconds=time.monotonic() - t0,
             degraded=degraded,
+            dense_off=dense_off,
         )
 
     @property
@@ -206,7 +215,10 @@ class SearchService:
                 t0 = time.monotonic()
                 lexical = self.bm25.search(query, k=cfg.candidates)
                 timings["bm25"] = (time.monotonic() - t0) * 1000
-            degraded.append("связка потребовала плотный поиск, отдана лексическая выдача")
+            reason = self.dense_off or "плотный поиск не поднялся"
+            degraded.append(
+                f"связка потребовала плотный поиск, отдана лексическая выдача: {reason}"
+            )
             return lexical, "bm25"
 
         t0 = time.monotonic()
