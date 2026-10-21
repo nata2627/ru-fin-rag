@@ -186,13 +186,19 @@ class SearchService:
         timings: dict[str, float],
         degraded: list[str],
     ) -> tuple[list[tuple[str, float]], str]:
-        t0 = time.monotonic()
-        lexical = self.bm25.search(query, k=cfg.candidates)
-        timings["bm25"] = (time.monotonic() - t0) * 1000
-        if cfg.first_stage == "bm25":
-            return lexical, "bm25"
+        lexical: list[tuple[str, float]] = []
+        if cfg.first_stage in ("bm25", "hybrid"):
+            t0 = time.monotonic()
+            lexical = self.bm25.search(query, k=cfg.candidates)
+            timings["bm25"] = (time.monotonic() - t0) * 1000
+            if cfg.first_stage == "bm25":
+                return lexical, "bm25"
 
         if self.dense is None or self.encoder is None:
+            if not lexical:
+                t0 = time.monotonic()
+                lexical = self.bm25.search(query, k=cfg.candidates)
+                timings["bm25"] = (time.monotonic() - t0) * 1000
             degraded.append("связка потребовала плотный поиск, отдана лексическая выдача")
             return lexical, "bm25"
 
@@ -202,6 +208,8 @@ class SearchService:
         t0 = time.monotonic()
         dense_hits = self.dense.search(vector, k=cfg.candidates)
         timings["dense"] = (time.monotonic() - t0) * 1000
+        if cfg.first_stage == "dense":
+            return dense_hits, "dense"
 
         t0 = time.monotonic()
         fused = rrf([lexical, dense_hits], k=cfg.rrf_k, top=cfg.candidates)

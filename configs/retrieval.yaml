@@ -11,6 +11,27 @@ configs:
     rerank: null
     note: базовая линия, 0,484 NDCG@10 на 991 запросе в части А
 
+  dense:
+    first_stage: dense
+    candidates: 50
+    dense_model: rufin
+    rerank: null
+    note: >
+      только плотный поиск, нужен для сравнения ступеней по задержке и качеству.
+      В части А эта модель дала 0,548 на 991 запросе и просадку на живых вопросах
+
+  bm25-rerank:
+    first_stage: bm25
+    candidates: 50
+    rerank:
+      model: BAAI/bge-reranker-v2-m3
+      depth: 50
+      batch_size: 8
+      max_length: 512
+    note: >
+      лексический поиск с переранжированием, нужен чтобы отделить вклад реранка
+      от вклада плотной части
+
   hybrid:
     first_stage: hybrid
     candidates: 50
