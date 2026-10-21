@@ -1,0 +1,11 @@
+.venv/
+.git/
+logs/
+results/
+orchestration/
+tests/
+data/models/
+data/vectors/
+data/index/
+*.egg-info/
+__pycache__/

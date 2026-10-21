@@ -1,0 +1,40 @@
+# Профили, а не один большой стек: на маке 8 ГБ памяти, и поднимать все сразу
+# нельзя (TASK, раздел «Ограничения»). `docker compose --profile search up`
+# поднимает поиск, `--profile vectors` добавляет Qdrant, `--profile logs`
+# добавляет ClickHouse. Бесплатный хостинг после сдачи работает без compose:
+# там только образ сервиса (DECISIONS, решение 8).
+services:
+  api:
+    profiles: ["search"]
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      RUFINRAG_LIVE: "${RUFINRAG_LIVE:-}"
+      RUFINRAG_DISABLE_DENSE: "${RUFINRAG_DISABLE_DENSE:-}"
+      QDRANT_URL: "${QDRANT_URL:-}"
+    volumes:
+      - ./data:/app/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  qdrant:
+    profiles: ["vectors"]
+    image: qdrant/qdrant:v1.12.1
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    # Память ограничена явно: иначе на восьми гигабайтах мака Qdrant и сервис
+    # вместе уводят систему в подкачку, и замеры задержки перестают что-либо
+    # значить.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+volumes:
+  qdrant_storage:
