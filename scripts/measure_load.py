@@ -81,7 +81,10 @@ def main() -> int:
     )
     try:
         health = wait_for_health(f"http://127.0.0.1:{PORT}/health", time.monotonic() + 120, service)
-        prefix = ROOT / "results/load"
+        # Промежуточные csv locust это сырой вывод инструмента, он живет в
+        # логах, а в результатах лежит собранный отчет.
+        prefix = ROOT / "logs/load"
+        prefix.parent.mkdir(parents=True, exist_ok=True)
         locust = subprocess.run(
             [
                 str(ROOT / ".venv/bin/locust"),
