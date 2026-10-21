@@ -1,0 +1,27 @@
+{
+  "measured_at": "2026-10-21",
+  "machine": "arm64 Darwin 25.6.0",
+  "corpus_version": "chunks62594-acts1554",
+  "depth": 10,
+  "note": "сверка с выдачами части А, посчитанными на видеокарте",
+  "configs": {
+    "bm25": {
+      "queries": 200,
+      "order": 200,
+      "composition": 200,
+      "top1": 200
+    },
+    "hybrid": {
+      "queries": 200,
+      "order": 181,
+      "composition": 195,
+      "top1": 199
+    },
+    "dense": {
+      "queries": 200,
+      "order": 164,
+      "composition": 189,
+      "top1": 197
+    }
+  }
+}
