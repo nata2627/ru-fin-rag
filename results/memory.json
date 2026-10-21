@@ -1,0 +1,23 @@
+{
+  "measured_at": "2026-10-21",
+  "machine": "arm64 Darwin 25.6.0",
+  "corpus_version": "chunks62594-acts1554",
+  "text_blocks_mb": 21.5,
+  "bm25_index_mb": 52.0,
+  "configs": {
+    "bm25": {
+      "startup_seconds": 1.25,
+      "peak_mb": 215.0,
+      "current_mb": 209.8,
+      "queries": 20,
+      "p50_ms": 4.17
+    },
+    "hybrid": {
+      "startup_seconds": 3.72,
+      "peak_mb": 1111.8,
+      "current_mb": 623.6,
+      "queries": 20,
+      "p50_ms": 144.47
+    }
+  }
+}

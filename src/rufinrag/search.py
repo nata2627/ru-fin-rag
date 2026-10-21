@@ -23,6 +23,7 @@ from .retrieval.fusion import rrf
 from .retrieval.rerank import Reranker
 
 BM25_FILE = "index/bm25.npz"
+TEXTS_FILE = "index/texts.blocks"
 VECTORS_FILE = "vectors/rufin-384.npy"
 VECTOR_IDS_FILE = "vectors/rufin-384.ids.txt"
 DENSE_MODEL_DIR = "models/rufin"
@@ -45,17 +46,17 @@ class Hit:
     text: str
 
     @classmethod
-    def of(cls, chunk: Chunk, score: float, rank: int, snippet: int = 600):
+    def of(cls, chunk: Chunk, text: str, score: float, rank: int, snippet: int = 600):
         return cls(
             chunk_id=chunk.chunk_id,
             score=score,
             rank=rank,
             act_id=chunk.act_id,
-            act=chunk.act_label,
-            title=chunk.title,
+            act=chunk.act.label,
+            title=chunk.act.title,
             section=chunk.section,
-            url=chunk.url,
-            text=chunk.text[:snippet],
+            url=chunk.act.url,
+            text=text[:snippet],
         )
 
 
@@ -98,7 +99,7 @@ class SearchService:
         base = base or data_dir()
         catalog = catalog or load_catalog()
         t0 = time.monotonic()
-        corpus = load_corpus(corpus_path(base))
+        corpus = load_corpus(corpus_path(base), base / TEXTS_FILE)
 
         index_path = base / BM25_FILE
         if index_path.exists():
@@ -110,7 +111,7 @@ class SearchService:
                     "python scripts/build_index.py"
                 )
         else:
-            bm25 = BM25Index.build(corpus.ids, corpus.texts)
+            bm25 = BM25Index.build(corpus.ids, list(corpus.iter_texts()))
 
         degraded: list[str] = []
         dense_off: str = ""
@@ -181,7 +182,7 @@ class SearchService:
         candidates = candidates[:top]
 
         hits = [
-            Hit.of(self.corpus.get(chunk_id), score, rank)
+            Hit.of(self.corpus.get(chunk_id), self.corpus.text(chunk_id), score, rank)
             for rank, (chunk_id, score) in enumerate(candidates, start=1)
         ]
         timings["total"] = sum(v for k, v in timings.items() if k != "total")
@@ -249,4 +250,4 @@ class SearchService:
 
     def _texts(self, candidates: list[tuple[str, float]]):
         for chunk_id, _ in candidates:
-            yield chunk_id, self.corpus.get(chunk_id).text
+            yield chunk_id, self.corpus.text(chunk_id)

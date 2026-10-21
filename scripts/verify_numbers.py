@@ -1,0 +1,130 @@
+"""Пересчет чисел публичных текстов по файлам из `results/`.
+
+Зачем. Числа в README набираются руками, и один раз в этом проекте в таблицу
+уже попало значение, которого не было ни в одном замере. Этот скрипт берет
+число из файла результата, форматирует его так, как оно должно стоять в тексте,
+и падает, если такой строки в тексте нет. Правка замера без правки текста
+ломает проверку, и наоборот.
+
+Запуск: python scripts/verify_numbers.py
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS = ROOT / "results"
+
+
+def ru(value: float, digits: int = 2) -> str:
+    """Число так, как оно пишется в русском тексте: запятая вместо точки.
+
+    Хвостовые нули не срезаются: в тексте стоит «215,0 МБ», и проверка должна
+    требовать ровно эту запись, иначе она пропустит «215,04».
+    """
+    return f"{value:.{digits}f}".replace(".", ",")
+
+
+def load(name: str) -> dict:
+    return json.loads((RESULTS / name).read_text(encoding="utf-8"))
+
+
+def checks() -> list[tuple[str, str, str]]:
+    """Список проверок: что проверяем, в каком файле лежит, что должно быть в тексте."""
+    latency = load("latency-local.json")
+    memory = load("memory.json")
+    store = load("vector-store.json")
+    quant = load("quantization.json")
+    repro = load("reproducibility.json")
+    load_report = load("load.json")
+    runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
+
+    out: list[tuple[str, str, str]] = []
+    for name, digits in (("bm25", 2), ("dense", 1), ("hybrid", 1)):
+        row = latency["configs"][name]
+        out.append(
+            (f"задержка {name} p50", "latency-local.json", f"{ru(row['p50_ms'], digits)} мс")
+        )
+        out.append(
+            (f"задержка {name} p95", "latency-local.json", f"{ru(row['p95_ms'], digits)} мс")
+        )
+    for name in ("bm25-rerank", "hybrid-rerank"):
+        row = latency["configs"][name]
+        out.append(
+            (f"задержка {name} p50", "latency-local.json", f"{ru(row['p50_ms'] / 1000, 1)} с")
+        )
+
+    for name in ("bm25", "hybrid"):
+        row = memory["configs"][name]
+        out.append((f"пик памяти {name}", "memory.json", f"{ru(row['peak_mb'], 1)} МБ"))
+        out.append((f"старт {name}", "memory.json", f"{ru(row['startup_seconds'], 2)} с"))
+
+    for name in ("numpy", "faiss", "qdrant"):
+        out.append(
+            (
+                f"задержка хранилища {name}",
+                "vector-store.json",
+                f"{ru(store['stores'][name]['p50_ms'], 1)} мс",
+            )
+        )
+    out.append(
+        ("память индекса", "vector-store.json", f"{ru(store['stores']['numpy']['index_mb'], 1)} МБ")
+    )
+    out.append(("память int8", "quantization.json", f"{ru(quant['memory']['int8_mb'], 1)} МБ"))
+    out.append(
+        (
+            "потеря качества при квантизации",
+            "quantization.json",
+            f"{ru(quant['quality']['loss_mean'], 3)}",
+        )
+    )
+
+    for name in ("bm25", "hybrid"):
+        row = repro["configs"][name]
+        out.append(
+            (
+                f"воспроизведение {name}, верхний результат",
+                "reproducibility.json",
+                f"{row['top1']} из {row['queries']}",
+            )
+        )
+        out.append(
+            (
+                f"воспроизведение {name}, состав десятки",
+                "reproducibility.json",
+                f"{row['composition']} из {row['queries']}",
+            )
+        )
+
+    for (config, users), row in runs.items():
+        search = row["endpoints"]["/search"]
+        out.append(
+            (
+                f"нагрузка {config} на {users} пользователях, RPS",
+                "load.json",
+                f"{ru(search['rps'], 1)}",
+            )
+        )
+    return out
+
+
+def main() -> int:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    missing = []
+    for what, source, expected in checks():
+        if expected not in readme:
+            missing.append((what, source, expected))
+    if missing:
+        print("README расходится с замерами:", file=sys.stderr)
+        for what, source, expected in missing:
+            print(f"  {what}: в {source} стоит {expected}, в README такого нет", file=sys.stderr)
+        return 1
+    print(f"числа README сошлись с замерами, проверок {len(checks())}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

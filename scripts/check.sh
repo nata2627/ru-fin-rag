@@ -18,6 +18,9 @@ echo "== ruff"
 echo "== pytest"
 "$PY" -m pytest
 
+echo "== числа публичных текстов"
+"$PY" scripts/verify_numbers.py
+
 echo "== секреты в рабочем дереве"
 scripts/check_secrets.sh
 
