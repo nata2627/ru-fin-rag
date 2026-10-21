@@ -132,7 +132,9 @@ def main() -> int:
     mode = "сервер" if args.qdrant_url else "встроенный режим, локальная папка"
     client = QdrantClient(url=args.qdrant_url) if args.qdrant_url else QdrantClient(path=storage)
     try:
-        client.recreate_collection(
+        if client.collection_exists(COLLECTION):
+            client.delete_collection(COLLECTION)
+        client.create_collection(
             COLLECTION,
             vectors_config=VectorParams(size=vectors32.shape[1], distance=Distance.COSINE),
         )
