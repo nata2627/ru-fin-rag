@@ -102,7 +102,7 @@ def health():
             "corpus_version": current.corpus_version,
             "chunks": len(current.corpus),
             "bm25_index_mb": round(current.bm25.size_mb, 1),
-            "dense": "ready" if current.dense is not None else "off",
+            "dense": current.dense.backend if current.dense is not None else "off",
             "degraded": current.degraded,
         }
     )
