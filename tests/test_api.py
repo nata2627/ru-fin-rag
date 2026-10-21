@@ -48,6 +48,26 @@ def test_empty_query_is_rejected(client):
     assert client.post("/search", json={"query": ""}).status_code == 422
 
 
+def test_longest_real_question_is_accepted(client):
+    """Предел длины запроса не должен отрезать живые вопросы практиков."""
+    import json
+
+    from rufinrag.corpus import corpus_path
+
+    longest = max(
+        (
+            json.loads(line)["text"]
+            for line in (corpus_path().parents[1] / "benchmark/queries.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip()
+        ),
+        key=len,
+    )
+    assert len(longest) > 3000
+    assert client.post("/search", json={"query": longest}).status_code == 200
+
+
 def test_megabyte_query_is_rejected_and_service_survives(client):
     response = client.post("/search", json={"query": "а" * 1_000_000})
     assert response.status_code == 422
