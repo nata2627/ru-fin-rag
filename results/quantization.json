@@ -1,0 +1,26 @@
+{
+  "measured_at": "2026-10-21",
+  "machine": "arm64 Darwin 25.6.0",
+  "vectors": 62594,
+  "dim": 384,
+  "queries": 100,
+  "top": 10,
+  "scale": 0.002341443159448819,
+  "memory": {
+    "float16_source_mb": 45.8,
+    "float32_mb": 91.7,
+    "int8_mb": 22.9
+  },
+  "quality": {
+    "mean_overlap_top10": 0.995,
+    "loss_mean": 0.005,
+    "loss_ci95": [
+      0.001,
+      0.01
+    ],
+    "same_top1_share": 0.99,
+    "same_top1_count": "99 из 100"
+  },
+  "search_seconds_total": 2.15,
+  "note": "скалярная квантизация в int8 с одной шкалой на матрицу, качество это совпадение с точной выдачей, а не метрика на разметке"
+}

@@ -28,7 +28,7 @@ def test_health_reports_versions(client):
     assert body["status"] in ("ok", "degraded")
     assert body["corpus_version"] == "chunks62594-acts1554"
     assert body["chunks"] == 62594
-    assert body["dense"] == "off"
+    assert body["dense"] == "off"  # фикстура поднимает сервис лексическим
     assert body["default_config"] == "hybrid"
 
 

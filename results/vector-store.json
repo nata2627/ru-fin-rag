@@ -1,0 +1,37 @@
+{
+  "measured_at": "2026-10-21",
+  "machine": "arm64 Darwin 25.6.0",
+  "vectors": 62594,
+  "dim": 384,
+  "source_dtype": "float16",
+  "queries": 20,
+  "top": 10,
+  "stores": {
+    "numpy": {
+      "p50_ms": 59.381,
+      "p95_ms": 71.68,
+      "index_mb": 91.7,
+      "stored_dtype": "float32 на время умножения",
+      "overlap_with_exact": 1.0,
+      "note": "точное умножение, им сервис ищет сейчас"
+    },
+    "faiss": {
+      "p50_ms": 2.267,
+      "p95_ms": 2.681,
+      "index_mb": 91.7,
+      "stored_dtype": "float32",
+      "build_seconds": 0.03,
+      "overlap_with_exact": 1.0,
+      "note": "IndexFlatIP, точный перебор по нормированным векторам"
+    },
+    "qdrant": {
+      "p50_ms": 74.493,
+      "p95_ms": 102.603,
+      "index_mb": 247.1,
+      "stored_dtype": "float32",
+      "build_seconds": 31.48,
+      "overlap_with_exact": 0.995,
+      "mode": "встроенный режим, локальная папка"
+    }
+  }
+}

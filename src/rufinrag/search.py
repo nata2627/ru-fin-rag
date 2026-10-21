@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -117,13 +118,19 @@ class SearchService:
             vectors = base / VECTORS_FILE
             model_dir = base / DENSE_MODEL_DIR
             try:
-                dense = DenseIndex.load(vectors, base / VECTOR_IDS_FILE)
+                # Модель грузится до индекса: при бэкенде faiss обратный
+                # порядок роняет процесс (докстринг retrieval/dense.py).
+                encoder = QueryEncoder(model_dir)
+                dense = DenseIndex.load(
+                    vectors,
+                    base / VECTOR_IDS_FILE,
+                    backend=os.environ.get("RUFINRAG_DENSE_BACKEND") or "numpy",
+                )
                 if dense.ids != corpus.ids:
                     raise SearchError(
                         f"{vectors}: векторы собраны на другом корпусе "
                         f"({len(dense.ids)} против {len(corpus)})"
                     )
-                encoder = QueryEncoder(model_dir)
             except SearchError:
                 raise
             except Exception as exc:

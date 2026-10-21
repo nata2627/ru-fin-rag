@@ -1,8 +1,16 @@
 """Плотный поиск: векторы фрагментов и кодирование запроса.
 
-Поиск точный, матричным умножением по нормированным векторам: 62 594 вектора
-по 384 измерения это 48 МБ в float16, и приближенный индекс здесь не нужен.
-Сравнение с Qdrant и FAISS идет отдельной задачей и отдельным замером.
+Поиск точный: 62 594 вектора по 384 измерения это 48 МБ в float16, и
+приближенный индекс здесь не нужен.
+
+По умолчанию умножение идет в numpy, хотя замер 21.10.2026 дал у FAISS 2,3 мс
+против 59,4 мс при полностью совпавшей выдаче (`results/vector-store.json`).
+Причина в том, что `faiss` и `torch` в одном процессе на маке делят OpenMP и
+роняют его: если `faiss` импортирован раньше загрузки модели запроса, процесс
+падает с segmentation fault, если позже, работает. Зависимость от порядка
+импортов в сервисе, который должен работать без рук, дороже, чем 57 мс из 240.
+FAISS остается бэкендом по флагу `RUFINRAG_DENSE_BACKEND=faiss`, и тогда модель
+грузится до индекса.
 
 Модель запроса грузится лениво, потому что torch нужен не всем режимам: связка
 по умолчанию в онлайне плотную часть использует, а тесты BM25 и сборка индекса
@@ -33,9 +41,26 @@ class DenseError(Exception):
 class DenseIndex:
     ids: list[str]
     vectors: np.ndarray  # (n, dim), нормированные
+    backend: str = "numpy"  # или faiss, см. докстринг модуля
+    _index: object = None
+
+    def __post_init__(self) -> None:
+        if self.backend == "faiss":
+            try:
+                import faiss
+            except ImportError:
+                self.backend = "numpy"
+            else:
+                vectors32 = np.ascontiguousarray(self.vectors, dtype=np.float32)
+                self._index = faiss.IndexFlatIP(vectors32.shape[1])
+                self._index.add(vectors32)
+        if self.backend == "numpy":
+            # Умножение идет в одинарной точности: в половинной накапливается
+            # ошибка, а выигрыша по времени на таком размере нет.
+            self._matrix = np.ascontiguousarray(self.vectors, dtype=np.float32)
 
     @classmethod
-    def load(cls, vectors_path: Path, ids_path: Path):
+    def load(cls, vectors_path: Path, ids_path: Path, backend: str = "numpy"):
         if not vectors_path.exists():
             raise DenseError(
                 f"нет векторов {vectors_path}. Собрать из части А: "
@@ -47,7 +72,7 @@ class DenseIndex:
             raise DenseError(
                 f"{vectors_path}: векторов {vectors.shape[0]}, идентификаторов {len(ids)}"
             )
-        return cls(ids=ids, vectors=vectors)
+        return cls(ids=ids, vectors=vectors, backend=backend)
 
     @property
     def dim(self) -> int:
@@ -58,15 +83,18 @@ class DenseIndex:
         return self.vectors.nbytes / 1048576
 
     def search(self, query_vector: np.ndarray, k: int = 10) -> list[tuple[str, float]]:
-        # float32 для умножения: в float16 накапливается ошибка, а выигрыша по
-        # времени на таком размере нет.
-        scores = self.vectors.astype(np.float32) @ query_vector.astype(np.float32)
-        if k >= scores.shape[0]:
-            order = np.argsort(-scores)
+        vector = np.ascontiguousarray(query_vector, dtype=np.float32)
+        if self.backend == "faiss":
+            scores, found = self._index.search(vector.reshape(1, -1), k)
+            return [(self.ids[i], float(s)) for i, s in zip(found[0], scores[0], strict=True)]
+
+        all_scores = self._matrix @ vector
+        if k >= all_scores.shape[0]:
+            order = np.argsort(-all_scores)
         else:
-            part = np.argpartition(-scores, k)[:k]
-            order = part[np.argsort(-scores[part])]
-        return [(self.ids[i], float(scores[i])) for i in order[:k]]
+            part = np.argpartition(-all_scores, k)[:k]
+            order = part[np.argsort(-all_scores[part])]
+        return [(self.ids[i], float(all_scores[i])) for i in order[:k]]
 
 
 class QueryEncoder:
