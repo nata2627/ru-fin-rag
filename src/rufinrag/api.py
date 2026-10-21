@@ -23,7 +23,10 @@ from .config import ConfigError, live_mode, load_catalog
 from .corpus import CorpusError
 from .search import SearchError, SearchService
 
-MAX_QUERY_CHARS = 1000
+# Предел длины запроса взят по эталонному набору: самый длинный живой вопрос
+# практика в нем 3067 символов, а предел 1000 отрезал 22 запроса из 1182. Это
+# нашел нагрузочный замер: сервис отвечал 422 на настоящие вопросы.
+MAX_QUERY_CHARS = 4000
 MAX_TOP = 50
 
 state: dict[str, object] = {}

@@ -110,7 +110,7 @@ def main() -> int:
             return 1
 
         rows = {row["Name"]: row for row in read_locust_stats(prefix)}
-        report = {
+        run = {
             "measured_at": time.strftime("%Y-%m-%d"),
             "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
             "config": args.config,
@@ -133,11 +133,21 @@ def main() -> int:
                 if name != "Aggregated"
             },
         }
+        # Прогоны накапливаются: связки меряются отдельными запусками с разным
+        # числом пользователей, и один отчет на все дает сравнимую таблицу.
+        report = json.loads(args.out.read_text(encoding="utf-8")) if args.out.exists() else {}
+        report.setdefault("runs", [])
+        report["runs"] = [
+            r
+            for r in report["runs"]
+            if not (r["config"] == args.config and r["users"] == args.users)
+        ]
+        report["runs"].append(run)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        for name, row in report["endpoints"].items():
+        for name, row in run["endpoints"].items():
             print(name, row, flush=True)
         print(f"записано в {args.out}", flush=True)
         return 0

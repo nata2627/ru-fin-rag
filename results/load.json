@@ -1,0 +1,124 @@
+{
+  "runs": [
+    {
+      "measured_at": "2026-10-21",
+      "machine": "arm64 Darwin 25.6.0",
+      "config": "bm25",
+      "config_in_health": "bm25",
+      "corpus_version": "chunks62594-acts1554",
+      "dense": "off",
+      "users": 10,
+      "seconds": 45,
+      "endpoints": {
+        "/health": {
+          "requests": 118,
+          "failures": 0,
+          "rps": 2.669485896380277,
+          "p50_ms": 10.0,
+          "p95_ms": 15.0,
+          "p99_ms": 18.0,
+          "max_ms": 18.345083997701295
+        },
+        "/search": {
+          "requests": 1230,
+          "failures": 0,
+          "rps": 27.825997055489328,
+          "p50_ms": 10.0,
+          "p95_ms": 24.0,
+          "p99_ms": 35.0,
+          "max_ms": 56.55920799472369
+        }
+      }
+    },
+    {
+      "measured_at": "2026-10-21",
+      "machine": "arm64 Darwin 25.6.0",
+      "config": "bm25",
+      "config_in_health": "bm25",
+      "corpus_version": "chunks62594-acts1554",
+      "dense": "off",
+      "users": 50,
+      "seconds": 45,
+      "endpoints": {
+        "/health": {
+          "requests": 407,
+          "failures": 0,
+          "rps": 9.2287870199838,
+          "p50_ms": 7.0,
+          "p95_ms": 13.0,
+          "p99_ms": 21.0,
+          "max_ms": 40.000125009100884
+        },
+        "/search": {
+          "requests": 4726,
+          "failures": 0,
+          "rps": 107.1627701632517,
+          "p50_ms": 9.0,
+          "p95_ms": 30.0,
+          "p99_ms": 55.0,
+          "max_ms": 121.3425829919288
+        }
+      }
+    },
+    {
+      "measured_at": "2026-10-21",
+      "machine": "arm64 Darwin 25.6.0",
+      "config": "bm25",
+      "config_in_health": "bm25",
+      "corpus_version": "chunks62594-acts1554",
+      "dense": "off",
+      "users": 150,
+      "seconds": 45,
+      "endpoints": {
+        "/health": {
+          "requests": 803,
+          "failures": 0,
+          "rps": 18.22132572696264,
+          "p50_ms": 260.0,
+          "p95_ms": 320.0,
+          "p99_ms": 410.0,
+          "max_ms": 520.1257079897914
+        },
+        "/search": {
+          "requests": 7918,
+          "failures": 0,
+          "rps": 179.6718021246453,
+          "p50_ms": 360.0,
+          "p95_ms": 830.0,
+          "p99_ms": 1400.0,
+          "max_ms": 3250.5797919875477
+        }
+      }
+    },
+    {
+      "measured_at": "2026-10-21",
+      "machine": "arm64 Darwin 25.6.0",
+      "config": "hybrid",
+      "config_in_health": "hybrid",
+      "corpus_version": "chunks62594-acts1554",
+      "dense": "numpy",
+      "users": 5,
+      "seconds": 60,
+      "endpoints": {
+        "/health": {
+          "requests": 50,
+          "failures": 0,
+          "rps": 0.8443597298927547,
+          "p50_ms": 15.0,
+          "p95_ms": 28.0,
+          "p99_ms": 33.0,
+          "max_ms": 33.32237500580959
+        },
+        "/search": {
+          "requests": 457,
+          "failures": 0,
+          "rps": 7.717447931219778,
+          "p50_ms": 240.0,
+          "p95_ms": 620.0,
+          "p99_ms": 970.0,
+          "max_ms": 1434.5048329996644
+        }
+      }
+    }
+  ]
+}
