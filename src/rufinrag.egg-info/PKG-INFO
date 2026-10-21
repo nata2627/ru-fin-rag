@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: rufinrag
+Version: 0.1.0
+Summary: Поиск и ответ по нормативным актам Банка России
+Requires-Python: ==3.11.*
+Requires-Dist: fastapi==0.115.6
+Requires-Dist: uvicorn[standard]==0.34.0
+Requires-Dist: pydantic==2.10.4
+Requires-Dist: numpy==1.26.4
+Requires-Dist: scipy==1.13.1
+Requires-Dist: PyYAML==6.0.2
+Provides-Extra: dense
+Requires-Dist: torch==2.3.1; extra == "dense"
+Requires-Dist: sentence-transformers==3.0.1; extra == "dense"
+Requires-Dist: transformers==4.41.2; extra == "dense"
+Provides-Extra: dev
+Requires-Dist: pytest==8.3.4; extra == "dev"
+Requires-Dist: ruff==0.8.6; extra == "dev"
+Requires-Dist: httpx==0.28.1; extra == "dev"

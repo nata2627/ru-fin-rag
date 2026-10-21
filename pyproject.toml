@@ -1,0 +1,50 @@
+[project]
+name = "rufinrag"
+version = "0.1.0"
+description = "Поиск и ответ по нормативным актам Банка России"
+requires-python = "==3.11.*"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.10.4",
+    "numpy==1.26.4",
+    "scipy==1.13.1",
+    "PyYAML==6.0.2",
+]
+
+# Плотный поиск и переранжирование тянут torch, а он не нужен ни тестам BM25,
+# ни образу сервиса в режиме по умолчанию (DECISIONS, решение 7).
+[project.optional-dependencies]
+dense = [
+    "torch==2.3.1",
+    "sentence-transformers==3.0.1",
+    "transformers==4.41.2",
+]
+dev = [
+    "pytest==8.3.4",
+    "ruff==0.8.6",
+    "httpx==0.28.1",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# Комментарии и строки в проекте по-русски, поэтому правила про похожие на
+# латиницу кириллические буквы ругаются на каждую строку текста.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

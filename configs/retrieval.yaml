@@ -1,0 +1,38 @@
+# Связки поиска. Смена связки это правка этого файла, а не правка кода
+# (SPEC, раздел 3). Имена конфигураций те же, что в части А, чтобы числа
+# сходились по имени: bm25, hybrid, hybrid-rerank.
+version: 1
+default: hybrid
+
+configs:
+  bm25:
+    first_stage: bm25
+    candidates: 50
+    rerank: null
+    note: базовая линия, 0,484 NDCG@10 на 991 запросе в части А
+
+  hybrid:
+    first_stage: hybrid
+    candidates: 50
+    dense_model: rufin
+    rrf_k: 60
+    rerank: null
+    note: >
+      режим по умолчанию в онлайне (DECISIONS, решение 7). Плотная часть идет на
+      существующих 384-мерных векторах, потому что векторов user-bge-m3 на диске
+      нет (DECISIONS, решение 9)
+
+  hybrid-rerank:
+    first_stage: hybrid
+    candidates: 50
+    dense_model: rufin
+    rrf_k: 60
+    rerank:
+      model: BAAI/bge-reranker-v2-m3
+      depth: 50
+      batch_size: 8
+      max_length: 512
+    note: >
+      лучшая по качеству связка части А (0,690 на 991, 0,421 на живых) и самая
+      дорогая: 48,0 с на запрос на CPU мака и 20,4 с на MPS при глубине 50
+      (results/artifacts.md). В онлайне по умолчанию не включается
