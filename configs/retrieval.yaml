@@ -39,9 +39,9 @@ configs:
     rrf_k: 60
     rerank: null
     note: >
-      режим по умолчанию в онлайне (DECISIONS, решение 7). Плотная часть идет на
+      режим по умолчанию в онлайне (DECISIONS, решение 6). Плотная часть идет на
       существующих 384-мерных векторах, потому что векторов user-bge-m3 на диске
-      нет (DECISIONS, решение 9)
+      нет (DECISIONS, решение 8)
 
   hybrid-rerank:
     first_stage: hybrid
