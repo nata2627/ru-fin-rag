@@ -98,6 +98,19 @@ def load_catalog(path: Path | None = None) -> Catalog:
     default = raw.get("default")
     if default not in configs:
         raise ConfigError(f"{path}: связка по умолчанию {default!r} не описана")
+
+    # Связку по умолчанию можно переопределить переменной окружения: нагрузочный
+    # замер и сравнение конфигураций гоняют один и тот же образ с разными
+    # связками, и правка файла на время прогона потерялась бы в истории.
+    override = env("RUFINRAG_DEFAULT_CONFIG")
+    if override:
+        if override not in configs:
+            known = ", ".join(sorted(configs))
+            raise ConfigError(
+                f"RUFINRAG_DEFAULT_CONFIG={override!r}: такой связки нет, известны: {known}"
+            )
+        default = override
+
     return Catalog(version=int(raw.get("version", 1)), default=default, configs=configs)
 
 

@@ -98,7 +98,8 @@ def main() -> int:
         row = report["configs"][name]
         print(
             f"{name}: p50 {row['p50_ms']} мс, p95 {row['p95_ms']} мс, "
-            f"ступени {row['stages_p50_ms']}, RSS {row['rss_peak_mb']} МБ"
+            f"ступени {row['stages_p50_ms']}, RSS {row['rss_peak_mb']} МБ",
+            flush=True,
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
