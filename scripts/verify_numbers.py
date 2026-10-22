@@ -37,6 +37,7 @@ def checks() -> list[tuple[str, str, str]]:
     latency = load("latency-local.json")
     memory = load("memory.json")
     store = load("vector-store.json")
+    store_container = load("vector-store-container.json")
     quant = load("quantization.json")
     repro = load("reproducibility.json")
     load_report = load("load.json")
@@ -72,6 +73,28 @@ def checks() -> list[tuple[str, str, str]]:
         )
     out.append(
         ("память индекса", "vector-store.json", f"{ru(store['stores']['numpy']['index_mb'], 1)} МБ")
+    )
+    qdrant_server = store_container["stores"]["qdrant"]
+    out.append(
+        (
+            "задержка Qdrant контейнером",
+            "vector-store-container.json",
+            f"{ru(qdrant_server['p50_ms'], 1)} мс",
+        )
+    )
+    out.append(
+        (
+            "диск Qdrant контейнером",
+            "vector-store-container.json",
+            f"{ru(qdrant_server['index_mb'], 1)} МБ",
+        )
+    )
+    out.append(
+        (
+            "память контейнера Qdrant",
+            "vector-store-container.json",
+            qdrant_server["container_memory"].replace("MiB", " МиБ").replace(".", ","),
+        )
     )
     out.append(("память int8", "quantization.json", f"{ru(quant['memory']['int8_mb'], 1)} МБ"))
     out.append(

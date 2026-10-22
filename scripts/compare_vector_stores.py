@@ -9,9 +9,13 @@ Qdrant это хранилище с сетевым интерфейсом и ф�
 
 Qdrant поднимается во встроенном режиме (локальная папка), а не контейнером,
 если его адрес не задан. Встроенный режим меряет структуру индекса и память,
-но не сетевой слой, и это написано в отчете.
+но не сетевой слой, и это написано в отчете. С `--qdrant-url` замер идет через
+сеть, и тогда место на диске у сервера не видно изнутри процесса: его дает
+`--qdrant-container`, по которому скрипт спрашивает размер у самого контейнера
+и записывает в отчет команду, которой спросил.
 
 Запуск: python scripts/compare_vector_stores.py [--queries 20] [--qdrant-url ...]
+                                                [--qdrant-container ru-fin-rag-qdrant-1]
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import json
 import platform
 import shutil
 import statistics
+import subprocess
 import sys
 import tempfile
 import time
@@ -47,6 +52,18 @@ def overlap(mine: list[str], reference: list[str]) -> float:
     return len(set(mine) & set(reference)) / len(reference)
 
 
+def container_usage(name: str) -> dict[str, object]:
+    disk = ["docker", "exec", name, "du", "-sk", "/qdrant/storage"]
+    mem = ["docker", "stats", "--no-stream", "--format", "{{.MemUsage}}", name]
+    kb = int(subprocess.run(disk, capture_output=True, text=True, check=True).stdout.split()[0])
+    used = subprocess.run(mem, capture_output=True, text=True, check=True).stdout.split("/")[0]
+    return {
+        "index_mb": round(kb / 1024, 1),
+        "container_memory": used.strip(),
+        "measured_by": " ".join(disk) + " и " + " ".join(mem),
+    }
+
+
 def measure(fn, vectors: list[np.ndarray]) -> tuple[list[list[str]], dict[str, float]]:
     results = []
     times = []
@@ -64,6 +81,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--queries", type=int, default=20)
     parser.add_argument("--qdrant-url", default="")
+    parser.add_argument("--qdrant-container", default="")
     parser.add_argument("--out", type=Path, default=ROOT / "results/vector-store.json")
     args = parser.parse_args()
 
@@ -171,6 +189,8 @@ def main() -> int:
             ),
             "mode": mode,
         }
+        if args.qdrant_container:
+            report["stores"]["qdrant"].update(container_usage(args.qdrant_container))
     finally:
         client.close()
         if not args.qdrant_url:
