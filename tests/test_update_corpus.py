@@ -61,3 +61,11 @@ def test_chunk_rows_match_corpus_fields():
     assert [row["chunk_id"] for row in rows] == [
         f"{ACT['act_id']}#{i:04d}" for i in range(len(rows))
     ]
+
+
+def test_skipped_acts_survive_between_runs(tmp_path):
+    """Иначе прогон каждую ночь качает одни и те же 80 выпусков ради нуля актов."""
+    path = tmp_path / "skipped.json"
+    assert update_corpus.load_skipped(path) == {}
+    update_corpus.save_skipped(path, {"590-П_28062017": {"reason": "мало кириллицы", "tries": 1}})
+    assert update_corpus.load_skipped(path)["590-П_28062017"]["reason"] == "мало кириллицы"

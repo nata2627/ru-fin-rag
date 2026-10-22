@@ -35,4 +35,6 @@ mlruns/
 # (DECISIONS, решение 8), остальное пересобирается кодом или слишком велико
 # для git.
 !data/corpus/chunks.jsonl.gz
+# Память ночного прогона о том, какие акты уже пробовали взять и не смогли.
+!data/corpus/skipped.json
 data/models/

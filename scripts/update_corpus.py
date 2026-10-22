@@ -38,10 +38,32 @@ from rufinrag.corpus import FIELDS, corpus_path, read_jsonl  # noqa: E402
 MIN_CYRILLIC = 0.90
 MIN_CHARS = 500
 TOKENIZER = "xlm-roberta-base"
+SKIPPED_FILE = "corpus/skipped.json"
 
 
 def known_acts(path: Path) -> set[str]:
     return {row["act_id"] for row in read_jsonl(path)}
+
+
+def load_skipped(path: Path) -> dict[str, dict]:
+    """Акты, которые уже пробовали взять и не смогли.
+
+    Без этого файла прогон каждую ночь качает одни и те же выпуски: в перечне
+    у cbr.ru 97 актов, которых нет в корпусе, и все 97 не берутся по тем же
+    причинам, по которым их не взяла часть А (скан вместо текста, акт не
+    опознан в выпуске). Первый прогон 22.10.2026 скачал из-за этого 80 PDF и
+    добавил ноль фрагментов. Причина и дата попытки пишутся рядом, повторная
+    попытка делается флагом `--retry-skipped`, когда есть повод.
+    """
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_skipped(path: Path, skipped: dict[str, dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ordered = {key: skipped[key] for key in sorted(skipped)}
+    path.write_text(json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def act_key(number: str, date: str) -> str:
@@ -77,6 +99,9 @@ def main() -> int:
     parser.add_argument("--pause", type=float, default=1.5)
     parser.add_argument("--limit-issues", type=int, default=0)
     parser.add_argument("--dry-run", action="store_true", help="только разница, без выкачки")
+    parser.add_argument(
+        "--retry-skipped", action="store_true", help="попробовать акты, которые не дались раньше"
+    )
     parser.add_argument("--out", type=Path, default=ROOT / "results/corpus-update.json")
     args = parser.parse_args()
 
@@ -92,6 +117,8 @@ def main() -> int:
 
     corpus = corpus_path()
     known = known_acts(corpus)
+    skipped_path = corpus.parent.parent / SKIPPED_FILE
+    skipped = {} if args.retry_skipped else load_skipped(skipped_path)
     started = time.monotonic()
     client = Client(pause=args.pause)
 
@@ -100,7 +127,7 @@ def main() -> int:
     fresh = {}
     for act in wanted:
         key = act_key(normalize_number(act["number"]), act["date"])
-        if key not in known:
+        if key not in known and key not in skipped:
             fresh[key] = act
 
     report = {
@@ -108,6 +135,7 @@ def main() -> int:
         "index_acts": len(index),
         "wanted_acts": len(wanted),
         "known_acts": len(known),
+        "skipped_before": len(skipped),
         "new_acts_in_index": len(fresh),
         "new_acts_added": 0,
         "new_chunks": 0,
@@ -142,6 +170,18 @@ def main() -> int:
 
     added: list[dict] = []
     dropped: dict[str, int] = {}
+    today = time.strftime("%Y-%m-%d")
+
+    def drop(key: str, reason: str) -> None:
+        dropped[reason] = dropped.get(reason, 0) + 1
+        seen = skipped.get(key, {})
+        skipped[key] = {
+            "reason": reason,
+            "first_try": seen.get("first_try", today),
+            "last_try": today,
+            "tries": seen.get("tries", 0) + 1,
+        }
+
     with tempfile.TemporaryDirectory(prefix="vestnik-") as tmp:
         for code in codes:
             info = issues[code]
@@ -152,16 +192,16 @@ def main() -> int:
             for number, (key, meta) in info["want"].items():
                 found = parsed.get(number)
                 if found is None:
-                    dropped["не найден в выпуске"] = dropped.get("не найден в выпуске", 0) + 1
+                    drop(key, "не найден в выпуске")
                     continue
                 cyr = len(cyrillic.findall(found.text))
                 lat = len(latin.findall(found.text))
                 share = cyr / (cyr + lat) if cyr + lat else 0.0
                 if share < MIN_CYRILLIC:
-                    dropped["мало кириллицы"] = dropped.get("мало кириллицы", 0) + 1
+                    drop(key, "мало кириллицы")
                     continue
                 if len(found.text) < MIN_CHARS:
-                    dropped["слишком короткий"] = dropped.get("слишком короткий", 0) + 1
+                    drop(key, "слишком короткий")
                     continue
                 added.append(
                     {
@@ -187,9 +227,11 @@ def main() -> int:
             for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
+    save_skipped(skipped_path, skipped)
     report["new_acts_added"] = len(added)
     report["new_chunks"] = len(rows)
     report["dropped"] = dropped
+    report["skipped_total"] = len(skipped)
     report["acts"] = [
         {"act_id": a["act_id"], "date": a["date"], "title": a["title"]} for a in added
     ]
