@@ -17,8 +17,14 @@
 повторный запуск начинает с того места, где остановился. Перед полным
 прогоном стоит сделать пробу на малой части: она печатает скорость и прогноз.
 
+Тем же кодом считаются векторы запросов: `--queries` берет тексты эталонного
+набора вместо корпуса. Это важно делать здесь, а не на маке: модель и ее версия
+должны быть те же, что у корпуса, иначе запрос и фрагмент окажутся в разных
+пространствах, а по метрикам это будет выглядеть как плохое качество поиска.
+
 Запуск пробы:  python scripts/embed_corpus.py --limit 400
 Полный прогон: python scripts/embed_corpus.py
+Векторы запросов: python scripts/embed_corpus.py --queries
 """
 
 from __future__ import annotations
@@ -34,6 +40,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from rufinrag.benchmark import load_queries  # noqa: E402
 from rufinrag.corpus import load_corpus  # noqa: E402
 
 MODEL = "deepvk/USER-bge-m3"
@@ -82,11 +89,21 @@ def main() -> int:
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--limit", type=int, default=0, help="проба на первых N фрагментах")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument(
+        "--queries", action="store_true", help="векторы эталонных запросов вместо корпуса"
+    )
     args = parser.parse_args()
 
-    corpus = load_corpus()
-    texts = list(corpus.iter_texts())
-    ids = corpus.ids
+    if args.queries:
+        queries = load_queries()
+        ids = sorted(queries)
+        texts = [queries[query_id].text for query_id in ids]
+        if args.out == parser.get_default("out"):
+            args.out = ROOT / "data/vectors/user-bge-m3-1024-queries.npy"
+    else:
+        corpus = load_corpus()
+        texts = list(corpus.iter_texts())
+        ids = corpus.ids
     total = args.limit or len(texts)
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
