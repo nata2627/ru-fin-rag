@@ -120,7 +120,7 @@ def body_of(chunk: dict) -> str:
 
 def load_llm(model_path: str, dtype: str = "float16", quantization: str | None = None,
              tensor_parallel: int = 1, max_model_len: int = 4096,
-             gpu_memory_utilization: float = 0.90):
+             gpu_memory_utilization: float = 0.90, prefix_caching: bool = False):
     """Поднять vLLM.
 
     Тип данных задаётся явно: на Turing нет bf16, и «auto» у модели,
@@ -141,6 +141,11 @@ def load_llm(model_path: str, dtype: str = "float16", quantization: str | None =
     kwargs = dict(model=model_path, dtype=dtype, max_model_len=max_model_len,
                   gpu_memory_utilization=gpu_memory_utilization,
                   tensor_parallel_size=tensor_parallel, trust_remote_code=True)
+    # Кэш общего префикса окупается там, где у всех подсказок одно начало:
+    # у судьи это инструкция разметчику. Генерации он не нужен, там общего
+    # начала почти нет, а память под кэш отнимается у ключей.
+    if prefix_caching:
+        kwargs["enable_prefix_caching"] = True
     if quantization:
         kwargs["quantization"] = quantization
     print(f"поднимаю vLLM: {model_path} ({dtype}"
