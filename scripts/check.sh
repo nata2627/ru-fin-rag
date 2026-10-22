@@ -6,8 +6,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 PY=${PY:-.venv/bin/python}
 
-if [ ! -x "$PY" ]; then
-  echo "Нет окружения $PY. Собрать: make venv" >&2
+# Проверка запуском, а не по признаку файла: в CI PY это имя команды из PATH,
+# а не путь к venv, и `-x python` там ложно срабатывает как отсутствие окружения.
+if ! "$PY" -c "import rufinrag" >/dev/null 2>&1; then
+  echo "Нет окружения $PY с установленным пакетом. Собрать: make venv" >&2
   exit 1
 fi
 
