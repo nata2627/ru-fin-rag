@@ -29,6 +29,9 @@ QUERIES = [
     "data/queries/queries.jsonl",
     "data/queries/split.json",
     "data/queries/pool_candidates.tsv",
+    # пул полноты разметки живых вопросов: судья размечает его тем же
+    # прогоном, ключ --pool pool_live_kaggle.tsv
+    "data/queries/pool_live_kaggle.tsv",
     # этап D: обучающая выборка, dev и разметка с составом подвыборок.
     # Разметка и подвыборки нужны, чтобы dev на видеокарте считался тем же
     # составом и тем же эталоном, что в локальном отчёте: разойдись они —
