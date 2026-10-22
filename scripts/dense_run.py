@@ -41,6 +41,9 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--top", type=int, default=TOP)
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--query-vectors", default=None,
+                    help="готовые векторы запросов (.npy) и рядом файл .ids.txt; "
+                         "с ними модель не загружается вовсе")
     args = ap.parse_args()
 
     spec = MODELS[args.model]
@@ -63,13 +66,29 @@ def main() -> None:
     # записаны имена классов той версии sentence-transformers, что стояла
     # в сессии Kaggle, и здешняя их не находит. Готовые модели из таблицы
     # читаются обычным путём.
-    making = MeanPoolEncoder if args.weights else Encoder
-    enc = making(spec, batch_size=args.batch_size)
     t0 = time.time()
-    qvec = enc.encode([q["text"] for q in queries], is_query=True)
+    if args.query_vectors:
+        # Векторы запросов, посчитанные там же, где векторы корпуса. Нужны
+        # для моделей, которых нет на этой машине: качать два гигабайта весов
+        # ради кодирования тысячи запросов незачем, а считать запросы другой
+        # версией модели, чем корпус, нельзя — это разные пространства.
+        import numpy as np
+        qvec_all = np.load(args.query_vectors)
+        order = open(args.query_vectors.replace(".npy", ".ids.txt"),
+                     encoding="utf-8").read().split()
+        place = {qid: i for i, qid in enumerate(order)}
+        missing = [q["query_id"] for q in queries if q["query_id"] not in place]
+        if missing:
+            raise SystemExit(f"нет векторов для {len(missing)} запросов, первый {missing[0]}")
+        qvec = np.stack([qvec_all[place[q["query_id"]]] for q in queries]).astype("float32")
+        where = "из готовых векторов"
+    else:
+        making = MeanPoolEncoder if args.weights else Encoder
+        enc = making(spec, batch_size=args.batch_size)
+        qvec = enc.encode([q["text"] for q in queries], is_query=True)
+        where = f"на {enc.device}"
     found = index.search_vectors(qvec, k=args.top)
-    print(f"закодировано и найдено за {time.time() - t0:.0f} с "
-          f"на {enc.device}", flush=True)
+    print(f"закодировано и найдено за {time.time() - t0:.0f} с {where}", flush=True)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
