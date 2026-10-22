@@ -17,8 +17,10 @@
 
 https://ru-fin-rag.onrender.com
 
-Проверить без установки: [`/health`](https://ru-fin-rag.onrender.com/health) отдает версию
-корпуса и число фрагментов, `/search` принимает POST с полем `query`.
+На корне короткая страница с описанием и ссылками. Попробовать запрос из браузера можно на
+[`/docs`](https://ru-fin-rag.onrender.com/docs), состояние сервиса показывает
+[`/health`](https://ru-fin-rag.onrender.com/health), а `/search` принимает POST с полем
+`query`.
 
 ```
 curl -s https://ru-fin-rag.onrender.com/health
