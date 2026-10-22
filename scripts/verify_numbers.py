@@ -42,6 +42,7 @@ def checks() -> list[tuple[str, str, str]]:
     repro = load("reproducibility.json")
     rehearsal = load("render-rehearsal.json")
     corpus = load("corpus.json")
+    hosted = load("latency-hosted.json")
     rerank = load("rerank-quality.json")
     rerank_run = load("rerank-hybrid-rufin.json")
     first_run = load("corpus-update-first.json")
@@ -112,6 +113,18 @@ def checks() -> list[tuple[str, str, str]]:
 
     out.append(("актов в корпусе", "corpus.json", f"{corpus['acts']} акта"))
     out.append(("размер корпуса", "corpus.json", f"{ru(corpus['file_mib'], 1)} МиБ"))
+    out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
+    out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
+    out.append(
+        ("худший запрос на хостинге", "latency-hosted.json", f"{ru(hosted['max_ms'], 1)} мс")
+    )
+    out.append(
+        (
+            "старт на хостинге",
+            "latency-hosted.json",
+            f"{ru(hosted['health']['startup_seconds'], 1)} с",
+        )
+    )
     reranked = rerank["runs"]["hybrid-rerank, связка сервиса"]["metrics"]["NDCG@10"]
     gain = rerank["difference_ndcg10"]
     out.append(("качество связки с реранком", "rerank-quality.json", f"{ru(reranked, 3)}"))
