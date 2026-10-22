@@ -77,6 +77,64 @@ def evaluate(
     return {name: round(sum(values) / len(values), 4) for name, values in scored.items() if values}
 
 
+def per_query(
+    run: Mapping[str, Sequence[str]],
+    qrels: Mapping[str, Mapping[str, int]],
+    metric: str = "NDCG@10",
+) -> tuple[list[str], list[float]]:
+    """Значение метрики по каждому запросу: без них нет ни интервала, ни пары."""
+    pick = {
+        "NDCG@10": lambda ranked, rel: ndcg_at_k(ranked, rel),
+        "MRR@10": lambda ranked, rel: mrr_at_k(ranked, rel),
+        "Recall@10": lambda ranked, rel: recall_at_k(ranked, rel, DEPTH),
+    }[metric]
+    ids: list[str] = []
+    values: list[float] = []
+    for query_id in sorted(qrels):
+        value = pick(list(run.get(query_id, ())), qrels[query_id])
+        if value is not None:
+            ids.append(query_id)
+            values.append(value)
+    return ids, values
+
+
+def bootstrap_ci(values: Sequence[float], runs: int = 10000, seed: int = 0) -> dict[str, float]:
+    """Интервал среднего бутстрэпом по запросам, как в части А."""
+    import numpy as np
+
+    sample = np.asarray(values, dtype=float)
+    rng = np.random.default_rng(seed)
+    means = rng.choice(sample, size=(runs, sample.size), replace=True).mean(axis=1)
+    return {
+        "mean": round(float(sample.mean()), 4),
+        "lo": round(float(np.quantile(means, 0.025)), 4),
+        "hi": round(float(np.quantile(means, 0.975)), 4),
+    }
+
+
+def paired_diff_ci(
+    better: Sequence[float], worse: Sequence[float], runs: int = 10000, seed: int = 0
+) -> dict[str, float]:
+    """Разница на одних и тех же запросах: парный бутстрэп и перестановочный тест.
+
+    Парный вариант обязателен: конфигурации меряются на общем наборе, их ошибки
+    скоррелированы, и независимые интервалы завысили бы неопределенность.
+    """
+    import numpy as np
+
+    diff = np.asarray(better, dtype=float) - np.asarray(worse, dtype=float)
+    rng = np.random.default_rng(seed)
+    means = diff[rng.integers(0, diff.size, size=(runs, diff.size))].mean(axis=1)
+    signs = rng.choice(np.array([-1.0, 1.0]), size=(runs, diff.size))
+    permuted = (diff * signs).mean(axis=1)
+    return {
+        "mean": round(float(diff.mean()), 4),
+        "lo": round(float(np.quantile(means, 0.025)), 4),
+        "hi": round(float(np.quantile(means, 0.975)), 4),
+        "p": round(float((np.abs(permuted) >= abs(diff.mean())).mean()), 4),
+    }
+
+
 def queries_scored(qrels: Mapping[str, Mapping[str, int]]) -> int:
     """Знаменатель метрик: сколько запросов имеют хотя бы один релевантный фрагмент."""
     return sum(1 for rel in qrels.values() if any(grade > 0 for grade in rel.values()))
