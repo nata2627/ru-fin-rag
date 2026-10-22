@@ -109,6 +109,7 @@ def checks() -> list[tuple[str, str, str]]:
     )
 
     out.append(("актов в корпусе", "corpus.json", f"{corpus['acts']} акта"))
+    out.append(("размер корпуса", "corpus.json", f"{ru(corpus['file_mib'], 1)} МиБ"))
     # Числа первого прогона регламента: они описаны в README как замер на дату,
     # поэтому сверяются с файлом того прогона, а не с живым состоянием.
     out.append(
