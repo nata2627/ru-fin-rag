@@ -38,7 +38,10 @@ def main() -> int:
         "chunks": len(corpus),
         "acts": len(acts),
         "version": corpus.version,
-        "file_mb": round(corpus.source.stat().st_size / 1048576, 1),
+        # МиБ, а не МБ: делитель 1048576. Один и тот же файл успел побывать в
+        # README и как 23,8 МБ, и как 22,7 МиБ, поэтому единица в имени поля.
+        "file_mib": round(corpus.source.stat().st_size / 1048576, 1),
+        "file_bytes": corpus.source.stat().st_size,
     }
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False))

@@ -82,7 +82,12 @@ def test_root_falls_back_to_working_directory(tmp_path, monkeypatch):
     )
     (tmp_path / "data").mkdir()
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(config, "__file__", str(tmp_path / "site-packages/rufinrag/config.py"))
+    # Пакет лежит так, что папка над ним маркера не содержит: иначе первый же
+    # кандидат срабатывает, и запасной вариант остается непроверенным.
+    installed = tmp_path / "venv/lib/python3.11/site-packages/rufinrag/config.py"
+    installed.parent.mkdir(parents=True)
+    monkeypatch.setattr(config, "__file__", str(installed))
+    assert not (installed.resolve().parents[2] / config.CONFIG_FILE).exists()
 
     assert config.project_root() == tmp_path
     assert config.data_dir() == tmp_path / "data"
@@ -91,6 +96,8 @@ def test_root_falls_back_to_working_directory(tmp_path, monkeypatch):
 
 def test_missing_root_names_the_variable(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(config, "__file__", str(tmp_path / "site-packages/rufinrag/config.py"))
+    installed = tmp_path / "venv/lib/python3.11/site-packages/rufinrag/config.py"
+    installed.parent.mkdir(parents=True)
+    monkeypatch.setattr(config, "__file__", str(installed))
     with pytest.raises(config.ConfigError, match="RUFINRAG_CONFIG_PATH"):
         config.project_root()

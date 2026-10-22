@@ -41,6 +41,15 @@ def render_commands() -> tuple[str, str, dict[str, str]]:
     build = re.search(r"^\s*buildCommand:\s*(.+)$", text, re.M).group(1).strip()
     start = re.search(r"^\s*startCommand:\s*(.+)$", text, re.M).group(1).strip()
     env = dict(re.findall(r"^\s*-\s*key:\s*(\S+)\s*\n\s*value:\s*\"?([^\"\n]+)\"?", text, re.M))
+    # Разбор регулярками обязан падать, а не терять строки: переменная без
+    # `value` (секрет, который задается в панели) или комментарий между ключом
+    # и значением просто не совпадут, и репетиция тихо проверит не тот образ.
+    declared = len(re.findall(r"^\s*-\s*key:", text, re.M))
+    if declared != len(env):
+        raise SystemExit(
+            f"render.yaml: объявлено переменных {declared}, разобрано {len(env)}. "
+            "Разбор не покрывает что-то новое в чертеже, почините его, а не репетицию"
+        )
     return build, start, env
 
 

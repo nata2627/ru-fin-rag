@@ -25,6 +25,8 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
+import shutil
 import sys
 import tempfile
 import time
@@ -64,6 +66,27 @@ def save_skipped(path: Path, skipped: dict[str, dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     ordered = {key: skipped[key] for key in sorted(skipped)}
     path.write_text(json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def append_rows(corpus: Path, rows: list[dict]) -> None:
+    """Дописать фрагменты так, чтобы обрыв не испортил корпус.
+
+    Дописывание прямо в gzip читается обратно (gzip допускает склейку), но
+    процесс, снятый посреди записи, оставляет обрезанный хвост, и тогда файл не
+    читается целиком: падает и сборка индекса, и старт сервиса, и сам этот
+    скрипт. Поэтому новый файл собирается рядом и подменяет старый одним
+    системным вызовом: либо старый корпус, либо новый, промежуточного нет.
+    """
+    tmp = corpus.with_suffix(corpus.suffix + ".new")
+    try:
+        with open(corpus, "rb") as src, open(tmp, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+        with gzip.open(tmp, "at", encoding="utf-8") as f:
+            for row in rows:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        os.replace(tmp, corpus)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def act_key(number: str, date: str) -> str:
@@ -118,7 +141,11 @@ def main() -> int:
     corpus = corpus_path()
     known = known_acts(corpus)
     skipped_path = corpus.parent.parent / SKIPPED_FILE
-    skipped = {} if args.retry_skipped else load_skipped(skipped_path)
+    # История попыток читается всегда: `--retry-skipped` снимает фильтр, но не
+    # стирает даты и счетчик, иначе акт, который не берется полгода, после
+    # каждой повторной попытки выглядел бы впервые увиденным.
+    skipped = load_skipped(skipped_path)
+    blocked: set[str] = set() if args.retry_skipped else set(skipped)
     started = time.monotonic()
     client = Client(pause=args.pause)
 
@@ -127,7 +154,7 @@ def main() -> int:
     fresh = {}
     for act in wanted:
         key = act_key(normalize_number(act["number"]), act["date"])
-        if key not in known and key not in skipped:
+        if key not in known and key not in blocked:
             fresh[key] = act
 
     report = {
@@ -135,7 +162,7 @@ def main() -> int:
         "index_acts": len(index),
         "wanted_acts": len(wanted),
         "known_acts": len(known),
-        "skipped_before": len(skipped),
+        "skipped_before": len(blocked),
         "new_acts_in_index": len(fresh),
         "new_acts_added": 0,
         "new_chunks": 0,
@@ -223,9 +250,7 @@ def main() -> int:
         rows.extend(chunk_rows(act, ruler))
 
     if rows:
-        with gzip.open(corpus, "at", encoding="utf-8") as f:
-            for row in rows:
-                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        append_rows(corpus, rows)
 
     save_skipped(skipped_path, skipped)
     report["new_acts_added"] = len(added)

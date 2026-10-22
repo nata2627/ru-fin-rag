@@ -69,3 +69,30 @@ def test_skipped_acts_survive_between_runs(tmp_path):
     assert update_corpus.load_skipped(path) == {}
     update_corpus.save_skipped(path, {"590-П_28062017": {"reason": "мало кириллицы", "tries": 1}})
     assert update_corpus.load_skipped(path)["590-П_28062017"]["reason"] == "мало кириллицы"
+
+
+def test_append_keeps_the_corpus_readable_on_a_broken_run(tmp_path, monkeypatch):
+    """Обрыв посреди дописывания не должен оставлять нечитаемый корпус."""
+    corpus = tmp_path / "chunks.jsonl.gz"
+    with gzip.open(corpus, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({"act_id": "590-П_28062017", "chunk_id": "590-П_28062017#0000"}) + "\n")
+    before = corpus.read_bytes()
+
+    def explode(*args, **kwargs):
+        raise KeyboardInterrupt("процесс снят посреди записи")
+
+    monkeypatch.setattr(update_corpus.os, "replace", explode)
+    with pytest.raises(KeyboardInterrupt):
+        update_corpus.append_rows(corpus, [{"act_id": "new", "chunk_id": "new#0000"}])
+
+    assert corpus.read_bytes() == before
+    assert update_corpus.known_acts(corpus) == {"590-П_28062017"}
+    assert not list(tmp_path.glob("*.new"))
+
+
+def test_append_adds_rows_that_read_back(tmp_path):
+    corpus = tmp_path / "chunks.jsonl.gz"
+    with gzip.open(corpus, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({"act_id": "old", "chunk_id": "old#0000"}) + "\n")
+    update_corpus.append_rows(corpus, [{"act_id": "new", "chunk_id": "new#0000"}])
+    assert update_corpus.known_acts(corpus) == {"old", "new"}
