@@ -42,6 +42,7 @@ def checks() -> list[tuple[str, str, str]]:
     repro = load("reproducibility.json")
     rehearsal = load("render-rehearsal.json")
     corpus = load("corpus.json")
+    acceptance = load("acceptance.json")
     hosted = load("latency-hosted.json")
     rerank = load("rerank-quality.json")
     rerank_run = load("rerank-hybrid-rufin.json")
@@ -113,6 +114,17 @@ def checks() -> list[tuple[str, str, str]]:
 
     out.append(("актов в корпусе", "corpus.json", f"{corpus['acts']} акта"))
     out.append(("размер корпуса", "corpus.json", f"{ru(corpus['file_mib'], 1)} МиБ"))
+    started = acceptance["started_at"]
+    out.append(
+        (
+            "дата старта приемки",
+            "acceptance.json",
+            f"{started[8:10]}.{started[5:7]}.{started[:4]}",
+        )
+    )
+    out.append(
+        ("ссылка на первый плановый прогон", "acceptance.json", acceptance["first_scheduled_run"])
+    )
     out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
     out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
     out.append(
