@@ -1,0 +1,22 @@
+# Чертеж для Render: сервис собирается из этого репозитория и переразворачивается
+# на каждый пуш в main. Токен для этого не нужен, связь репозитория и сервиса
+# заводится один раз в браузере и не истекает (DECISIONS, решение 11).
+services:
+  - name: ru-fin-rag
+    type: web
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install . && python scripts/build_index.py
+    startCommand: python -m uvicorn rufinrag.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Плотная часть требует torch и весов модели запроса: 1,1 ГБ памяти против
+      # 512 МБ бесплатного тарифа. Онлайн отдает лексическую выдачу и честно
+      # помечает это в ответе.
+      - key: RUFINRAG_DISABLE_DENSE
+        value: "1"
+      - key: RUFINRAG_DEFAULT_CONFIG
+        value: bm25
+      - key: RUFINRAG_LIVE
+        value: "1"
