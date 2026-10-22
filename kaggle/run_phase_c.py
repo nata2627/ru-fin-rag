@@ -94,6 +94,12 @@ def main() -> None:
                          "и есть смысл фильтра. Порог не меньше глубины "
                          "означает фильтр, который не отбрасывает ничего")
     ap.add_argument("--judge", action="store_true", help="разметить пул судьёй")
+    ap.add_argument("--pool", default="pool_candidates.tsv",
+                    help="файл пула в приложенном датасете; для доразметки живых "
+                         "вопросов это pool_live.tsv (см. docs/11-polnota-razmetki.md)")
+    ap.add_argument("--judge-out", default="judge.tsv",
+                    help="куда писать оценки; разметку другого судьи или другого "
+                         "пула нельзя складывать в один файл с прежней")
     ap.add_argument("--limit-acts", type=int, default=0)
     ap.add_argument("--batch", type=int, default=256,
                     help="сколько фрагментов в одной пачке генерации. Стиль "
@@ -251,16 +257,18 @@ def main() -> None:
     # ---- 4. судья ----
     if args.judge:
         import gpu_judge as J
-        pool_path = common.find_file("pool_candidates.tsv")
+        pool_path = common.find_file(args.pool)
         if pool_path is None:
-            raise SystemExit("не найден pool_candidates.tsv: соберите его локально "
-                             "(`make pool`) после прогона всех конфигураций")
+            raise SystemExit(f"не найден {args.pool}: соберите его локально "
+                             f"(`make pool` или `make pool-live`) после прогона "
+                             f"всех конфигураций")
         pairs = J.read_pool(pool_path)
         print(f"пул: {pool_path}, пар {len(pairs)}", flush=True)
         texts = {c["chunk_id"]: c["text"] for c in chunks}
         llm = G.load_llm(args.judge_model or J.DEFAULT_JUDGE, args.dtype, quant,
                          args.tensor_parallel, args.max_model_len)
-        report["судья"] = J.judge(llm, pairs, texts, os.path.join(qdir, "judge.tsv"))
+        report["судья"] = J.judge(llm, pairs, texts,
+                                  os.path.join(qdir, args.judge_out))
         report["судья"]["модель"] = args.judge_model or J.DEFAULT_JUDGE
         free(llm)
         save()
@@ -274,8 +282,8 @@ def main() -> None:
             print(f"   {key:<22} {краткое or value}", flush=True)
         else:
             print(f"   {key:<22} {value}", flush=True)
-    print("\nскачать обязательно: queries/*.jsonl, queries/judge.tsv, "
-          "report_phase_c.json — все маленькие", flush=True)
+    print(f"\nскачать обязательно: queries/*.jsonl, queries/{args.judge_out}, "
+          f"report_phase_c.json — все маленькие", flush=True)
 
 
 if __name__ == "__main__":
