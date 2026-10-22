@@ -17,6 +17,8 @@
 из них.
 """
 
+import re
+
 import pytest
 
 from rufinrag.benchmark import load_queries, load_run
@@ -113,7 +115,8 @@ def test_dense_stage_matches_reference_at_the_top(full):
 
 def test_result_carries_versions(lexical):
     result = lexical.search("требования к расчету норматива H1", config="bm25")
-    assert result.corpus_version == "chunks62594-acts1554"
+    # Числом не сверяемся: корпус растет ночным прогоном, а формат обязан держаться
+    assert re.fullmatch(r"chunks\d+-acts\d+", result.corpus_version)
     assert result.config_version == "bm25+bm25+cand50"
     assert result.timings_ms["total"] > 0
     assert len(result.hits) == 10

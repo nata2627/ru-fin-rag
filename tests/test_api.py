@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,8 +27,8 @@ def client():
 def test_health_reports_versions(client):
     body = client.get("/health").json()
     assert body["status"] in ("ok", "degraded")
-    assert body["corpus_version"] == "chunks62594-acts1554"
-    assert body["chunks"] == 62594
+    assert re.fullmatch(r"chunks\d+-acts\d+", body["corpus_version"])
+    assert body["chunks"] > 60000
     assert body["dense"] == "off"  # фикстура поднимает сервис лексическим
     assert body["default_config"] == "hybrid"
 
@@ -35,7 +36,7 @@ def test_health_reports_versions(client):
 def test_search_returns_hits_with_versions(client):
     body = client.post("/search", json={"query": "норматив достаточности капитала H1"}).json()
     assert len(body["results"]) == 10
-    assert body["corpus_version"] == "chunks62594-acts1554"
+    assert re.fullmatch(r"chunks\d+-acts\d+", body["corpus_version"])
     assert body["config_version"].startswith("hybrid")
     assert body["timings_ms"]["total"] > 0
     first = body["results"][0]
