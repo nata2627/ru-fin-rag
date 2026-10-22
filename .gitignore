@@ -62,3 +62,7 @@ exports/
 node_modules/
 logs/
 .vscode/
+
+# Задание судье пересобирается скриптом и весит тридцать пять мегабайт
+data/queries/pool_live.tsv
+data/queries/rubric.txt
