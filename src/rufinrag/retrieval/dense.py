@@ -28,6 +28,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .ranking import top_k
+
 QUERY_PREFIX = "query: "
 PASSAGE_PREFIX = "passage: "
 MAX_SEQ_LENGTH = 512
@@ -89,11 +91,7 @@ class DenseIndex:
             return [(self.ids[i], float(s)) for i, s in zip(found[0], scores[0], strict=True)]
 
         all_scores = self._matrix @ vector
-        if k >= all_scores.shape[0]:
-            order = np.argsort(-all_scores)
-        else:
-            part = np.argpartition(-all_scores, k)[:k]
-            order = part[np.argsort(-all_scores[part])]
+        order = top_k(all_scores, k)
         return [(self.ids[i], float(all_scores[i])) for i in order[:k]]
 
 

@@ -7,12 +7,14 @@
 Плотная ступень и гибрид сверяются мягче, и это свойство замера, а не поблажка.
 В части А векторы корпуса считались на видеокарте в половинной точности и поиск
 шел через FAISS, здесь умножение идет в numpy в одинарной точности на
-процессоре, поэтому близкие по оценке фрагменты меняются местами. Замер на 200
-запросах (`results/reproducibility.json`, пересчитывается
-`scripts/check_reproducibility.py`): BM25 совпадает полностью, 200 из 200 по
-порядку; гибрид дает тот же верхний результат в 199 случаях из 200, тот же
-состав первой десятки в 195, тот же порядок в 181; плотная ступень 197, 189 и
-164 соответственно. Пороги тестов ниже взяты из этих чисел.
+процессоре, поэтому близкие по оценке фрагменты меняются местами.
+
+У BM25 причина другая и она не про железо: при равных оценках порядок в части А
+решал `np.argpartition`, то есть произвол сборки numpy. Сервис такие ничьи
+разрешает по номеру фрагмента, поэтому сверка идет с точностью до равных
+оценок. Числа замера на 200 запросах лежат в `results/reproducibility.json`
+и пересчитываются `scripts/check_reproducibility.py`. Пороги тестов ниже взяты
+из них.
 """
 
 import pytest
@@ -48,15 +50,31 @@ def sample_ids(reference, queries):
 
 
 def test_bm25_reproduces_reference_run(lexical):
+    """Тот же порядок, что в части А, с точностью до равных оценок.
+
+    Равные оценки у BM25 не редкость: у запроса про ключевую ставку три
+    фрагмента получили ровно 39,001183. В части А порядок внутри такой группы
+    решал `np.argpartition`, то есть он был случайным и машинно-зависимым.
+    Сервис ничьи разрешает по номеру фрагмента, поэтому внутри группы порядок
+    может отличаться от эталона. Расхождение допускается только там, где
+    оценки совпадают до последнего бита.
+    """
     queries = load_queries()
     reference = load_run("bm25")
-    mismatched = [
-        query_id
-        for query_id in sample_ids(reference, queries)
-        if [h.chunk_id for h in lexical.search(queries[query_id].text, 10, "bm25").hits]
-        != reference[query_id][:10]
-    ]
-    assert not mismatched, f"выдача bm25 разошлась с частью А: {mismatched}"
+    for query_id in sample_ids(reference, queries):
+        mine = [h.chunk_id for h in lexical.search(queries[query_id].text, 10, "bm25").hits]
+        theirs = reference[query_id][:10]
+        if mine == theirs:
+            continue
+        scores = lexical.bm25.scores(queries[query_id].text)
+        for ours, yours in zip(mine, theirs, strict=True):
+            if ours == yours:
+                continue
+            index = lexical.corpus.index_of
+            assert scores[index(ours)] == scores[index(yours)], (
+                f"{query_id}: {ours} и {yours} стоят на одном месте при разных оценках "
+                f"{scores[index(ours)]} и {scores[index(yours)]}"
+            )
 
 
 def test_hybrid_reproduces_reference_run(full):

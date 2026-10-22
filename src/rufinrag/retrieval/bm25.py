@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 from scipy.sparse import csr_matrix
 
+from .ranking import top_k
 from .text import tokenize
 
 K1 = 1.5
@@ -117,11 +118,7 @@ class BM25Index:
 
     def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
         s = self.scores(query)
-        if k >= s.shape[0]:
-            order = np.argsort(-s)
-        else:
-            part = np.argpartition(-s, k)[:k]
-            order = part[np.argsort(-s[part])]
+        order = top_k(s, k)
         return [(self.ids[i], float(s[i])) for i in order[:k]]
 
     @property
