@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-21",
+  "measured_at": "2026-10-22",
   "machine": "arm64 Darwin 25.6.0",
   "corpus_version": "chunks62594-acts1554",
   "depth": 10,
@@ -7,14 +7,14 @@
   "configs": {
     "bm25": {
       "queries": 200,
-      "order": 200,
-      "composition": 200,
+      "order": 191,
+      "composition": 198,
       "top1": 200
     },
     "hybrid": {
       "queries": 200,
-      "order": 181,
-      "composition": 195,
+      "order": 177,
+      "composition": 194,
       "top1": 199
     },
     "dense": {
