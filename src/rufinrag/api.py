@@ -95,8 +95,9 @@ def index():
     if current is None:
         body = f"<p>Сервис не готов: {state.get('error')}</p>"
     else:
+        chunks = f"{len(current.corpus):,}".replace(",", " ")
         body = (
-            f"<p>Корпус: {len(current.corpus)} фрагментов, версия "
+            f"<p>Корпус: {chunks} фрагмента, версия "
             f"<code>{current.corpus_version}</code>. Связка по умолчанию: "
             f"<code>{catalog.default}</code>.</p>"
         )
@@ -119,8 +120,9 @@ code {{ padding: 0.1rem 0.3rem; }}
 <h2>Попробовать</h2>
 <p><a href="/docs">/docs</a> это интерактивная страница, где запрос можно отправить из
 браузера. <a href="/health">/health</a> отдает версию корпуса и состояние ступеней.</p>
-<pre>curl -s -X POST {{"query": "порядок формирования резервов по ссудам", "top": 3}} \
-  -H 'Content-Type: application/json' /search</pre>
+<pre>curl -s -X POST /search \\
+  -H 'Content-Type: application/json' \\
+  -d '{{"query": "порядок формирования резервов по ссудам", "top": 3}}'</pre>
 <h2>Что важно знать</h2>
 <p>Это бесплатный тариф: 512 МБ памяти, общий процессор, сон после 15 минут без трафика.
 После сна первый запрос ждет пробуждения. Плотная ступень поиска в онлайне выключена, она

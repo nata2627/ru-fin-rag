@@ -112,3 +112,11 @@ def test_lexical_only_install_is_healthy_not_broken(client):
     assert body["dense"] == "off"
     assert body["dense_off_reason"]
     assert body["degraded"] == []
+
+
+def test_root_example_survives_the_f_string(client):
+    """Обратный слеш в примере curl один раз уже съелся переносом строки."""
+    page = client.get("/").text
+    example = page[page.index("<pre>") : page.index("</pre>")]
+    assert example.count("\\\n") == 2, "пример curl собрался в одну строку"
+    assert '"query"' in example
