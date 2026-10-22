@@ -100,6 +100,10 @@ def main() -> None:
     ap.add_argument("--judge-out", default="judge.tsv",
                     help="куда писать оценки; разметку другого судьи или другого "
                          "пула нельзя складывать в один файл с прежней")
+    ap.add_argument("--judge-limit", type=int, default=0,
+                    help="разметить только первые N пар. Нужно пробе: скорость "
+                         "судьи на карте Kaggle не замерена, а прогноз времени "
+                         "до полного прогона знать надо")
     ap.add_argument("--limit-acts", type=int, default=0)
     ap.add_argument("--batch", type=int, default=256,
                     help="сколько фрагментов в одной пачке генерации. Стиль "
@@ -264,12 +268,23 @@ def main() -> None:
                              f"всех конфигураций")
         pairs = J.read_pool(pool_path)
         print(f"пул: {pool_path}, пар {len(pairs)}", flush=True)
+        if args.judge_limit:
+            pairs = pairs[:args.judge_limit]
+            print(f"   проба: размечаем первые {len(pairs)}", flush=True)
         texts = {c["chunk_id"]: c["text"] for c in chunks}
-        llm = G.load_llm(args.judge_model or J.DEFAULT_JUDGE, args.dtype, quant,
-                         args.tensor_parallel, args.max_model_len)
+        судья = args.judge_model or J.DEFAULT_JUDGE
+        # Веса только из входов: хаб без токена не падает, а молча встаёт,
+        # и два прогона по двенадцать часов так и простояли.
+        путь = common.resolve_model(судья)
+        # Общий префикс подсказки это вся инструкция разметчику, около
+        # шестисот токенов из тысячи трёхсот. Кэш префикса считает её один
+        # раз на все восемь тысяч пар.
+        llm = G.load_llm(путь, args.dtype, quant, args.tensor_parallel,
+                         args.max_model_len, prefix_caching=True)
         report["судья"] = J.judge(llm, pairs, texts,
                                   os.path.join(qdir, args.judge_out))
-        report["судья"]["модель"] = args.judge_model or J.DEFAULT_JUDGE
+        report["судья"]["модель"] = судья
+        report["судья"]["веса"] = путь
         free(llm)
         save()
 
