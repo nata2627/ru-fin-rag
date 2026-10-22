@@ -194,6 +194,26 @@ def main() -> None:
             f"минимум {min(per_q.values())}, максимум {max(per_q.values())}")
     say(f"файл: {os.path.relpath(args.out, ROOT)}")
 
+    # Второй файл для Kaggle: там корпус лежит рядом, тексты фрагментов
+    # судья берёт из него, и тащить тридцать пять мегабайт в датасет
+    # запросов незачем. Текст вопроса стоит в первой строке группы, как
+    # и в прежнем листе пула: `gpu_judge.read_pool` раздаёт его группе сам.
+    light = os.path.join(os.path.dirname(args.out), "pool_live_kaggle.tsv")
+    seen_q: set[str] = set()
+    with open(light, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["query_id", "chunk_id", "prioritet",
+                                          "vopros"], delimiter="\t")
+        w.writeheader()
+        for r in rows:
+            first = r["query_id"] not in seen_q
+            seen_q.add(r["query_id"])
+            w.writerow({"query_id": r["query_id"], "chunk_id": r["chunk_id"],
+                        "prioritet": r["prioritet"],
+                        "vopros": r["vopros"] if first else ""})
+    say(f"то же для Kaggle, без текстов фрагментов: "
+        f"{os.path.relpath(light, ROOT)} "
+        f"({os.path.getsize(light) / 1048576:.1f} МБ)")
+
     # Рубрика уезжает к судье файлом, а не копией в коде: источник один,
     # константа RUBRIC, и расхождение инструкций судьи и человека невозможно.
     rubric_path = os.path.join(os.path.dirname(args.out), "rubric.txt")

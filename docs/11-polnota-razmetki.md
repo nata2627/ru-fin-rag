@@ -97,9 +97,20 @@
 ## Чего не хватает
 
 Прогона прежнего судьи по готовому заданию. Это один прогон на Kaggle тем же кодом, которым
-размечался прежний пул (`kaggle/run_phase_c.py --judge`), 8606 пар вместо прежних 3192.
-Дальше `scripts/apply_pool_judge.py` строит расширенный эталон, а
-`scripts/metrics_report.py --qrels` пересчитывает метрику и печатает поправку.
+размечался прежний пул, 8606 пар вместо прежних 3192:
+
+```bash
+make pool-live          # на маке: задание и его облегченная копия для Kaggle
+make kaggle             # пакет запросов, в нем pool_live_kaggle.tsv
+# на Kaggle, карта включена:
+python run_phase_c.py --judge --pool pool_live_kaggle.tsv --judge-out judge_live.tsv
+# обратно на мак, в data/queries/judge_live.tsv:
+make apply-pool         # расширенный эталон qrels_pool_full.tsv и сверка с прежним судьей
+python3 scripts/metrics_report.py --qrels data/queries/qrels_pool_full.tsv --only живые
+```
+
+Оценки прежнего судьи при этом не затираются: они лежат в `judge.tsv`, новые в
+`judge_live.tsv`, и разметка двух моделей в одном файле не смешивается.
 
 Второй путь, если карты не будет: человек размечает стратифицированную выборку из
 неразмеченных пар, и по ней считается несмещенная доля релевантных среди неразмеченного.

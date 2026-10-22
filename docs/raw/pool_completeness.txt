@@ -7,4 +7,5 @@
 новых пар (никем не размечены): 7845 из 8606
 пар на запрос: в среднем 59.5, минимум 29, максимум 95
 файл: data/queries/pool_live.tsv
+то же для Kaggle, без текстов фрагментов: data/queries/pool_live_kaggle.tsv (0.4 МБ)
 инструкция судье: data/queries/rubric.txt
