@@ -66,7 +66,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/corpus/chunks.jsonl.gz results/corpus-update.json results/regression.json
+          git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
+            results/corpus-update.json results/regression.json
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
