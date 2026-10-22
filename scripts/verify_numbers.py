@@ -42,6 +42,8 @@ def checks() -> list[tuple[str, str, str]]:
     repro = load("reproducibility.json")
     rehearsal = load("render-rehearsal.json")
     corpus = load("corpus.json")
+    rerank = load("rerank-quality.json")
+    rerank_run = load("rerank-hybrid-rufin.json")
     first_run = load("corpus-update-first.json")
     load_report = load("load.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
@@ -110,6 +112,44 @@ def checks() -> list[tuple[str, str, str]]:
 
     out.append(("актов в корпусе", "corpus.json", f"{corpus['acts']} акта"))
     out.append(("размер корпуса", "corpus.json", f"{ru(corpus['file_mib'], 1)} МиБ"))
+    reranked = rerank["runs"]["hybrid-rerank, связка сервиса"]["metrics"]["NDCG@10"]
+    gain = rerank["difference_ndcg10"]
+    out.append(("качество связки с реранком", "rerank-quality.json", f"{ru(reranked, 3)}"))
+    out.append(
+        (
+            "прибавка реранка",
+            "rerank-quality.json",
+            f"{ru(gain['mean'], 3)} NDCG@10 с интервалом [{ru(gain['lo'], 3)}; {ru(gain['hi'], 3)}]",
+        )
+    )
+    out.append(
+        (
+            "пар в переранжировании",
+            "rerank-hybrid-rufin.json",
+            f"{rerank_run['pairs']:,}".replace(",", " "),
+        )
+    )
+    out.append(
+        (
+            "время переранжирования",
+            "rerank-hybrid-rufin.json",
+            f"{ru(rerank_run['seconds'], 0)} с".replace(",", ""),
+        )
+    )
+    out.append(
+        (
+            "скорость переранжирования",
+            "rerank-hybrid-rufin.json",
+            f"{ru(rerank_run['pairs_per_second'], 0)} парах".replace(",", ""),
+        )
+    )
+    out.append(
+        (
+            "видеопамять переранжирования",
+            "rerank-hybrid-rufin.json",
+            f"{ru(rerank_run['peak_vram_mb'], 1)} МБ",
+        )
+    )
     # Числа первого прогона регламента: они описаны в README как замер на дату,
     # поэтому сверяются с файлом того прогона, а не с живым состоянием.
     out.append(
