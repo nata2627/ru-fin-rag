@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -49,6 +49,7 @@ help:
 	@echo "  pool-live    пул полноты разметки по живым вопросам (задание судье)"
 	@echo "  judge-candidates  согласие судей-кандидатов с человеком, порог 0,40"
 	@echo "  pool-coverage     сколько в первой десятке размечено, границы незнания"
+	@echo "  act-filter   прибавка фильтра по номеру акта на живых вопросах"
 	@echo "  apply-pool   расширить эталон живых вопросов разметкой пула"
 	@echo "  bench        сборка набора запросов и выгрузка в формате MTEB"
 	@echo "  check-bench  сверка выгрузки самой с собой перед публикацией"
@@ -190,6 +191,10 @@ judge-candidates:
 
 pool-coverage:
 	$(PY) scripts/pool_coverage.py --config $(CHUNKS)
+
+# Фильтр по номеру акта из вопроса: поиск внутри названного акта.
+act-filter:
+	$(PY) scripts/act_filter_effect.py --chunks $(CHUNKS)
 
 # Расширение эталона разметкой пула; ждёт judge_live.tsv с Kaggle.
 apply-pool:
