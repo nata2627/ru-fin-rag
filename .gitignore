@@ -50,3 +50,15 @@ docs/cv-block.md
 .kaggle/
 kaggle.json
 access_token
+
+# рабочие файлы и секреты
+.env.*
+!.env.example
+*.session
+*.pem
+*-session-export*.txt
+exports/
+*.pyc
+node_modules/
+logs/
+.vscode/
