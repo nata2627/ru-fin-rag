@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-10-22T11:29:39",
+  "index_acts": 6061,
+  "wanted_acts": 1656,
+  "known_acts": 1554,
+  "new_acts_in_index": 97,
+  "new_acts_added": 0,
+  "new_chunks": 0,
+  "issues_downloaded": 80,
+  "dropped": {
+    "не найден в выпуске": 63,
+    "мало кириллицы": 34
+  },
+  "acts": [],
+  "seconds": 240.7
+}
