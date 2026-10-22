@@ -104,8 +104,21 @@ class BM25Index:
             out[docs] += self.idf[idx] * tf * (k1 + 1.0) / (tf + self.doc_norm[docs])
         return out
 
-    def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
+    def search(self, query: str, k: int = 10,
+               allowed: np.ndarray | None = None) -> list[tuple[str, float]]:
+        """Выдача по запросу; `allowed` сужает поиск до этих номеров строк.
+
+        Сужение нужно фильтру по метаданным: если вопрос называет акт,
+        искать ответ в остальных 1553 актах корпуса незачем. Скоры при этом
+        не пересчитываются заново, меняется только то, среди чего берётся
+        первая десятка.
+        """
         s = self.scores(query)
+        if allowed is not None:
+            if allowed.size == 0:
+                return []
+            picked = allowed[np.argsort(-s[allowed])[:k]]
+            return [(self.ids[i], float(s[i])) for i in picked]
         if k >= s.shape[0]:
             order = np.argsort(-s)
         else:

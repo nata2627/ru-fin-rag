@@ -194,3 +194,18 @@ def test_нулевой_срез_не_делится_на_ноль():
     vec = np.array([[0.0, 0.0, 1.0]], dtype="float32")
     срез = truncate(vec, 2)
     assert not np.isnan(срез).any()
+
+
+def test_суженный_поиск_отдает_только_разрешенные():
+    index = BM25Index.build([c for c, _ in КОРПУС], [t for _, t in КОРПУС])
+    allowed = np.array([index.ids.index("c2"), index.ids.index("c4")])
+    hits = index.search("резерв по ссудам", k=10, allowed=allowed)
+    assert {c for c, _ in hits} == {"c2", "c4"}
+    # порядок внутри подмножества тот же, что был бы без сужения
+    full = [c for c, _ in index.search("резерв по ссудам", k=4)]
+    assert [c for c, _ in hits] == [c for c in full if c in {"c2", "c4"}]
+
+
+def test_суженный_поиск_по_пустому_множеству_ничего_не_находит():
+    index = BM25Index.build([c for c, _ in КОРПУС], [t for _, t in КОРПУС])
+    assert index.search("резерв", k=10, allowed=np.array([], dtype=int)) == []

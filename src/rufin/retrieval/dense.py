@@ -183,7 +183,25 @@ class DenseIndex:
     def size_mb(self) -> float:
         return self.vectors.nbytes / 1048576
 
-    def search_vectors(self, qvec: np.ndarray, k: int = 10) -> list[list[tuple[str, float]]]:
+    def search_vectors(self, qvec: np.ndarray, k: int = 10,
+                       allowed: np.ndarray | None = None
+                       ) -> list[list[tuple[str, float]]]:
+        """Выдача по векторам запросов; `allowed` сужает поиск до этих строк.
+
+        Сужение считается перебором по подмножеству, то есть только на
+        бэкенде numpy. У FAISS для этого нужен отдельный индекс или его
+        селектор, и молча искать по всему корпусу вместо подмножества
+        нельзя: разница не видна по метрикам.
+        """
+        if allowed is not None:
+            if self.index is not None:
+                raise ValueError("сужение поиска по номерам актов работает "
+                                 "только на бэкенде numpy")
+            if allowed.size == 0:
+                return [[] for _ in range(qvec.shape[0])]
+            subset = self.vectors[allowed]
+            return [[(self.ids[allowed[j]], s) for j, s in row]
+                    for row in top_k(subset, qvec, k)]
         if self.index is None:
             return [[(self.ids[j], s) for j, s in row]
                     for row in top_k(self.vectors, qvec, k)]

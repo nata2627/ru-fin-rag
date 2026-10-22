@@ -5,7 +5,13 @@
 заденет их, разница в метрике будет частично про испорченный вопрос,
 а не про отсутствие номера акта.
 """
-from rufin.references import has_act_number, strip_numbers, strip_references, tidy
+from rufin.references import (
+    act_numbers,
+    has_act_number,
+    strip_numbers,
+    strip_references,
+    tidy,
+)
 
 
 def test_nomer_akta_uhodit_slovo_ostaetsya():
@@ -66,3 +72,18 @@ def test_tidy_ne_ostavlyaet_sledov():
     assert tidy("слово  ,  второе") == "слово, второе"
     assert tidy("текст (  ) дальше") == "текст дальше"
     assert tidy("перечень ( ) и") == "перечень и"
+
+
+def test_nomera_aktov_iz_voprosa():
+    t = "Применять ли п. 3.12 Положения Банка России № 590-П и Указание 5348-У?"
+    assert act_numbers(t) == ["590-П", "5348-У"]
+
+
+def test_nomer_bez_bukvy_ne_nomer_akta():
+    # «№ 1» это часть вопроса, а не адрес акта
+    assert act_numbers("об отмене ставок № 1 и № 2") == []
+
+
+def test_nomer_akta_privoditsya_k_odnomu_vidu():
+    assert act_numbers("положения 590-п") == ["590-П"]
+    assert act_numbers("Положение № 590–П") == ["590-П"]
