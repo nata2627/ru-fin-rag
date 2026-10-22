@@ -11,6 +11,12 @@ services:
     startCommand: python -m uvicorn rufinrag.api:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      # Версию питона Render берет из `.python-version` или из этой переменной,
+      # а `runtime.txt` (соглашение Heroku) он не читает. Из-за этого первая
+      # сборка 22.10.2026 упала: окружение поднялось на питоне по умолчанию, а
+      # пакет требует ровно 3.11 (`requires-python` в pyproject.toml).
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       # Плотная часть требует torch и весов модели запроса: 1,1 ГБ памяти против
       # 512 МБ бесплатного тарифа. Онлайн отдает лексическую выдачу и честно
       # помечает это в ответе.
