@@ -6,12 +6,12 @@
   "chunks": 62594,
   "queries_scored": 991,
   "queries_total": 1182,
-  "seconds": 9.4,
+  "seconds": 5.7,
   "metrics": {
     "Recall@1": 0.3025,
     "Recall@5": 0.5436,
     "Recall@10": 0.6289,
-    "MRR@10": 0.4635,
+    "MRR@10": 0.4636,
     "NDCG@10": 0.4839
   }
 }
