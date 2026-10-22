@@ -107,11 +107,19 @@ def main() -> int:
     total = args.limit or len(texts)
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
-    import torch
     from sentence_transformers import SentenceTransformer
 
-    if args.device == "cuda" and not torch.cuda.is_available():
-        raise SystemExit("карта не видна: torch.cuda.is_available() ложно")
+    # torch нужен только ради половинной точности на карте, и импортируется он
+    # поэтому не всегда: на процессоре прогон обходится без него, а проверка
+    # обвязки в CI идет в окружении, где torch не стоит (он весит 1,1 ГБ).
+    torch = None
+    model_kwargs: dict = {}
+    if args.device != "cpu":
+        import torch
+
+        if args.device == "cuda" and not torch.cuda.is_available():
+            raise SystemExit("карта не видна: torch.cuda.is_available() ложно")
+        model_kwargs = {"torch_dtype": torch.float16}
 
     done = read_progress(args.out, total)
     vectors = np.lib.format.open_memmap(
@@ -121,9 +129,7 @@ def main() -> int:
         shape=(total, DIM),
     )
 
-    model = SentenceTransformer(
-        MODEL, device=args.device, model_kwargs={"torch_dtype": torch.float16}
-    )
+    model = SentenceTransformer(MODEL, device=args.device, model_kwargs=model_kwargs)
     model.max_seq_length = MAX_SEQ
 
     print(f"модель {MODEL}, устройство {args.device}, фрагментов {total}, с места {done}")
@@ -164,7 +170,7 @@ def main() -> int:
         "seconds": round(time.monotonic() - started, 1),
         "speed_per_second": round(processed / (time.monotonic() - started), 1) if processed else 0,
     }
-    if args.device == "cuda":
+    if torch is not None and args.device == "cuda":
         report["peak_vram_mb"] = round(torch.cuda.max_memory_allocated() / 1048576, 1)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     (args.out.parent / "user-bge-m3-report.json").write_text(
