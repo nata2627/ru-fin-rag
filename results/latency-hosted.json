@@ -1,0 +1,34 @@
+{
+  "measured_at": "2026-10-22T17:17:52Z",
+  "url": "https://ru-fin-rag.onrender.com",
+  "machine": "бесплатный тариф Render, общий процессор, числа несравнимы с маком",
+  "first_request_ms": 490.9,
+  "health": {
+    "status": "ok",
+    "version": "0.1.0",
+    "live": true,
+    "startup_seconds": 20.4,
+    "configs": [
+      "bm25",
+      "bm25-rerank",
+      "dense",
+      "hybrid",
+      "hybrid-rerank"
+    ],
+    "default_config": "bm25",
+    "corpus_version": "chunks62594-acts1554",
+    "chunks": 62594,
+    "bm25_index_mb": 52.0,
+    "dense": "off",
+    "degraded": [],
+    "dense_off_reason": "выключен переменной RUFINRAG_DISABLE_DENSE"
+  },
+  "queries": 20,
+  "config": [
+    "bm25"
+  ],
+  "p50_ms": 470.6,
+  "p95_ms": 669.3,
+  "max_ms": 1035.5,
+  "degraded": []
+}
