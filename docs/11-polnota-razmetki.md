@@ -96,21 +96,35 @@
 
 ## Чего не хватает
 
-Прогона прежнего судьи по готовому заданию. Это один прогон на Kaggle тем же кодом, которым
-размечался прежний пул, 8606 пар вместо прежних 3192:
+Прогона прежнего судьи по готовому заданию. Он выложен на Kaggle Models самим Qwen
+(`qwen-lm/qwen2.5/transformers/14b-instruct-awq/1`, 9,98 ГБ), то есть подключается входом и
+хаб HuggingFace не нужен вовсе. Четырехбитные веса влезают в одну карту T4, полные были бы
+29 ГБ и две карты; на P100 ядра AWQ не работают, поэтому узел нужен из Turing или новее.
 
 ```bash
-make pool-live          # на маке: задание и его облегченная копия для Kaggle
-make kaggle             # пакет запросов, в нем pool_live_kaggle.tsv
-# на Kaggle, карта включена:
-python run_phase_c.py --judge --pool pool_live_kaggle.tsv --judge-out judge_live.tsv
-# обратно на мак, в data/queries/judge_live.tsv:
-make apply-pool         # расширенный эталон qrels_pool_full.tsv и сверка с прежним судьей
+make pool-live                        # задание и его копия для Kaggle
+python3 scripts/kaggle_run.py dataset # код
+python3 scripts/kaggle_run.py queries # запросы вместе с pool_live_kaggle.tsv
+# проба на 150 парах: замер скорости и согласие с человеком
+python3 scripts/kaggle_run.py run c --machine "" --args \
+  "--probe 0 --judge --pool pool_live_kaggle.tsv --judge-out judge_live.tsv --judge-limit 150"
+# весь пул, когда проба показала скорость и каппу не ниже 0,40
+python3 scripts/kaggle_run.py run c --machine "" --args \
+  "--probe 0 --judge --pool pool_live_kaggle.tsv --judge-out judge_live.tsv"
+python3 scripts/kaggle_run.py fetch ru-fin-phase-c
+make apply-pool                       # расширенный эталон и сверка с прежним судьей
 python3 scripts/metrics_report.py --qrels data/queries/qrels_pool_full.tsv --only живые
 ```
 
 Оценки прежнего судьи при этом не затираются: они лежат в `judge.tsv`, новые в
-`judge_live.tsv`, и разметка двух моделей в одном файле не смешивается.
+`judge_live.tsv`, и разметка двух моделей в одном файле не смешивается. Выборка человека идет
+в задании первой, поэтому каппа нового прогона считается по тем же 150 парам и зеркало
+модели проверяется ею же.
+
+Время прогона не замерено, оценка по расчету: промпт около 1300 токенов, из них 600 это общая
+инструкция, которую кэш префикса считает один раз; на T4 это порядка двух-четырех часов на
+8606 пар при лимите сессии 12 часов. Проба на 150 парах нужна именно затем, чтобы заменить
+эту оценку числом.
 
 Второй путь, если карты не будет: человек размечает стратифицированную выборку из
 неразмеченных пар, и по ней считается несмещенная доля релевантных среди неразмеченного.
