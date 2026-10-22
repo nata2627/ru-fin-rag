@@ -41,6 +41,8 @@ def checks() -> list[tuple[str, str, str]]:
     quant = load("quantization.json")
     repro = load("reproducibility.json")
     rehearsal = load("render-rehearsal.json")
+    corpus = load("corpus.json")
+    first_run = load("corpus-update-first.json")
     load_report = load("load.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
@@ -106,6 +108,25 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
 
+    out.append(("актов в корпусе", "corpus.json", f"{corpus['acts']} акта"))
+    # Числа первого прогона регламента: они описаны в README как замер на дату,
+    # поэтому сверяются с файлом того прогона, а не с живым состоянием.
+    out.append(
+        ("публикаций в перечне cbr.ru", "corpus-update-first.json", f"{first_run['index_acts']}")
+    )
+    out.append(
+        (
+            "актов под состав корпуса",
+            "corpus-update-first.json",
+            f"{first_run['wanted_acts']} актов",
+        )
+    )
+    out.append(
+        ("время первого прогона", "corpus-update-first.json", f"{ru(first_run['seconds'], 1)} с")
+    )
+    out.append(
+        ("фрагментов в корпусе", "corpus.json", f"{corpus['chunks']:,} фрагмента".replace(",", " "))
+    )
     out.append(
         ("сборка в репетиции", "render-rehearsal.json", f"{ru(rehearsal['build_seconds'], 1)} с")
     )
