@@ -40,6 +40,7 @@ def checks() -> list[tuple[str, str, str]]:
     store_container = load("vector-store-container.json")
     quant = load("quantization.json")
     repro = load("reproducibility.json")
+    rehearsal = load("render-rehearsal.json")
     load_report = load("load.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
@@ -102,6 +103,27 @@ def checks() -> list[tuple[str, str, str]]:
             "потеря качества при квантизации",
             "quantization.json",
             f"{ru(quant['quality']['loss_mean'], 3)}",
+        )
+    )
+
+    out.append(
+        ("сборка в репетиции", "render-rehearsal.json", f"{ru(rehearsal['build_seconds'], 1)} с")
+    )
+    out.append(
+        ("старт в репетиции", "render-rehearsal.json", f"{ru(rehearsal['startup_seconds'], 1)} с")
+    )
+    out.append(
+        (
+            "пик памяти в репетиции",
+            "render-rehearsal.json",
+            f"{ru(rehearsal['peak_memory_mb'], 1)} МБ из 512",
+        )
+    )
+    out.append(
+        (
+            "запас памяти до потолка",
+            "render-rehearsal.json",
+            f"{ru(512 - rehearsal['peak_memory_mb'], 1)} МБ",
         )
     )
 
