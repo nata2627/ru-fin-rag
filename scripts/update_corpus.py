@@ -48,6 +48,29 @@ def act_key(number: str, date: str) -> str:
     return f"{number}_{date.replace('.', '')}"
 
 
+def chunk_rows(act: dict, ruler) -> list[dict]:
+    """Фрагменты одного акта в том виде, в каком они лежат в корпусе сервиса.
+
+    Нарезка идет базовой конфигурацией части А, а поля отбираются по `FIELDS`:
+    сервис держит меньше полей, чем часть А, и лишние в корпус не попадают.
+    """
+    from rufin.chunk_configs import BASE
+    from rufin.chunking import chunk_act
+
+    rows = []
+    for chunk in chunk_act(
+        act,
+        ruler,
+        size=BASE.size,
+        overlap_share=BASE.overlap,
+        strategy=BASE.strategy,
+        add_heading=BASE.heading,
+    ):
+        row = chunk.as_dict()
+        rows.append({field: row.get(field, act.get(field, "")) for field in FIELDS})
+    return rows
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--since", type=int, default=2013)
@@ -59,8 +82,7 @@ def main() -> int:
 
     import re
 
-    from rufin.chunk_configs import BASE
-    from rufin.chunking import TokenRuler, chunk_act
+    from rufin.chunking import TokenRuler
     from rufin.http import Client
     from rufin.sources import cbr_vestnik as vestnik
     from rufin.vestnik_split import normalize_number, split_issue
@@ -146,26 +168,19 @@ def main() -> int:
                         "act_id": key,
                         "number": number,
                         "date": meta["date"],
+                        # `kind` читает шапка фрагмента в части А, без него нарезка падает
+                        "kind": found.kind,
                         "type": vestnik.act_type(meta["number"]),
                         "title": meta["title"],
                         "issue": info["issue"],
-                        "url": info["url"],
+                        "issue_url": info["url"],
                         "text": found.text,
                     }
                 )
 
     rows = []
     for act in added:
-        for chunk in chunk_act(
-            act,
-            ruler,
-            size=BASE.size,
-            overlap_share=BASE.overlap,
-            strategy=BASE.strategy,
-            add_heading=BASE.heading,
-        ):
-            row = chunk.as_dict()
-            rows.append({field: row.get(field, act.get(field, "")) for field in FIELDS})
+        rows.extend(chunk_rows(act, ruler))
 
     if rows:
         with gzip.open(corpus, "at", encoding="utf-8") as f:
