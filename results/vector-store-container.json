@@ -1,0 +1,39 @@
+{
+  "measured_at": "2026-10-22",
+  "machine": "arm64 Darwin 25.6.0",
+  "vectors": 62594,
+  "dim": 384,
+  "source_dtype": "float16",
+  "queries": 20,
+  "top": 10,
+  "stores": {
+    "numpy": {
+      "p50_ms": 9.115,
+      "p95_ms": 30.757,
+      "index_mb": 91.7,
+      "stored_dtype": "float32 на время умножения",
+      "overlap_with_exact": 1.0,
+      "note": "точное умножение, им сервис ищет сейчас"
+    },
+    "faiss": {
+      "p50_ms": 2.342,
+      "p95_ms": 5.959,
+      "index_mb": 91.7,
+      "stored_dtype": "float32",
+      "build_seconds": 0.04,
+      "overlap_with_exact": 1.0,
+      "note": "IndexFlatIP, точный перебор по нормированным векторам"
+    },
+    "qdrant": {
+      "p50_ms": 9.309,
+      "p95_ms": 17.069,
+      "index_mb": 168.1,
+      "stored_dtype": "float32",
+      "build_seconds": 15.07,
+      "overlap_with_exact": 0.995,
+      "mode": "сервер",
+      "container_memory": "826.3MiB",
+      "measured_by": "docker exec ru-fin-rag-qdrant-1 du -sk /qdrant/storage и docker stats --no-stream --format {{.MemUsage}} ru-fin-rag-qdrant-1"
+    }
+  }
+}
