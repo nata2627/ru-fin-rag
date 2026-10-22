@@ -13,12 +13,32 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONFIG_PATH = ROOT / "configs" / "retrieval.yaml"
+CONFIG_FILE = Path("configs") / "retrieval.yaml"
+DATA_DIR = Path("data")
 
 
 class ConfigError(Exception):
     pass
+
+
+def project_root(marker: Path = CONFIG_FILE) -> Path:
+    """Где лежат `configs` и `data` в этом запуске.
+
+    Путь не выводится из места пакета: при `pip install .` пакет уезжает в
+    site-packages, и `parents[2]` указывает на `/usr/local/lib/python3.11`.
+    Репетиция бесплатного тарифа 22.10.2026 так и упала, причем молча до
+    первого запроса. Поэтому корень ищется по маркеру: сначала папка над
+    пакетом (рабочее дерево и редактируемая установка), потом рабочая папка
+    процесса (так запускается хостинг, который клонирует репозиторий и ставит
+    пакет в систему).
+    """
+    for candidate in (Path(__file__).resolve().parents[2], Path.cwd()):
+        if (candidate / marker).exists():
+            return candidate
+    raise ConfigError(
+        f"не найден корень проекта: нет {marker} ни над пакетом, ни в {Path.cwd()}. "
+        "Задайте RUFINRAG_CONFIG_PATH или RUFINRAG_DATA_DIR"
+    )
 
 
 @dataclass(frozen=True)
@@ -67,8 +87,13 @@ class Catalog:
         return self.configs[key]
 
 
+def config_path() -> Path:
+    override = env("RUFINRAG_CONFIG_PATH")
+    return Path(override).expanduser() if override else project_root() / CONFIG_FILE
+
+
 def load_catalog(path: Path | None = None) -> Catalog:
-    path = path or DEFAULT_CONFIG_PATH
+    path = path or config_path()
     if not path.exists():
         raise ConfigError(f"нет файла конфигурации {path}")
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -134,4 +159,6 @@ def live_mode() -> bool:
 
 def data_dir() -> Path:
     override = env("RUFINRAG_DATA_DIR")
-    return Path(override).expanduser() if override else ROOT / "data"
+    if override:
+        return Path(override).expanduser()
+    return project_root(DATA_DIR) / DATA_DIR

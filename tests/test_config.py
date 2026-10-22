@@ -1,7 +1,10 @@
 import pytest
 import yaml
 
+from rufinrag import config
 from rufinrag.config import ConfigError, env, load_catalog
+
+ROOT = config.project_root()
 
 
 def test_project_catalog_loads():
@@ -65,3 +68,29 @@ def test_unknown_override_fails_loudly(monkeypatch):
     monkeypatch.setenv("RUFINRAG_DEFAULT_CONFIG", "bm25-fast")
     with pytest.raises(ConfigError, match="такой связки нет"):
         load_catalog()
+
+
+def test_root_falls_back_to_working_directory(tmp_path, monkeypatch):
+    """Репетиция 22.10.2026: установленный пакет искал configs в site-packages.
+
+    Хостинг клонирует репозиторий и ставит пакет в систему, поэтому папка над
+    пакетом маркера не содержит, и корнем обязана становиться рабочая папка.
+    """
+    (tmp_path / "configs").mkdir()
+    (tmp_path / "configs/retrieval.yaml").write_text(
+        (ROOT / "configs/retrieval.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (tmp_path / "data").mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(config, "__file__", str(tmp_path / "site-packages/rufinrag/config.py"))
+
+    assert config.project_root() == tmp_path
+    assert config.data_dir() == tmp_path / "data"
+    assert config.load_catalog().configs
+
+
+def test_missing_root_names_the_variable(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(config, "__file__", str(tmp_path / "site-packages/rufinrag/config.py"))
+    with pytest.raises(config.ConfigError, match="RUFINRAG_CONFIG_PATH"):
+        config.project_root()
