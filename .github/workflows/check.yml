@@ -1,0 +1,36 @@
+# Та же проверка, что `scripts/check.sh` на маке: линтер, тесты, числа
+# публичных текстов, поиск секретов. Нужна не ради галочки: ночной регламент
+# коммитит в этот же репозиторий, и поломка, уехавшая в main, ломает регламент,
+# а не только сборку.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+
+      # Плотная часть требует torch и весов модели запроса: 1,1 ГБ, на прогон
+      # проверки это лишние пять минут. Тесты плотной ступени ее пропускают.
+      - name: Run check
+        env:
+          PY: python
+          RUFINRAG_DISABLE_DENSE: "1"
+        run: scripts/check.sh

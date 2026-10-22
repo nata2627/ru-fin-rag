@@ -1,0 +1,112 @@
+# Ночной регламент: докачать новые акты, пересобрать индекс, прогнать регрессию
+# на замороженном наборе и закоммитить результаты от имени бота.
+#
+# Почему прогон живет здесь, а не на хостинге: бесплатный тариф Render засыпает
+# и расписания не держит, а GitHub Actions дает 2000 минут в месяц на публичный
+# репозиторий бесплатно. Прогон не трогает хостинг: пуш в main переразворачивает
+# сервис сам, это настроено в render.yaml.
+#
+# Пакет части А ставится дополнением `collect` из pyproject: коммит закреплен
+# там, в одном месте.
+name: nightly
+
+on:
+  schedule:
+    # 02:17 UTC: не в начале часа, когда у GitHub пик очереди на расписаниях
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # pdftotext из poppler: им часть А извлекает текст из PDF «Вестника»
+      - name: Install poppler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[collect]"
+
+      - name: Fetch new acts
+        id: corpus
+        env:
+          RUFINRAG_LIVE: "1"
+        run: python scripts/update_corpus.py
+
+      - name: Rebuild index
+        run: python scripts/build_index.py
+
+      - name: Regression on the frozen benchmark
+        env:
+          RUFINRAG_DISABLE_DENSE: "1"
+        run: python scripts/run_regression.py --config bm25
+
+      - name: Verify published numbers
+        run: python scripts/verify_numbers.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/corpus/chunks.jsonl.gz results/corpus-update.json results/regression.json
+          if git diff --cached --quiet; then
+            echo "нечего коммитить: корпус и метрики не изменились"
+          else
+            git commit -m "Nightly corpus update and regression"
+            git push
+          fi
+
+      - name: Open an issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = 'nightly-broken'
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: marker,
+            })
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const body = [
+              'Ночной прогон упал. Сервис от этого не останавливается: он отвечает на том корпусе,',
+              'который уже лежит в репозитории, а regression.json остался от прошлого прогона.',
+              '',
+              `Лог: ${url}`,
+              '',
+              'Что бывает причиной, по частоте:',
+              '1. Поменялась верстка поиска по «Вестнику» на cbr.ru, и перечень актов пришел пустым.',
+              '2. cbr.ru не ответил или ответил ошибкой: прогон повторяется следующей ночью сам.',
+              '3. Регрессия качества: NDCG@10 упал больше порога после обновления корпуса.',
+              '4. Истек токен или пропали права: тогда падает шаг коммита, а не шаг сбора.',
+              '',
+              'Прогон можно запустить руками: вкладка Actions, workflow nightly, кнопка Run workflow.',
+            ].join('\n')
+            if (open.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open.data[0].number, body,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: 'Ночной прогон упал', labels: [marker], body,
+              })
+            }
