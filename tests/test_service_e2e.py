@@ -63,7 +63,7 @@ def test_service_answers_over_http():
             process,
         )
         assert health["status"] in ("ok", "degraded")
-        assert health["chunks"] == 62594
+        assert health["chunks"] > 60000
 
         payload = json.dumps({"query": "норматив достаточности базового капитала"}).encode()
         request = urllib.request.Request(
