@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve warehouse mart dashboard drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -35,6 +35,9 @@ test: ## только тесты
 
 serve: ## поднять сервис локально
 	$(PY) -m uvicorn rufinrag.api:app --app-dir src --host 127.0.0.1 --port 8000
+
+vectors: ## догнать плотные векторы до корпуса после ночной докачки (нужны venv-dense и веса)
+	$(PY) scripts/extend_vectors.py
 
 warehouse: ## сверить режимы витрины: файлы через chdb против ClickHouse из compose
 	$(PY) scripts/compare_warehouses.py
