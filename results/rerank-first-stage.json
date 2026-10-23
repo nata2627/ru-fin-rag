@@ -1,0 +1,42 @@
+{
+  "measured_at": "2026-10-23",
+  "queries_scored": 991,
+  "runs": {
+    "hybrid-rerank, связка сервиса": {
+      "file": "rerank-hybrid-rufin.jsonl",
+      "metrics": {
+        "Recall@1": 0.4973,
+        "Recall@5": 0.7849,
+        "Recall@10": 0.8299,
+        "MRR@10": 0.6985,
+        "NDCG@10": 0.7096
+      },
+      "ndcg10": {
+        "mean": 0.7096,
+        "lo": 0.6882,
+        "hi": 0.73
+      }
+    },
+    "bm25-rerank, связка сервиса": {
+      "file": "rerank-bm25-rufin.jsonl",
+      "metrics": {
+        "Recall@1": 0.4871,
+        "Recall@5": 0.7647,
+        "Recall@10": 0.807,
+        "MRR@10": 0.6839,
+        "NDCG@10": 0.6916
+      },
+      "ndcg10": {
+        "mean": 0.6916,
+        "lo": 0.6693,
+        "hi": 0.7133
+      }
+    }
+  },
+  "difference_ndcg10": {
+    "mean": 0.018,
+    "lo": 0.0091,
+    "hi": 0.0275,
+    "p": 0.0001
+  }
+}

@@ -1,13 +1,13 @@
 {
   "model": "BAAI/bge-reranker-v2-m3",
   "device": "cuda",
-  "source_run": "base__hybrid-rufin.jsonl",
+  "source_run": "run-hybrid.jsonl",
   "queries": 1182,
   "depth": 50,
   "pairs": 59100,
   "batch_size": 32,
   "max_length": 512,
-  "seconds": 629.0,
-  "pairs_per_second": 94.0,
+  "seconds": 641.6,
+  "pairs_per_second": 92.1,
   "peak_vram_mb": 1451.4
 }
