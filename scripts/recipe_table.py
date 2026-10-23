@@ -29,6 +29,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--journal", default=os.path.join(RAW, "journal.json"),
                     help="журнал, приехавший с видеокарты")
+    ap.add_argument("--out", default=os.path.join(RAW, "recipe.txt"),
+                    help="куда положить таблицу; у журнала этапа 3б он свой, "
+                         "иначе таблица прежнего рецепта затирается")
     args = ap.parse_args()
 
     if not os.path.exists(args.journal):
@@ -73,10 +76,10 @@ def main() -> None:
 
     текст = "\n".join(строки)
     print(текст)
-    os.makedirs(RAW, exist_ok=True)
-    with open(os.path.join(RAW, "recipe.txt"), "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
         f.write(текст + "\n")
-    print("\nтаблица: docs/raw/recipe.txt")
+    print(f"\nтаблица: {os.path.relpath(args.out, ROOT)}")
     if расхождения:
         raise SystemExit(1)
 
