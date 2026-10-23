@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -64,6 +64,7 @@ help:
 	@echo "  metrics      метрики по выдачам, посчитанным на Kaggle (CHUNKS=$(CHUNKS))"
 	@echo "  errors       разбор провальных запросов"
 	@echo "  razbor-provalov  двадцать провалов на живых вопросах по правилу S15"
+	@echo "  lexical-gap  лексический разрыв живых вопросов и написанных моделью"
 	@echo "  latency      замеры задержки на этой машине (DENSE=$(DENSE))"
 	@echo ""
 	@echo "Дообучение (счёт на Kaggle, проверки и отчёт локально):"
@@ -308,6 +309,9 @@ razbor-provalov:
 	$(PY) scripts/error_analysis.py --run data/runs/$(CHUNKS)__hybrid-rerank.jsonl \
 		--chunks $(CHUNKS) --subset живые --take 20 --seed 20261023 \
 		--razbor docs/raw/razbor_provalov.tsv
+
+lexical-gap:
+	$(PY) scripts/lexical_gap.py --chunks $(CHUNKS)
 
 latency:
 	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE)
