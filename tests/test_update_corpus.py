@@ -139,3 +139,27 @@ def test_empty_index_is_a_breakage_and_not_a_quiet_night(tmp_path, monkeypatch):
 
     assert update_corpus.main() == 1
     assert json.loads(out.read_text(encoding="utf-8"))["status"] == "index_not_parsed"
+
+
+def test_http_code_tells_a_missing_issue_from_a_refusing_site():
+    """Два настоящих сообщения из прогонов 23.10.2026, по ним и разводятся пути.
+
+    403 на поиске это отказ сайта, и докачка откладывается целиком. 404 на одном
+    выпуске это свойство выпуска: его акты уходят в `skipped.json`, а прогон
+    идет дальше. Сообщение без кода ответа считается отказом сайта, то есть
+    более осторожным из двух толкований.
+    """
+    refusal = (
+        "не удалось получить https://www.cbr.ru/about_br/publ/vestnik-search/: "
+        "403 Client Error: Forbidden for url: https://www.cbr.ru/about_br/publ/vestnik-search/"
+    )
+    missing = (
+        "не удалось получить https://www.cbr.ru/Queries/UniDbQuery/File/85920/-1/2623: "
+        "404 Client Error: Not Found for url: "
+        "https://www.cbr.ru/Queries/UniDbQuery/File/85920/-1/2623"
+    )
+    broken_pipe = "не удалось получить https://www.cbr.ru/: Connection aborted"
+
+    assert update_corpus.http_code(RuntimeError(refusal)) == 403
+    assert update_corpus.http_code(RuntimeError(missing)) == 404
+    assert update_corpus.http_code(RuntimeError(broken_pipe)) is None
