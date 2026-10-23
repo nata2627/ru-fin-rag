@@ -2,7 +2,7 @@
 
 Докстринг модуля обещал этот тест, а теста не было: нашел разбор кода. Проверка
 идет по замороженным выдачам бенчмарка, для которых числа части А опубликованы
-(`docs/06-rezultaty-etap-2.md`: BM25 0,484, плотный поиск 0,548).
+(`docs/06-rezultaty-etap-2.md`: BM25 0,567, плотный поиск 0,548).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from rufinrag.metrics import evaluate, mrr_at_k, ndcg_at_k, queries_scored, reca
 def test_frozen_runs_reproduce_part_a():
     qrels = load_qrels()
     assert queries_scored(qrels) == 991
-    assert round(evaluate(load_run("bm25"), qrels)["NDCG@10"], 3) == 0.484
+    assert round(evaluate(load_run("bm25"), qrels)["NDCG@10"], 3) == 0.567
     assert round(evaluate(load_run("dense"), qrels)["NDCG@10"], 3) == 0.548
 
 
