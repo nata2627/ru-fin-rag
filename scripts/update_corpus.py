@@ -17,6 +17,14 @@
 «О внесении изменений», которые в состав корпуса не берутся (решение части А).
 Это ограничение написано в README, а не спрятано.
 
+Отказ cbr.ru и поломка это разные вещи, и возвращаются они разными кодами.
+Сайт не ответил, ответил ошибкой или оборвал соединение: корпус на диске цел,
+докачивать нечего, код выхода 75 (`EXIT_SOURCE_UNAVAILABLE`), и ночной прогон
+после него продолжает переиндексацию, регрессию и отметку живости. Сайт
+ответил, но перечень разобран в ноль актов: это уже поломка разбора, код 1, и
+прогон краснеет, потому что молча пустой перечень означал бы «новых актов нет»
+навсегда.
+
 Запуск: python scripts/update_corpus.py [--limit-issues 3] [--dry-run]
 """
 
@@ -41,6 +49,9 @@ MIN_CYRILLIC = 0.90
 MIN_CHARS = 500
 TOKENIZER = "xlm-roberta-base"
 SKIPPED_FILE = "corpus/skipped.json"
+# Отдельный код выхода под отказ источника. 75 это EX_TEMPFAIL из `sysexits.h`:
+# «попробуй позже», ровно тот смысл, который здесь и нужен.
+EXIT_SOURCE_UNAVAILABLE = 75
 
 
 def known_acts(path: Path) -> set[str]:
@@ -149,26 +160,60 @@ def main() -> int:
     started = time.monotonic()
     client = Client(pause=args.pause)
 
-    index = vestnik.fetch_acts_index(client)
-    wanted = vestnik.select_corpus(index, since=args.since)
-    fresh = {}
-    for act in wanted:
-        key = act_key(normalize_number(act["number"]), act["date"])
-        if key not in known and key not in blocked:
-            fresh[key] = act
-
     report = {
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "index_acts": len(index),
-        "wanted_acts": len(wanted),
+        "status": "ok",
+        "index_acts": 0,
+        "wanted_acts": 0,
         "known_acts": len(known),
         "skipped_before": len(blocked),
-        "new_acts_in_index": len(fresh),
+        "new_acts_in_index": 0,
         "new_acts_added": 0,
         "new_chunks": 0,
         "issues_downloaded": 0,
         "dropped": {},
     }
+
+    def give_up(err: Exception) -> int:
+        """Источник отказал: записать причину и выйти кодом «попробуй позже».
+
+        Клиент части А к этому моменту уже сделал свои три попытки с паузой, и
+        четвертая ничего не изменит: 403 это отказ, а не сетевая икота.
+        """
+        report["status"] = "source_unavailable"
+        report["source_error"] = str(err)
+        report["seconds"] = round(time.monotonic() - started, 1)
+        write(report, args.out)
+        return EXIT_SOURCE_UNAVAILABLE
+
+    try:
+        index = vestnik.fetch_acts_index(client)
+    except RuntimeError as err:
+        return give_up(err)
+
+    wanted = vestnik.select_corpus(index, since=args.since)
+    report["index_acts"] = len(index)
+    report["wanted_acts"] = len(wanted)
+    if not wanted:
+        # Сайт ответил, а под состав корпуса не подошло ничего. В норме это
+        # 1656 актов, поэтому ноль означает не спокойную ночь, а то, что
+        # разбор перечня больше не понимает верстку cbr.ru.
+        report["status"] = "index_not_parsed"
+        report["seconds"] = round(time.monotonic() - started, 1)
+        write(report, args.out)
+        print(
+            f"перечень cbr.ru разобран в ноль актов из {len(index)} публикаций: "
+            "похоже, поменялась верстка поиска по «Вестнику»",
+            file=sys.stderr,
+        )
+        return 1
+
+    fresh = {}
+    for act in wanted:
+        key = act_key(normalize_number(act["number"]), act["date"])
+        if key not in known and key not in blocked:
+            fresh[key] = act
+    report["new_acts_in_index"] = len(fresh)
 
     if not fresh or args.dry_run:
         report["seconds"] = round(time.monotonic() - started, 1)
@@ -213,7 +258,16 @@ def main() -> int:
         for code in codes:
             info = issues[code]
             pdf = Path(tmp) / f"{code}.pdf"
-            pdf.write_bytes(client.get(info["url"]).content)
+            try:
+                pdf.write_bytes(client.get(info["url"]).content)
+            except RuntimeError as err:
+                # Выпуск не дался: собранное до этого места сохраняем, остальное
+                # возьмет следующий прогон. В `skipped.json` такой акт не
+                # пишется: причина в сайте, а не в акте, и помнить ее как
+                # свойство акта значило бы больше его не пробовать.
+                report["status"] = "source_unavailable"
+                report["source_error"] = str(err)
+                break
             report["issues_downloaded"] += 1
             parsed = {act.number: act for act in split_issue(str(pdf), expected=info.get("bounds"))}
             for number, (key, meta) in info["want"].items():
@@ -262,7 +316,7 @@ def main() -> int:
     ]
     report["seconds"] = round(time.monotonic() - started, 1)
     write(report, args.out)
-    return 0
+    return EXIT_SOURCE_UNAVAILABLE if report["status"] == "source_unavailable" else 0
 
 
 def write(report: dict, out: Path) -> None:

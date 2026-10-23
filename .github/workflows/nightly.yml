@@ -49,11 +49,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[collect]"
 
+      # Отказ cbr.ru не отменяет остальной прогон. Корпус лежит на диске и от
+      # отказа не портится, поэтому переиндексация, регрессия и отметка живости
+      # идут как обычно, а issue открывается шагом ниже без красного main.
+      # Код 75 это «сайт отказал, попробуй позже», любой другой ненулевой код
+      # это поломка нашего кода, и тогда прогон обязан покраснеть.
       - name: Fetch new acts
         id: corpus
         env:
           RUFINRAG_LIVE: "1"
-        run: python scripts/update_corpus.py
+        run: |
+          set +e
+          python scripts/update_corpus.py
+          code=$?
+          set -e
+          if [ "$code" = "75" ]; then
+            echo "status=source_unavailable" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" = "0" ]; then
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=broken" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$code"
 
       - name: Rebuild index
         run: python scripts/build_index.py
@@ -104,31 +123,65 @@ jobs:
             git push
           fi
 
-      - name: Open an issue on failure
-        if: failure() || cancelled()
+      # Срабатывает и на поломке, и на отказе cbr.ru. Второй случай прогон не
+      # роняет, но и молчать о нем нельзя: issue это единственный канал, в
+      # котором отказ источника виден без чтения логов.
+      - name: Open an issue when the run breaks or cbr.ru refuses
+        if: failure() || cancelled() || steps.corpus.outputs.status == 'source_unavailable'
         uses: actions/github-script@v7
+        env:
+          SOURCE_STATUS: ${{ steps.corpus.outputs.status }}
         with:
           script: |
+            const fs = require('fs')
             const marker = 'nightly-broken'
+            const refused = process.env.SOURCE_STATUS === 'source_unavailable'
             const open = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
               state: 'open', labels: marker,
             })
             const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            const body = [
+            const read = (name) => {
+              try {
+                return JSON.parse(fs.readFileSync(name, 'utf8'))
+              } catch (err) {
+                // Прогон мог упасть до того, как отчет написан: тогда в тексте
+                // просто не будет строки с числом, а не весь шаг развалится.
+                return {}
+              }
+            }
+            const body = refused ? [
+              'cbr.ru не отдал перечень «Вестника», и докачка новых актов отложена до следующего',
+              'прогона. Прогон на этом не остановился: корпус на диске цел, индекс пересобран,',
+              'регрессия посчитана, отметка живости записана, `main` остался зеленым.',
+              '',
+              `Ошибка источника: \`${read('results/corpus-update.json').source_error || 'не записана'}\``,
+              `Прогонов подряд без связи с cbr.ru: ${read('results/regulation.json').source_unavailable_runs ?? 'неизвестно'}`,
+              `Лог: ${url}`,
+              '',
+              'Вежливый клиент части А делает три попытки с паузой, и отказ сайта он по существу',
+              'не переваривает: 403 это отказ, а не сетевая икота, и четвертая попытка с того же',
+              'адреса даст то же самое. Один-два прогона так это обычная рябь. Если счетчик выше',
+              'растет несколько суток, значит cbr.ru перестал пускать бесплатные раннеры GitHub,',
+              'и докачку придется запускать с другой машины. Это ограничение автономности, и его',
+              'надо назвать в README, а не лечить обходом чужой защиты.',
+            ].join('\n') : [
               'Ночной прогон упал. Сервис от этого не останавливается: он отвечает на том корпусе,',
               'который уже лежит в репозитории, а regression.json остался от прошлого прогона.',
               '',
               `Лог: ${url}`,
               '',
               'Что бывает причиной, по частоте:',
-              '1. Поменялась верстка поиска по «Вестнику» на cbr.ru, и перечень актов пришел пустым.',
-              '2. cbr.ru не ответил или ответил ошибкой: прогон повторяется следующей ночью сам.',
-              '3. Регрессия качества: NDCG@10 упал больше порога после обновления корпуса.',
-              '4. Истек токен или пропали права: тогда падает шаг коммита, а не шаг сбора.',
-              '5. Прогон снят по таймауту в 45 минут: тогда статус прогона `cancelled`.',
-              '6. Пуш отклонен: кто-то писал в main в те же секунды. Прогон перебазируется сам,',
+              '1. Поменялась верстка поиска по «Вестнику» на cbr.ru, и перечень актов разобран',
+              '   в ноль: статус `index_not_parsed` в results/corpus-update.json.',
+              '2. Регрессия качества: NDCG@10 упал больше порога после обновления корпуса.',
+              '3. Истек токен или пропали права: тогда падает шаг коммита, а не шаг сбора.',
+              '4. Прогон снят по таймауту в 45 минут: тогда статус прогона `cancelled`.',
+              '5. Пуш отклонен: кто-то писал в main в те же секунды. Прогон перебазируется сам,',
               '   но если не вышло, следующей ночью это повторится.',
+              '',
+              'Отказ cbr.ru в этот список больше не входит: от него прогон не краснеет, а',
+              'открывает issue с пометкой, что докачка отложена.',
               '',
               'Прогон можно запустить руками: вкладка Actions, workflow nightly, кнопка Run workflow.',
             ].join('\n')

@@ -96,3 +96,46 @@ def test_append_adds_rows_that_read_back(tmp_path):
         f.write(json.dumps({"act_id": "old", "chunk_id": "old#0000"}) + "\n")
     update_corpus.append_rows(corpus, [{"act_id": "new", "chunk_id": "new#0000"}])
     assert update_corpus.known_acts(corpus) == {"old", "new"}
+
+
+def test_source_refusal_asks_the_run_to_try_later(tmp_path, monkeypatch):
+    """Отказ cbr.ru это не поломка: корпус цел, и прогон обязан идти дальше.
+
+    Прогон 39918625392 упал на этом месте целиком, и вместе с докачкой отменил
+    переиндексацию, регрессию и отметку живости. Код 75 это контракт, на
+    который смотрит шаг `Fetch new acts` в ночном прогоне.
+    """
+    vestnik = pytest.importorskip("rufin.sources.cbr_vestnik")
+
+    def refuse(client):
+        raise RuntimeError(
+            "не удалось получить https://www.cbr.ru/about_br/publ/vestnik-search/: "
+            "403 Client Error: Forbidden"
+        )
+
+    monkeypatch.setattr(vestnik, "fetch_acts_index", refuse)
+    out = tmp_path / "corpus-update.json"
+    monkeypatch.setattr(sys, "argv", ["update_corpus.py", "--out", str(out)])
+
+    assert update_corpus.main() == update_corpus.EXIT_SOURCE_UNAVAILABLE
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["status"] == "source_unavailable"
+    assert "403" in report["source_error"]
+    assert report["new_acts_added"] == 0
+
+
+def test_empty_index_is_a_breakage_and_not_a_quiet_night(tmp_path, monkeypatch):
+    """Сайт ответил, а под состав корпуса не подошло ничего.
+
+    В норме это 1656 актов. Ноль означает, что разбор перечня больше не
+    понимает верстку, и промолчать тут нельзя: «новых актов нет» стало бы
+    ответом навсегда.
+    """
+    vestnik = pytest.importorskip("rufin.sources.cbr_vestnik")
+    monkeypatch.setattr(vestnik, "fetch_acts_index", lambda client: [{"number": "1-У"}])
+    monkeypatch.setattr(vestnik, "select_corpus", lambda index, since: [])
+    out = tmp_path / "corpus-update.json"
+    monkeypatch.setattr(sys, "argv", ["update_corpus.py", "--out", str(out)])
+
+    assert update_corpus.main() == 1
+    assert json.loads(out.read_text(encoding="utf-8"))["status"] == "index_not_parsed"
