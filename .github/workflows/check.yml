@@ -21,6 +21,12 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8-alpine
+        # Без этой переменной entrypoint образа закрывает пользователю
+        # `default` сетевой доступ, и сервер отвечает 401 на любой запрос с
+        # хоста прогона. В `docker-compose.yml` она стоит с самого начала,
+        # здесь ее не было, поэтому работа падала там, где на маке зеленела.
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: "1"
         ports:
           - 8123:8123
         options: >-
@@ -67,6 +73,12 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8-alpine
+        # Без этой переменной entrypoint образа закрывает пользователю
+        # `default` сетевой доступ, и сервер отвечает 401 на любой запрос с
+        # хоста прогона. В `docker-compose.yml` она стоит с самого начала,
+        # здесь ее не было, поэтому работа падала там, где на маке зеленела.
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: "1"
         ports:
           - 8123:8123
         options: >-
