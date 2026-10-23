@@ -143,6 +143,13 @@ def checks() -> list[tuple[str, str, str]]:
     out.append(
         ("ссылка на первый плановый прогон", "acceptance.json", acceptance["first_scheduled_run"])
     )
+    if acceptance["broken_by"]:
+        # Прогон, который порвал цепочку, назван в README по ссылке. Проверка
+        # держит README и файл вместе: иначе рассказ про приемку легко оставить
+        # прежним, когда счет уже другой.
+        out.append(
+            ("прогон, порвавший цепочку", "acceptance.json", acceptance["broken_by"]["run"])
+        )
     out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
     out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
     out.append(
