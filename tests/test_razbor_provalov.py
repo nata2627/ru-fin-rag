@@ -69,6 +69,8 @@ def test_prichiny_i_gruppy_iz_spiska(разбор):
 
 @pytest.mark.data
 def test_otbor_vosproizvoditsya(разбор, data_dir):
+    if not RUN.exists():
+        pytest.skip("выдачи нет: data/runs не версионируется, нужен прогон на видеокарте")
     assert sorted(r["query_id"] for r in разбор) == sorted(отбор(data_dir))
 
 
