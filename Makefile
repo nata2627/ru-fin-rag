@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -23,12 +23,12 @@ check: ## линтер, тесты, числа README, проверка на с�
 	scripts/check.sh
 
 lint: ## только линтер
-	$(PY) -m ruff check src tests
-	$(PY) -m ruff format --check src tests
+	$(PY) -m ruff check src tests dags
+	$(PY) -m ruff format --check src tests dags
 
 fmt: ## отформатировать код
-	$(PY) -m ruff format src tests
-	$(PY) -m ruff check --fix src tests
+	$(PY) -m ruff format src tests dags
+	$(PY) -m ruff check --fix src tests dags
 
 test: ## только тесты
 	$(PY) -m pytest
@@ -47,6 +47,9 @@ mart: ## собрать витрину dbt в ClickHouse и сверить ее 
 
 dashboard: ## собрать страницу дашборда по журналу репозитория в site/
 	$(PY) scripts/build_dashboard.py
+
+dag: ## прогнать DAG регламента дважды в контейнере Airflow (нужен поднятый докер)
+	scripts/run_dag.sh
 
 drain: ## репетиция выгрузки журнала: сервис процессом, выгрузка по сети, файлы в репозитории
 	$(PY) scripts/rehearse_drain.py
