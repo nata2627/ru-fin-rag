@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -146,6 +146,12 @@ friend-control:
 # из контроля на чужих данных.
 morphology:
 	$(PY) scripts/morphology_effect.py
+
+# Разбор номера акта в токенизации: номер целым токеном против прежнего
+# выражения, которое брало после дефиса только буквы. Ось здесь разбор,
+# а не нормализация формы, поэтому стеммер стоит во всех состояниях.
+token-numbers:
+	$(PY) scripts/token_numbers_effect.py
 
 corpus:
 	$(PY) scripts/build_corpus.py --pause $(PAUSE)
