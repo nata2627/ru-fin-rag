@@ -1,0 +1,146 @@
+{
+  "events": {
+    "source": "собранный набор, scripts/compare_warehouses.py",
+    "files": [
+      "queries-2026-10-21.jsonl",
+      "queries-2026-10-22.jsonl"
+    ],
+    "lines": 253,
+    "query_events": 200,
+    "feedback_events": 53,
+    "orphan_feedback": 5
+  },
+  "free_mode": {
+    "engine": "chdb",
+    "version": "26.9.2.1"
+  },
+  "build_mode": {
+    "engine": "clickhouse-server",
+    "url": "http://127.0.0.1:8123",
+    "version": "25.8.33.6",
+    "checked": true
+  },
+  "queries": [
+    "feedback_match",
+    "rated_share",
+    "stage_latency",
+    "traffic_by_day"
+  ],
+  "agreed": {
+    "traffic_by_day": true,
+    "stage_latency": true,
+    "rated_share": true,
+    "feedback_match": true
+  },
+  "all_agreed": true,
+  "mart": {
+    "traffic_by_day": {
+      "columns": [
+        "day",
+        "queries",
+        "answered",
+        "rejected",
+        "unavailable"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "queries": "100",
+          "answered": "96",
+          "rejected": "2",
+          "unavailable": "2"
+        },
+        {
+          "day": "2026-10-22",
+          "queries": "100",
+          "answered": "96",
+          "rejected": "2",
+          "unavailable": "2"
+        }
+      ]
+    },
+    "stage_latency": {
+      "columns": [
+        "stage",
+        "runs",
+        "p50_ms",
+        "p95_ms",
+        "max_ms"
+      ],
+      "rows": [
+        {
+          "stage": "bm25",
+          "runs": "192",
+          "p50_ms": "21.188",
+          "p95_ms": "37.539",
+          "max_ms": "39.505"
+        },
+        {
+          "stage": "dense",
+          "runs": "128",
+          "p50_ms": "19.973",
+          "p95_ms": "37.793",
+          "max_ms": "39.731"
+        },
+        {
+          "stage": "fusion",
+          "runs": "128",
+          "p50_ms": "20.189",
+          "p95_ms": "37.091",
+          "max_ms": "39.12"
+        },
+        {
+          "stage": "rerank",
+          "runs": "64",
+          "p50_ms": "22.165",
+          "p95_ms": "38.44",
+          "max_ms": "39.926"
+        },
+        {
+          "stage": "total",
+          "runs": "192",
+          "p50_ms": "59.558",
+          "p95_ms": "104.798",
+          "max_ms": "139.824"
+        }
+      ]
+    },
+    "rated_share": {
+      "columns": [
+        "day",
+        "answered",
+        "rated"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "rated": "24"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "rated": "24"
+        }
+      ]
+    },
+    "feedback_match": {
+      "columns": [
+        "feedback_events",
+        "matched",
+        "orphans",
+        "up",
+        "down"
+      ],
+      "rows": [
+        {
+          "feedback_events": "53",
+          "matched": "48",
+          "orphans": "5",
+          "up": "24",
+          "down": "29"
+        }
+      ]
+    }
+  }
+}
