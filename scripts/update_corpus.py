@@ -48,14 +48,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.corpus import FIELDS, corpus_path, read_jsonl  # noqa: E402
+from rufinrag.pipeline import EXIT_SOURCE_UNAVAILABLE  # noqa: E402
 
 MIN_CYRILLIC = 0.90
 MIN_CHARS = 500
 TOKENIZER = "xlm-roberta-base"
 SKIPPED_FILE = "corpus/skipped.json"
-# Отдельный код выхода под отказ источника. 75 это EX_TEMPFAIL из `sysexits.h`:
-# «попробуй позже», ровно тот смысл, который здесь и нужен.
-EXIT_SOURCE_UNAVAILABLE = 75
 # Код ответа достается из текста ошибки: вежливый клиент части А заворачивает
 # исключение requests в `RuntimeError` и сам объект наружу не отдает. Разбор
 # держится на формате сообщения requests, поэтому неузнанный текст считается
@@ -91,6 +89,21 @@ def save_skipped(path: Path, skipped: dict[str, dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     ordered = {key: skipped[key] for key in sorted(skipped)}
     path.write_text(json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def pending_acts(wanted: list[dict], known: set[str], blocked: set[str], normalize) -> dict:
+    """Акты перечня, которых нет ни в корпусе, ни в памяти о неудачах.
+
+    Отдельной функцией, потому что это и есть идемпотентность докачки: второй
+    прогон на том же перечне обязан вернуть пустой разбор, иначе тот же акт
+    приедет в корпус дважды.
+    """
+    fresh: dict[str, dict] = {}
+    for act in wanted:
+        key = act_key(normalize(act["number"]), act["date"])
+        if key not in known and key not in blocked:
+            fresh[key] = act
+    return fresh
 
 
 def append_rows(corpus: Path, rows: list[dict]) -> None:
@@ -220,11 +233,7 @@ def main() -> int:
         )
         return 1
 
-    fresh = {}
-    for act in wanted:
-        key = act_key(normalize_number(act["number"]), act["date"])
-        if key not in known and key not in blocked:
-            fresh[key] = act
+    fresh = pending_acts(wanted, known, blocked, normalize_number)
     report["new_acts_in_index"] = len(fresh)
 
     if not fresh or args.dry_run:
