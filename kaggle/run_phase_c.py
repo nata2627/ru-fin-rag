@@ -129,9 +129,13 @@ def main() -> None:
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=1)
 
-    ruler = common.make_ruler()
+    # Токенизатор передаётся функцией, а не объектом: нарезка здесь почти
+    # всегда берётся готовой из кэша, а поднять `xlm-roberta-base` можно
+    # только из хаба, который запрещён. Прогон судьи на этом и спотыкался:
+    # нарезка ему не нужна вовсе, а токенизатор требовался до неё.
     acts = common.load_acts(args.acts, limit=args.limit_acts)
-    chunks = common.build_chunks_cached(acts, "base", ruler, args.chunks_cache)
+    chunks = common.build_chunks_cached(acts, "base", common.make_ruler,
+                                        args.chunks_cache)
     report["всего фрагментов"] = len(chunks)
 
     # Нарезка обязана совпасть с той, по которой считались выдачи и разметка.
