@@ -1,0 +1,560 @@
+{
+  "project": "dbt",
+  "dbt": {
+    "packages": 57,
+    "disk_mb": 101.0,
+    "versions": {
+      "dbt-core": "1.9.4",
+      "dbt-clickhouse": "1.9.2"
+    },
+    "python": "3.11.6",
+    "platform": "Darwin arm64"
+  },
+  "build_mode": {
+    "engine": "clickhouse-server",
+    "url": "http://127.0.0.1:8123",
+    "version": "25.8.33.6"
+  },
+  "free_mode": {
+    "engine": "chdb",
+    "version": "26.9.2.1"
+  },
+  "events": {
+    "source": "собранный набор, scripts/compare_warehouses.py",
+    "files": [
+      "queries-2026-10-21.jsonl",
+      "queries-2026-10-22.jsonl"
+    ],
+    "lines": 253,
+    "query_events": 200,
+    "feedback_events": 53,
+    "orphan_feedback": 5,
+    "lines_loaded": 253
+  },
+  "build": {
+    "returncode": 0,
+    "seconds": 3.8,
+    "models": [
+      {
+        "name": "stg_feedback",
+        "layer": "staging",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "stg_queries",
+        "layer": "staging",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "feedback_match",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "rated_share",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "repeat_queries",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "stage_latency",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "traffic_by_day",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      },
+      {
+        "name": "quality_by_day",
+        "layer": "marts",
+        "materialized": "view",
+        "status": "success"
+      }
+    ],
+    "tests": [
+      {
+        "name": "accepted_values_stg_feedback_rating__up__down",
+        "kind": "generic",
+        "generic": "accepted_values",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_feedback_rating",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_feedback_received_at",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_feedback_request_id",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "accepted_values_stg_queries_outcome__ok__rejected__unavailable",
+        "kind": "generic",
+        "generic": "accepted_values",
+        "status": "pass"
+      },
+      {
+        "name": "answered_without_timings",
+        "kind": "singular",
+        "generic": null,
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_queries_day",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_queries_outcome",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_queries_received_at",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stg_queries_request_id",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_stg_queries_request_id",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      },
+      {
+        "name": "feedback_orphans_are_counted",
+        "kind": "singular",
+        "generic": null,
+        "status": "pass"
+      },
+      {
+        "name": "not_null_feedback_match_feedback_events",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_feedback_match_orphans",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_rated_share_answered",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_rated_share_day",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_rated_share_rated",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_rated_share_day",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_repeat_queries_day",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_repeat_queries_first_time",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_repeat_queries_repeated",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_repeat_queries_day",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stage_latency_runs",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_stage_latency_stage",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_stage_latency_stage",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      },
+      {
+        "name": "days_without_events",
+        "kind": "singular",
+        "generic": null,
+        "status": "pass"
+      },
+      {
+        "name": "not_null_traffic_by_day_day",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_traffic_by_day_days_in_7d",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_traffic_by_day_queries",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_traffic_by_day_day",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_quality_by_day_answered",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_quality_by_day_day",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "not_null_quality_by_day_days_in_7d",
+        "kind": "generic",
+        "generic": "not_null",
+        "status": "pass"
+      },
+      {
+        "name": "unique_quality_by_day_day",
+        "kind": "generic",
+        "generic": "unique",
+        "status": "pass"
+      }
+    ],
+    "counts": {
+      "models": 8,
+      "staging_models": 2,
+      "mart_models": 6,
+      "tests": 34,
+      "generic_tests": 31,
+      "singular_tests": 3,
+      "passed": 42,
+      "warned": 0,
+      "failed": 0
+    }
+  },
+  "columns": {
+    "feedback_match": [
+      "feedback_events",
+      "matched",
+      "orphans",
+      "up",
+      "down"
+    ],
+    "quality_by_day": [
+      "day",
+      "answered",
+      "rated",
+      "up",
+      "down",
+      "p95_total_ms",
+      "answered_7d",
+      "rated_7d",
+      "up_7d",
+      "days_in_7d",
+      "p95_worst_7d"
+    ],
+    "rated_share": [
+      "day",
+      "answered",
+      "rated"
+    ],
+    "repeat_queries": [
+      "day",
+      "answered",
+      "first_time",
+      "repeated",
+      "distinct_texts",
+      "median_gap_seconds"
+    ],
+    "stage_latency": [
+      "stage",
+      "runs",
+      "p50_ms",
+      "p95_ms",
+      "max_ms"
+    ],
+    "traffic_by_day": [
+      "day",
+      "queries",
+      "answered",
+      "rejected",
+      "unavailable",
+      "queries_total",
+      "queries_7d",
+      "days_in_7d",
+      "queries_change"
+    ]
+  },
+  "agreed": {
+    "feedback_match": true,
+    "quality_by_day": true,
+    "rated_share": true,
+    "repeat_queries": true,
+    "stage_latency": true,
+    "traffic_by_day": true
+  },
+  "all_agreed": true,
+  "mart": {
+    "feedback_match": {
+      "columns": [
+        "feedback_events",
+        "matched",
+        "orphans",
+        "up",
+        "down"
+      ],
+      "rows": [
+        {
+          "feedback_events": "53",
+          "matched": "48",
+          "orphans": "5",
+          "up": "24",
+          "down": "29"
+        }
+      ]
+    },
+    "quality_by_day": {
+      "columns": [
+        "day",
+        "answered",
+        "rated",
+        "up",
+        "down",
+        "p95_total_ms",
+        "answered_7d",
+        "rated_7d",
+        "up_7d",
+        "days_in_7d",
+        "p95_worst_7d"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "rated": "24",
+          "up": "12",
+          "down": "12",
+          "p95_total_ms": "104.03",
+          "answered_7d": "96",
+          "rated_7d": "24",
+          "up_7d": "12",
+          "days_in_7d": "1",
+          "p95_worst_7d": "104.03"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "rated": "24",
+          "up": "12",
+          "down": "12",
+          "p95_total_ms": "106.704",
+          "answered_7d": "192",
+          "rated_7d": "48",
+          "up_7d": "24",
+          "days_in_7d": "2",
+          "p95_worst_7d": "106.704"
+        }
+      ]
+    },
+    "rated_share": {
+      "columns": [
+        "day",
+        "answered",
+        "rated"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "rated": "24"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "rated": "24"
+        }
+      ]
+    },
+    "repeat_queries": {
+      "columns": [
+        "day",
+        "answered",
+        "first_time",
+        "repeated",
+        "distinct_texts",
+        "median_gap_seconds"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "first_time": "5",
+          "repeated": "91",
+          "distinct_texts": "5",
+          "median_gap_seconds": "305"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "first_time": "0",
+          "repeated": "96",
+          "distinct_texts": "5",
+          "median_gap_seconds": "305"
+        }
+      ]
+    },
+    "stage_latency": {
+      "columns": [
+        "stage",
+        "runs",
+        "p50_ms",
+        "p95_ms",
+        "max_ms"
+      ],
+      "rows": [
+        {
+          "stage": "bm25",
+          "runs": "192",
+          "p50_ms": "21.188",
+          "p95_ms": "37.539",
+          "max_ms": "39.505"
+        },
+        {
+          "stage": "dense",
+          "runs": "128",
+          "p50_ms": "19.973",
+          "p95_ms": "37.793",
+          "max_ms": "39.731"
+        },
+        {
+          "stage": "fusion",
+          "runs": "128",
+          "p50_ms": "20.189",
+          "p95_ms": "37.091",
+          "max_ms": "39.12"
+        },
+        {
+          "stage": "rerank",
+          "runs": "64",
+          "p50_ms": "22.165",
+          "p95_ms": "38.44",
+          "max_ms": "39.926"
+        },
+        {
+          "stage": "total",
+          "runs": "192",
+          "p50_ms": "59.558",
+          "p95_ms": "104.798",
+          "max_ms": "139.824"
+        }
+      ]
+    },
+    "traffic_by_day": {
+      "columns": [
+        "day",
+        "queries",
+        "answered",
+        "rejected",
+        "unavailable",
+        "queries_total",
+        "queries_7d",
+        "days_in_7d",
+        "queries_change"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "queries": "100",
+          "answered": "96",
+          "rejected": "2",
+          "unavailable": "2",
+          "queries_total": "100",
+          "queries_7d": "100",
+          "days_in_7d": "1",
+          "queries_change": "\\N"
+        },
+        {
+          "day": "2026-10-22",
+          "queries": "100",
+          "answered": "96",
+          "rejected": "2",
+          "unavailable": "2",
+          "queries_total": "200",
+          "queries_7d": "200",
+          "days_in_7d": "2",
+          "queries_change": "0"
+        }
+      ]
+    }
+  }
+}
