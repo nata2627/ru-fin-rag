@@ -10,3 +10,4 @@
 | `vector-store.json` | `scripts/compare_vector_stores.py` | Qdrant против FAISS против numpy: задержка, память, совпадение выдач |
 | `quantization.json` | `scripts/measure_quantization.py` | квантизация векторов в int8: память и потеря качества с интервалом |
 | `load.json` | `scripts/measure_load.py` | нагрузочный замер: p50, p95, p99, RPS, узкое место |
+| `warehouse.json` | `scripts/compare_warehouses.py` | витрина над журналом и сверка двух режимов хранения: ClickHouse сервером против файлов через chdb |

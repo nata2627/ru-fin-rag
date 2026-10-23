@@ -48,6 +48,7 @@ def checks() -> list[tuple[str, str, str]]:
     rerank_run = load("rerank-hybrid-rufin.json")
     first_run = load("corpus-update-first.json")
     load_report = load("load.json")
+    warehouse = load("warehouse.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
     out: list[tuple[str, str, str]] = []
@@ -230,6 +231,29 @@ def checks() -> list[tuple[str, str, str]]:
                 f"{row['composition']} из {row['queries']}",
             )
         )
+
+    sample = warehouse["events"]
+    out.append(("строк в наборе сверки", "warehouse.json", f"{sample['lines']} строк"))
+    out.append(
+        ("событий запроса в наборе", "warehouse.json", f"{sample['query_events']} событий запроса")
+    )
+    out.append(("оценок в наборе", "warehouse.json", f"{sample['feedback_events']} оценки"))
+    out.append(
+        (
+            "оценок без своего запроса",
+            "warehouse.json",
+            f"{sample['orphan_feedback']} из {sample['feedback_events']}",
+        )
+    )
+    out.append(("запросов витрины", "warehouse.json", f"витрины {len(warehouse['queries'])}"))
+    out.append(
+        (
+            "движки в сверке режимов",
+            "warehouse.json",
+            f"chdb {warehouse['free_mode']['version']} против ClickHouse "
+            f"{warehouse['build_mode']['version']}",
+        )
+    )
 
     for (config, users), row in runs.items():
         search = row["endpoints"]["/search"]
