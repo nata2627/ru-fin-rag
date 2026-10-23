@@ -33,6 +33,7 @@ if [ "${1:-}" != "--inside" ]; then
     -e AIRFLOW__CORE__DAGS_FOLDER=/repo/dags \
     -e AIRFLOW__CORE__LOAD_EXAMPLES=False \
     -e AIRFLOW_IMAGE="$IMAGE" \
+    -e GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" \
     -e RUFINRAG_ROOT=/repo \
     -e RUFINRAG_PYTHON=/repo/$HOME_DIR/venv/bin/python \
     -e RUFINRAG_EVENT_DIR=/tmp/rufinrag-events \
@@ -41,8 +42,9 @@ if [ "${1:-}" != "--inside" ]; then
     "$IMAGE" bash scripts/run_dag.sh --inside
   echo
   echo "репетиция переписала рабочие файлы прогона: results/index.json,"
-  echo "results/regression.json, results/regulation.json и data/index."
-  echo "Вернуть записи плановых прогонов: git checkout -- results"
+  echo "results/regression.json, results/regulation.json, results/dag-rerun.json"
+  echo "и data/index. Числа README сняты прогоном CI, поэтому после репетиции"
+  echo "записи плановых прогонов возвращаются: git checkout -- results"
   exit 0
 fi
 
