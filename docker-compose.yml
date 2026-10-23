@@ -13,6 +13,11 @@ services:
       RUFINRAG_LIVE: "${RUFINRAG_LIVE:-}"
       RUFINRAG_DISABLE_DENSE: "${RUFINRAG_DISABLE_DENSE:-}"
       QDRANT_URL: "${QDRANT_URL:-}"
+      # `./data` смонтирован только для чтения, а журнал запросов по умолчанию
+      # пишется в `data/events`. Без этой переменной сервис в контейнере на
+      # каждом запросе получал бы отказ записи.
+      RUFINRAG_EVENT_DIR: /tmp/rufinrag-events
+      RUFINRAG_EVENTS_TOKEN: "${RUFINRAG_EVENTS_TOKEN:-}"
     volumes:
       - ./data:/app/data:ro
     healthcheck:
