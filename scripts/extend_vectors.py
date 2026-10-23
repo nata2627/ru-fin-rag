@@ -44,6 +44,26 @@ def read_ids(path: Path) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def previous_state(report: Path, chunks: int) -> dict:
+    """Что заменяет этот прогон. Берется из прежнего отчета, а не из памяти.
+
+    Первый догон заменяет перенос из части А, и тогда прежнего отчета нет:
+    числом идет то, сколько векторов лежало до него.
+    """
+    if report.exists():
+        was = json.loads(report.read_text(encoding="utf-8"))
+        return {
+            "measured_at": was["measured_at"],
+            "chunks": was["chunks_after"],
+            "source": f"{report.name} от {was['measured_at']}",
+        }
+    return {
+        "measured_at": "2026-10-21",
+        "chunks": chunks,
+        "source": "перенос из части А, scripts/import_corpus.py",
+    }
+
+
 def drift(encoder, corpus, ids: list[str], vectors: np.ndarray, sample: int) -> dict:
     """Насколько наш энкодер совпадает с тем, которым посчитана матрица.
 
@@ -138,23 +158,25 @@ def main() -> int:
         "model_load_seconds": round(load_seconds, 1),
         "per_second": round(len(missing) / seconds, 1) if missing and seconds else None,
         "agreement_with_part_a": measured,
-        "replaced": {
-            "measured_at": "2026-10-21",
-            "chunks": len(stored),
-            "source": "перенос из части А, scripts/import_corpus.py",
-        },
+        "replaced": previous_state(args.report, len(stored)),
     }
     if args.dry_run:
         print(json.dumps(report, ensure_ascii=False, indent=2))
         print("--dry-run: ничего не записано")
         return 0
 
-    if missing:
-        # Матрица перезаписывается целиком, а не дописывается на месте: 48 МБ
-        # это дешевле, чем рисковать половиной записи в файл, из которого
-        # сервис читает на старте.
-        np.save(vectors_path, np.vstack([vectors, added]))
-        ids_path.write_text("\n".join(corpus.ids) + "\n", encoding="utf-8")
+    if not missing:
+        # Отчет описывает догон, а догонять было нечего, поэтому прежний отчет
+        # остается как есть. Перезапись превратила бы его в запись «заменили
+        # 62 606 на 62 606», то есть в поле, которое врет своим названием.
+        print(f"{args.report.name} оставлен прежним: догонять было нечего")
+        return 0
+
+    # Матрица перезаписывается целиком, а не дописывается на месте: 48 МБ это
+    # дешевле, чем рисковать половиной записи в файл, из которого сервис читает
+    # на старте.
+    np.save(vectors_path, np.vstack([vectors, added]))
+    ids_path.write_text("\n".join(corpus.ids) + "\n", encoding="utf-8")
     args.report.write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
