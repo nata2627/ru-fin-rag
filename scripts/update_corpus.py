@@ -17,7 +17,10 @@
 «О внесении изменений», которые в состав корпуса не берутся (решение части А).
 Это ограничение написано в README, а не спрятано.
 
-Отказ cbr.ru и поломка это разные вещи, и возвращаются они разными кодами.
+Отказ cbr.ru, пропавший выпуск и поломка это три разные вещи. Выпуск, которого
+нет по адресу из перечня (404), это свойство выпуска: его акты уходят в
+`skipped.json` с причиной и датой, а прогон идет к следующему выпуску. Отказ
+сайта и поломка возвращаются разными кодами.
 Сайт не ответил, ответил ошибкой или оборвал соединение: корпус на диске цел,
 докачивать нечего, код выхода 75 (`EXIT_SOURCE_UNAVAILABLE`), и ночной прогон
 после него продолжает переиндексацию, регрессию и отметку живости. Сайт
@@ -34,6 +37,7 @@ import argparse
 import gzip
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -52,6 +56,16 @@ SKIPPED_FILE = "corpus/skipped.json"
 # Отдельный код выхода под отказ источника. 75 это EX_TEMPFAIL из `sysexits.h`:
 # «попробуй позже», ровно тот смысл, который здесь и нужен.
 EXIT_SOURCE_UNAVAILABLE = 75
+# Код ответа достается из текста ошибки: вежливый клиент части А заворачивает
+# исключение requests в `RuntimeError` и сам объект наружу не отдает. Разбор
+# держится на формате сообщения requests, поэтому неузнанный текст считается
+# отказом сайта, то есть более осторожным из двух толкований.
+HTTP_CODE = re.compile(r"\b(\d{3}) (?:Client|Server) Error\b")
+
+
+def http_code(err: Exception) -> int | None:
+    found = HTTP_CODE.search(str(err))
+    return int(found.group(1)) if found else None
 
 
 def known_acts(path: Path) -> set[str]:
@@ -138,8 +152,6 @@ def main() -> int:
     )
     parser.add_argument("--out", type=Path, default=ROOT / "results/corpus-update.json")
     args = parser.parse_args()
-
-    import re
 
     from rufin.chunking import TokenRuler
     from rufin.http import Client
@@ -261,10 +273,18 @@ def main() -> int:
             try:
                 pdf.write_bytes(client.get(info["url"]).content)
             except RuntimeError as err:
-                # Выпуск не дался: собранное до этого места сохраняем, остальное
-                # возьмет следующий прогон. В `skipped.json` такой акт не
-                # пишется: причина в сайте, а не в акте, и помнить ее как
-                # свойство акта значило бы больше его не пробовать.
+                if http_code(err) == 404:
+                    # Выпуска нет по адресу из перечня. Это свойство выпуска, а
+                    # не отказ сайта, поэтому его акты уходят в `skipped.json` с
+                    # причиной и датой, и прогон идет к следующему выпуску.
+                    # Иначе он возвращался бы к этому адресу каждую ночь и
+                    # останавливался на нем, не доходя до остальных выпусков.
+                    for key, _ in info["want"].values():
+                        drop(key, "выпуск не найден на cbr.ru")
+                    continue
+                # Сайт отказал или не ответил: собранное до этого места
+                # сохраняем, остальное возьмет следующий прогон. В
+                # `skipped.json` такой акт не пишется, причина не в нем.
                 report["status"] = "source_unavailable"
                 report["source_error"] = str(err)
                 break
