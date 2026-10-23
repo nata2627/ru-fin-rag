@@ -28,6 +28,16 @@ def ru(value: float, digits: int = 2) -> str:
     return f"{value:.{digits}f}".replace(".", ",")
 
 
+def ru_spaced(value: float, digits: int = 1) -> str:
+    """То же, но с пробелом в разрядах от десяти тысяч.
+
+    Порог ровно там, где он стоит в текстах проекта: «1554 акта» без пробела,
+    «62 594 фрагмента» с пробелом.
+    """
+    text = f"{value:,.{digits}f}" if abs(value) >= 10_000 else f"{value:.{digits}f}"
+    return text.replace(",", " ").replace(".", ",")
+
+
 def load(name: str) -> dict:
     return json.loads((RESULTS / name).read_text(encoding="utf-8"))
 
@@ -50,6 +60,7 @@ def checks() -> list[tuple[str, str, str]]:
     load_report = load("load.json")
     warehouse = load("warehouse.json")
     drain = load("events-rehearsal.json")
+    logging_report = load("logging.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
     out: list[tuple[str, str, str]] = []
@@ -312,6 +323,82 @@ def checks() -> list[tuple[str, str, str]]:
                 f"{ru(search['rps'], 1)}",
             )
         )
+    writer = {row["threads"]: row for row in logging_report["writer"]["runs"]}
+    out.append(
+        (
+            "запись журнала в один поток",
+            "logging.json",
+            f"{ru_spaced(writer[1]['median_events_per_second'])} события в секунду, "
+            f"{ru(writer[1]['median_us_per_event'], 2)} мкс",
+        )
+    )
+    out.append(
+        (
+            "запись журнала в восемь потоков",
+            "logging.json",
+            f"{ru_spaced(writer[8]['median_events_per_second'])} события в секунду",
+        )
+    )
+    gap = logging_report["request"]["difference_p50"]
+    out.append(
+        (
+            "цена журнала в задержке запроса",
+            "logging.json",
+            f"{'минус' if gap['point_ms'] < 0 else 'плюс'} {ru(abs(gap['point_ms']), 3)} мс "
+            f"с интервалом [{ru(gap['lo_ms'], 3)}; {ru(gap['hi_ms'], 3)}] мс",
+        )
+    )
+    shapes = logging_report["size"]["groups"]
+    out.append(
+        (
+            "обычное событие журнала",
+            "logging.json",
+            f"{ru_spaced(shapes['answered-top10']['mean_bytes'])} байта",
+        )
+    )
+    out.append(
+        (
+            "худшее событие журнала",
+            "logging.json",
+            f"{ru_spaced(shapes['answered-top50']['mean_bytes'])} байта",
+        )
+    )
+    month = logging_report["month"]["levels"]
+    base = month[str(logging_report["month"]["base_per_day"])]
+    out.append(("месяц журнала сырыми", "logging.json", f"{ru(base['raw_mb'], 2)} МБ"))
+    out.append(("месяц журнала после gzip", "logging.json", f"{ru(base['gzip_mb'], 2)} МБ"))
+    out.append(
+        (
+            "месяц журнала при десяти тысячах",
+            "logging.json",
+            f"{ru(month['10000']['raw_mb'], 2)} МБ",
+        )
+    )
+    out.append(
+        ("сжатие журнала", "logging.json", f"{ru(logging_report['month']['gzip_ratio'], 2)} раза")
+    )
+    failure = logging_report["failure"]
+    out.append(
+        (
+            "сервис при отказе журнала",
+            "logging.json",
+            f"{failure['answered_200']} из {failure['requests']} запросов с кодом 200",
+        )
+    )
+    out.append(
+        (
+            "отказов записи при недоступном каталоге",
+            "logging.json",
+            f"{failure['event_log']['failed']} из {failure['write_attempts']} попыток",
+        )
+    )
+    out.append(
+        (
+            "задержка запроса в замере журнала",
+            "logging.json",
+            f"{ru(logging_report['request']['on']['p50_ms'], 3)} мс",
+        )
+    )
     return out
 
 
