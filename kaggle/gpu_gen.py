@@ -120,7 +120,8 @@ def body_of(chunk: dict) -> str:
 
 def load_llm(model_path: str, dtype: str = "float16", quantization: str | None = None,
              tensor_parallel: int = 1, max_model_len: int = 4096,
-             gpu_memory_utilization: float = 0.90, prefix_caching: bool = False):
+             gpu_memory_utilization: float = 0.90, prefix_caching: bool = False,
+             max_num_seqs: int = 0, seed: int = 0):
     """Поднять vLLM.
 
     Тип данных задаётся явно: на Turing нет bf16, и «auto» у модели,
@@ -148,9 +149,20 @@ def load_llm(model_path: str, dtype: str = "float16", quantization: str | None =
         kwargs["enable_prefix_caching"] = True
     if quantization:
         kwargs["quantization"] = quantization
+    # Сколько подсказок движок держит в работе разом. На судье в тридцать два
+    # миллиарда параметров и двух картах кэш ключей тесный, и значение по
+    # умолчанию (256) движок урезал бы сам, но молча; здесь он урезан явно
+    # и попадает в метаданные прогона.
+    if max_num_seqs:
+        kwargs["max_num_seqs"] = max_num_seqs
+    # Семя закрепляется затем, что воспроизводимость разметки это одно из трех
+    # чисел ее приемки. При нулевой температуре оно почти ничего не меняет,
+    # но «почти» в метаданные не напишешь.
+    if seed:
+        kwargs["seed"] = seed
     print(f"поднимаю vLLM: {model_path} ({dtype}"
           + (f", {quantization}" if quantization else "")
-          + f", карт {tensor_parallel})", flush=True)
+          + f", карт {tensor_parallel}, память {gpu_memory_utilization})", flush=True)
     return LLM(**kwargs)
 
 
@@ -159,8 +171,16 @@ def _clean(text: str) -> str:
     return text.split("\n")[0].strip(" \"'«»")
 
 
-def _chat(tok, задание: str) -> str:
+def _chat(tok, задание: str, system: str = SYSTEM) -> str:
     """Собрать запрос по шаблону модели, пережив отсутствие системной роли.
+
+    Наставление передается параметром, а не берется из константы модуля.
+    Пока его не было, судья вызывал `_chat` и получал системное сообщение
+    генератора вопросов («помогаешь составить набор проверочных вопросов»),
+    а своего собственного не получал вовсе: вся его инструкция доезжала
+    только внутри задания. Разметка от этого не рассыпалась, но системное
+    сообщение судьи в подсказке отсутствовало, и назвать прогон
+    воспроизводимым по коду было нельзя.
 
     Шаблоны разных семейств несовместимы, и это не мелочь оформления.
     Qwen принимает системную роль, а Mistral-7B-Instruct требует строгого
@@ -176,12 +196,12 @@ def _chat(tok, задание: str) -> str:
     """
     try:
         return tok.apply_chat_template(
-            [{"role": "system", "content": SYSTEM},
+            [{"role": "system", "content": system},
              {"role": "user", "content": задание}],
             tokenize=False, add_generation_prompt=True)
     except Exception:
         return tok.apply_chat_template(
-            [{"role": "user", "content": SYSTEM + "\n\n" + задание}],
+            [{"role": "user", "content": system + "\n\n" + задание}],
             tokenize=False, add_generation_prompt=True)
 
 
