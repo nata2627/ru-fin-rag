@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -53,6 +53,7 @@ help:
 	@echo "  queries      собрать тексты запросов для прогона (эталоны не нужны)"
 	@echo "  pool         лист разметки по объединённым выдачам всех конфигураций"
 	@echo "  pool-live    пул полноты разметки по живым вопросам (задание судье)"
+	@echo "  judge-reproduction  тот же судья на тех же парах, другой стек вывода"
 	@echo "  judge-candidates  согласие судей-кандидатов с человеком, порог 0,40"
 	@echo "  pool-coverage     сколько в первой десятке размечено, границы незнания"
 	@echo "  act-filter   прибавка фильтра по номеру акта на живых вопросах"
@@ -207,6 +208,10 @@ sample-for-human:
 
 kappa:
 	$(PY) scripts/kappa.py
+
+# Воспроизводим ли судья: та же модель и те же 150 пар на другом стеке вывода.
+judge-reproduction:
+	$(PY) scripts/judge_reproduction.py
 
 # Сборке разметки предшествует сверка нарезок: если под эталонным фрагментом
 # лежит не тот текст, по которому писался вопрос, метрики будут бессмысленны,
