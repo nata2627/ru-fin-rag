@@ -36,5 +36,33 @@ services:
         limits:
           memory: 2g
 
+  # Хранилище логов на стройке. В бесплатном режиме этого сервиса нет вовсе:
+  # события остаются файлами JSONL в репозитории, и считает по ним chdb, тот же
+  # движок внутри процесса (src/rufinrag/warehouse.py).
+  clickhouse:
+    profiles: ["logs"]
+    image: clickhouse/clickhouse-server:25.8-alpine
+    ports:
+      - "8123:8123"
+    volumes:
+      - clickhouse_storage:/var/lib/clickhouse
+    environment:
+      # Пользователь без пароля и база для журнала. Сервер поднимается только
+      # на стройке и слушает localhost, наружу он не выходит.
+      CLICKHOUSE_DB: rufinrag
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    # По умолчанию ClickHouse забирает под кэши долю всей памяти машины, а на
+    # маке с восьмью гигабайтами это уводит систему в подкачку.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
 volumes:
   qdrant_storage:
+  clickhouse_storage:
