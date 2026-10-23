@@ -41,6 +41,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--judge", default=os.path.join(QDIR, "judge.tsv"))
     ap.add_argument("--human", default=os.path.join(QDIR, "human_sample.tsv"))
+    ap.add_argument("--out", default=REPORT,
+                    help="куда писать отчёт. Своё имя нужно всякому замеру, "
+                         "кроме опубликованного: иначе проверка другого судьи "
+                         "затирает число, которое стоит в карточке набора")
     args = ap.parse_args()
 
     for path in (args.judge, args.human):
@@ -91,8 +95,8 @@ def main() -> None:
     say()
     say("число идёт в README.md и DATASET_CARD.md")
 
-    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
-    with open(REPORT, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
