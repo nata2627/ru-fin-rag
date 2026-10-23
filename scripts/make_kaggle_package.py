@@ -40,6 +40,8 @@ QUERIES = [
     "data/queries/synthetic_dev.jsonl",
     "data/queries/qrels.tsv",
     "data/queries/podvyborki.json",
+    # опыт с номерами актов: варианты живых вопросов
+    "data/queries/live_variants.jsonl",
 ]
 
 # модули проекта, которые нужны на видеокарте

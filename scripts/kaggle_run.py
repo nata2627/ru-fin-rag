@@ -27,6 +27,10 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from make_kaggle_package import QUERIES  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DIST = os.path.join(ROOT, "dist")
 PKG = os.path.join(DIST, "kaggle")
@@ -127,7 +131,8 @@ def push_dataset(user: str, folder: str, slug: str, title: str, message: str) ->
         raise SystemExit("не удалось загрузить датасет")
 
 
-def notebook_from_script(script: str, args_line: str) -> dict:
+def notebook_from_script(script: str, args_line: str,
+                         packages: tuple[str, ...] = ("sentence-transformers",)) -> dict:
     """Ноутбук из двух ячеек: подготовка окружения и запуск скрипта этапа."""
     setup = [
         "import glob, os, shutil, subprocess, sys, zipfile\n",
@@ -145,8 +150,22 @@ def notebook_from_script(script: str, args_line: str) -> dict:
         "except Exception as e:\n",
         "    print('токен HuggingFace недоступен, скачивание будет медленным:', e)\n",
         "\n",
-        "subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-U',\n",
-        "                'sentence-transformers'], check=False)\n",
+        f"ПАКЕТЫ = {list(packages)!r}\n",
+        "for пакет in ПАКЕТЫ:\n",
+        "    print('ставлю', пакет, flush=True)\n",
+        "    subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-U',\n",
+        "                    пакет], check=False)\n",
+        "\n",
+        "# Импорт проверяется свежим процессом, а не здесь: установка vLLM\n",
+        "# обновляет torch вместе с библиотеками CUDA, а уже загруженный в этот\n",
+        "# процесс старый torch держит прежнюю версию. Падать на этом надо\n",
+        "# на второй минуте, а не на третьем часу счёта.\n",
+        "код = 'import ' + ', '.join(п.replace('-', '_') for п in ПАКЕТЫ)\n",
+        "проба = subprocess.run([sys.executable, '-c', код + \"; print('ок')\"],\n",
+        "                       capture_output=True, text=True)\n",
+        "assert проба.returncode == 0, ('не импортируется то, что поставлено: '\n",
+        "                               + проба.stderr[-1500:])\n",
+        "print('библиотеки на месте:', ', '.join(ПАКЕТЫ))\n",
         "\n",
         "# Вывод предыдущего этапа тоже лежит среди входов и содержит копию кода:\n",
         "# ноутбук этапа A копировал датасет в рабочую папку, и всё это стало его\n",
@@ -232,7 +251,8 @@ def notebook_from_script(script: str, args_line: str) -> dict:
 def push_kernel(user: str, slug: str, title: str, script: str, script_args: str,
                 dataset_sources: list[str], kernel_sources: list[str],
                 gpu: bool = True, machine: str = "", notebook: str = "",
-                model_sources: list[str] | None = None) -> str:
+                model_sources: list[str] | None = None,
+                packages: tuple[str, ...] = ("sentence-transformers",)) -> str:
     folder = os.path.join(DIST, "kernel_" + slug)
     shutil.rmtree(folder, ignore_errors=True)
     os.makedirs(folder)
@@ -246,7 +266,7 @@ def push_kernel(user: str, slug: str, title: str, script: str, script_args: str,
         print(f"  тетрадь: {os.path.relpath(notebook, ROOT)}")
     else:
         with open(os.path.join(folder, "run.ipynb"), "w", encoding="utf-8") as f:
-            json.dump(notebook_from_script(script, script_args), f,
+            json.dump(notebook_from_script(script, script_args, packages), f,
                       ensure_ascii=False, indent=1)
     # machine_shape задаёт конфигурацию узла. Пустое значение означает выбор
     # по умолчанию — узел с двумя T4, который дефицитнее и потому дольше ждёт
@@ -375,10 +395,15 @@ def main() -> None:
         # Этапу D нужны ещё обучающая выборка, dev, разметка и состав
         # подвыборок: dev на видеокарте обязан считаться тем же составом
         # и тем же эталоном, что в локальном отчёте.
-        for name in ("queries.jsonl", "split.json", "pool_candidates.tsv",
-                     "synthetic_train.jsonl", "synthetic_dev.jsonl",
-                     "qrels.tsv", "podvyborki.json", "live_variants.jsonl"):
-            src = os.path.join(ROOT, "data", "queries", name)
+        #
+        # Список один и лежит в `make_kaggle_package`. Второй копии здесь
+        # быть не должно: она была, и они разошлись молча — лист пула живых
+        # вопросов остался только в той, которой собирается архив для
+        # браузера, а команда `queries` увозила датасет без него. Судье
+        # было бы нечего размечать, и выяснилось бы это на карте.
+        for rel in QUERIES:
+            name = os.path.basename(rel)
+            src = os.path.join(ROOT, rel)
             if os.path.exists(src):
                 shutil.copy2(src, folder)
             elif name == "queries.jsonl":
@@ -518,8 +543,13 @@ def main() -> None:
         # Этапу C модель нужна только когда он поднимает судью, и только эта:
         # генерация запросов идёт своими моделями, а монтирование десяти
         # гигабайтов перед каждым прогоном стоит минут впустую.
+        packages = ("sentence-transformers",)
         if args.stage == "c" and "--judge" in args.args:
             models = [MODELS["judge"]]
+            # Судью поднимает vLLM, а его в образе Kaggle нет. Прежде это
+            # значило, что команда из docs/11-polnota-razmetki.md падала
+            # на импорте уже на карте.
+            packages = ("vllm", "sentence-transformers")
         # Опыту нужна только исходная модель ученика: учитель весит 2,29 ГБ,
         # и Kaggle монтирует его перед каждым запуском впустую.
         if args.stage == "variants":
@@ -528,7 +558,7 @@ def main() -> None:
             kernels = list(kernels) + [k if "/" in k else f"{user}/{k}"
                                        for k in args.kernels]
         ref = push_kernel(user, slug, title, script, args.args, datasets, kernels,
-                          gpu, args.machine, args.notebook or "", models)
+                          gpu, args.machine, args.notebook or "", models, packages)
         if not args.no_wait:
             state = wait(ref)
             print(f"\nсостояние: {state}")
