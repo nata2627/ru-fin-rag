@@ -301,6 +301,12 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
               f"обучение пойдёт без него", flush=True)
         параметры.pop(k)
     args = SentenceTransformerTrainingArguments(**параметры)
+    # Пик видеопамяти меряется, а не предполагается: в песочнице, где
+    # обучение идет на RTX 3070, карту делит с нами рабочий стол Windows,
+    # и остаток известен числом. Счетчик обнуляется здесь, чтобы в отчет
+    # попал пик обучения, а не пик предыдущего шага.
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
     # При двух наборах передаётся DatasetDict, а не обычный словарь: ключи
     # набора и ключи функций потерь обязаны совпасть, и DatasetDict это
     # требование выражает, а не подразумевает.
@@ -315,8 +321,12 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
     result = trainer.train()
     seconds = time.time() - t0
 
+    пик = round(torch.cuda.max_memory_reserved() / 1048576, 1) \
+        if torch.cuda.is_available() else 0.0
+
     if замер_шагов:
         return {"метка": cfg.tag, "секунд": round(seconds, 1),
+                "пик видеопамяти МБ": пик,
                 "шагов": int(result.global_step),
                 "секунд на шаг": round(seconds / max(result.global_step, 1), 2),
                 "батч": cfg.batch, "накопление": cfg.accumulate,
@@ -337,10 +347,12 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
         "веса": out_dir,
         "устройство": "cuda" if torch.cuda.is_available() else "cpu",
         "точность": "fp32",
+        "пик видеопамяти МБ": пик,
     }
     with open(os.path.join(out_dir, "obuchenie.json"), "w", encoding="utf-8") as f:
         json.dump({"конфигурация": cfg.as_dict(), "отчёт": отчёт}, f,
                   ensure_ascii=False, indent=1)
     print(f"[{cfg.tag}] обучено за {seconds / 60:.1f} мин, шагов "
-          f"{отчёт['шагов']}, лосс {отчёт['лосс']}", flush=True)
+          f"{отчёт['шагов']}, лосс {отчёт['лосс']}, пик видеопамяти "
+          f"{пик:.0f} МБ", flush=True)
     return отчёт
