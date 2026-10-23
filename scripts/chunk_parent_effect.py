@@ -49,6 +49,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 QDIR = os.path.join(ROOT, "data", "queries")
 RUNDIR = os.path.join(ROOT, "data", "runs")
 CHUNKDIR = os.path.join(ROOT, "data", "chunks")
+ACTS = os.path.join(ROOT, "data", "corpus", "acts.jsonl")
 REPORT = os.path.join(ROOT, "docs", "raw", "chunk_parent_effect.txt")
 RESULT = os.path.join(ROOT, "data", "results", "chunk-parent.json")
 
@@ -66,6 +67,7 @@ BRANCHES = {
     "no-heading": os.path.join(CHUNKDIR, "local", "no-heading.jsonl"),
     "fine-local": os.path.join(CHUNKDIR, "local", "size-256.jsonl"),
     "fine-no-heading": os.path.join(CHUNKDIR, "local", "size-256-no-heading.jsonl"),
+    "no-section": os.path.join(CHUNKDIR, "local", "no-section.jsonl"),
 }
 # Что с чем сравнивается и что из этого читается. Локальные ветви сравниваются
 # между собой: версия токенизатора локально и на Kaggle разная, границы
@@ -74,6 +76,7 @@ PAIRS = (
     ("size-256", "base", "мелкая нарезка с подъемом к родителю, кагловская сборка"),
     ("fine-local", "base-local", "то же в локальной сборке"),
     ("no-heading", "base-local", "цена шапки при размере 512"),
+    ("no-section", "base-local", "цена названия раздела в шапке при размере 512"),
     ("fine-no-heading", "fine-local", "цена шапки при размере 256"),
     ("fine-no-heading", "no-heading", "мелкая нарезка там, где шапки нет вовсе"),
     ("base-local", "base", "контроль: локальная сборка против кагловской"),
@@ -94,15 +97,43 @@ def read_chunks(path: str):
 def heading_share(rec: dict) -> float | None:
     """Какую долю символов фрагмента занимает шапка.
 
-    Шапка опознается по номеру акта в первой строке, а не по первому пустому
-    абзацу: у фрагментов без шапки первый абзац это уже текст, и доля
-    получилась бы выдуманной. Нужно для механизма: шапке отводится доля
-    чанка, и при 256 токенах она съедает вдвое больше, чем при 512.
+    Шапка опознается по своей дословной формуле «... Банка России № номер
+    от дата», а не по первому пустому абзацу: у фрагмента без шапки первый
+    абзац это уже текст акта, и доля получилась бы выдуманной. Одного номера
+    тоже мало, акт называет сам себя в тексте: по номеру в первом абзаце
+    «шапка» находилась у 2535 фрагментов нарезки, собранной без шапок вовсе.
+
+    Нужно для механизма: шапке отводится доля чанка, и при 256 токенах она
+    съедает вдвое больше места, чем при 512.
     """
     head = rec["text"].split("\n\n", 1)[0]
-    if f"№ {rec['number']}" not in head:
+    if f"Банка России № {rec['number']} от {rec['date']}" not in head:
         return None
     return len(head) / len(rec["text"])
+
+
+def body_of(rec: dict) -> str:
+    """Текст фрагмента без шапки."""
+    head, _, tail = rec["text"].partition("\n\n")
+    formula = f"Банка России № {rec['number']} от {rec['date']}"
+    return tail if formula in head else rec["text"]
+
+
+def span_is_solid(rec: dict, act_text: str) -> bool:
+    """Лежит ли текст фрагмента непрерывно внутри своего диапазона.
+
+    Проверка нужна потому, что подъем к родителю считается по диапазону.
+    У редких фрагментов он шире текста: перекрытие переносит пункт в
+    следующий фрагмент через длинный пункт, который нарезан отдельно, и
+    тогда между первым и последним пунктом фрагмента остается пропуск.
+    Для таких фрагментов родитель может быть выбран по тексту, которого
+    во фрагменте нет, и доля таких случаев должна быть напечатана, а не
+    предполагаться малой.
+    """
+    body = body_of(rec).strip()
+    if not body:
+        return True
+    return body[:60] in act_text[rec["char_start"]:rec["char_end"]]
 
 
 def load_run(path: str) -> dict[str, list[str]]:
@@ -115,6 +146,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*", help="считать только названные ветви")
     ap.add_argument("--subsets", nargs="*", default=["заголовочная", "живые"])
+    ap.add_argument("--span-stride", type=int, default=97,
+                    help="шаг проверки символьных границ по тексту актов")
     args = ap.parse_args()
 
     lines: list[str] = []
@@ -155,6 +188,11 @@ def main() -> None:
     say(f"базовая нарезка: фрагментов {len(base_ids)}, актов {len(parents.by_act)}, "
         f"индекс родителей за {time.time() - t0:.0f} с")
 
+    acts: dict[str, str] = {}
+    if args.span_stride:
+        acts = {a["act_id"]: a["text"] for a in read_chunks(ACTS)}
+        say(f"тексты актов прочитаны: {len(acts)}")
+
     runs: dict[str, dict[str, list[str]]] = {}
     shallow: dict[str, dict[str, list[str]]] = {}
     report: dict[str, dict] = {}
@@ -164,15 +202,30 @@ def main() -> None:
         ids, texts, meta = [], [], {}
         outside = 0
         heads: list[float] = []
+        covered: list[float] = []
+        solid = checked = 0
         for rec in read_chunks(path):
             ids.append(rec["chunk_id"])
             texts.append(rec["text"])
             meta[rec["chunk_id"]] = (rec["act_id"], rec["char_start"], rec["char_end"])
             if rec["act_id"] not in parents.by_act:
                 outside += 1
+            if acts and len(ids) % args.span_stride == 1:
+                checked += 1
+                solid += span_is_solid(rec, acts[rec["act_id"]])
             share = heading_share(rec)
             if share is not None:
                 heads.append(share)
+            # Покрытие: какую долю мелкого фрагмента родитель действительно
+            # содержит. Если оно низкое, подъем уводит выдачу в чужой текст,
+            # и сравнение уровней мерило бы ошибку сопоставления.
+            parent = parents.best_parent(rec["act_id"], rec["char_start"],
+                                         rec["char_end"])
+            if parent is not None and rec["char_end"] > rec["char_start"]:
+                overlap = (min(rec["char_end"], parent.end)
+                           - max(rec["char_start"], parent.start))
+                covered.append(max(0.0, overlap)
+                               / (rec["char_end"] - rec["char_start"]))
         index = BM25Index.build(ids, texts)
         del texts
         head_share = statistics.median(heads) if heads else 0.0
@@ -181,6 +234,13 @@ def main() -> None:
             + (f", актов вне базовой нарезки: {outside}" if outside else ""))
         say(f"{'':<11} символов фрагмента под шапкой: медиана "
             f"{100 * head_share:.0f}% (фрагментов с шапкой {len(heads)} из {len(ids)})")
+        if checked:
+            say(f"{'':<11} текст лежит в своем диапазоне непрерывно у {solid} "
+                f"из {checked} проверенных фрагментов")
+        poor = sum(1 for c in covered if c < 0.5)
+        say(f"{'':<11} родитель покрывает фрагмент: медиана "
+            f"{100 * statistics.median(covered):.0f}%, "
+            f"меньше половины у {poor} фрагментов из {len(covered)}")
 
         deep_run: dict[str, list[str]] = {}
         for qid in qids:
@@ -203,6 +263,10 @@ def main() -> None:
             "фрагментов": len(ids),
             "доля символов под шапкой, медиана": round(head_share, 4),
             "фрагментов с шапкой": len(heads),
+            "покрытие родителем, медиана": round(statistics.median(covered), 4),
+            "покрытие меньше половины": poor,
+            "границы проверены": checked,
+            "границы непрерывны": solid,
             "индекс МБ": round(index.size_mb, 1),
             "разных родителей в первых 50": {
                 "медиана": float(statistics.median(distinct)),
@@ -276,32 +340,19 @@ def main() -> None:
             diffs.append(row)
         say()
 
-    # Чувствительность к глубине ступени: на глубине 50 мелкая ветвь берет
+    # Чувствительность к глубине ступени. На глубине 50 мелкая ветвь берет
     # из своего индекса столько же позиций, сколько базовая, но родителей
-    # у нее выходит меньше. Вторая строка показывает, сколько из прибавки
-    # (или потери) держится именно на глубине чтения.
-    say(f"то же на глубине ступени {SHALLOW} вместо {DEEP}:")
-    shallow_rows = []
-    for cand, base, note in PAIRS:
-        if cand not in shallow or base not in shallow:
-            continue
-        for part_name, part in parts.items():
-            a = M.per_query({q: shallow[cand][q] for q in part},
-                            {q: qrels[q] for q in part})
-            b = M.per_query({q: shallow[base][q] for q in part},
-                            {q: qrels[q] for q in part})
-            row = {"ветвь": cand, "против": base, "подвыборка": part_name,
-                   "глубина": SHALLOW}
-            out = []
-            for m in METRICS:
-                diff, p = M.paired_diff_ci(a[m], b[m])
-                out.append(f"{m} {diff} p={p:.3f}"
-                           + (" *" if diff.lo * diff.hi > 0 else ""))
-                row[m] = {"diff": round(diff.mean, 4), "lo": round(diff.lo, 4),
-                          "hi": round(diff.hi, 4), "p": round(p, 4)}
-            say(f"    {cand:<11} против {base:<11} {part_name:<14} ({len(part):>3}) "
-                + "   ".join(out))
-            shallow_rows.append(row)
+    # у нее выходит меньше. Если первая десятка родителей от глубины чтения
+    # не зависит, печатается одна строка: таблица, повторяющая предыдущую
+    # цифра в цифру, читалась бы как ошибка, а не как проверка.
+    say(f"чувствительность к глубине чтения ({SHALLOW} против {DEEP}): "
+        "запросов, где первая десятка родителей разошлась")
+    depth_rows = {}
+    for name in runs:
+        differ = sum(1 for q in qids if runs[name][q] != shallow[name][q])
+        depth_rows[name] = differ
+        say(f"    {name:<16} {differ} из {len(qids)}")
+    say()
     say()
     (a_cand, a_base), (b_cand, b_base) = INTERACTION
     interaction = []
@@ -333,7 +384,7 @@ def main() -> None:
                    "глубина чтения": DEEP, "глубина ступени": SHALLOW,
                    "родителей в выдаче": TOP,
                    "ветви": report, "уровни": levels,
-                   "прибавка": diffs, "прибавка на глубине 50": shallow_rows,
+                   "прибавка": diffs, "разошлось при глубине 50": depth_rows,
                    "взаимодействие размера и шапки": interaction},
                   f, ensure_ascii=False, indent=2)
     say()

@@ -143,7 +143,7 @@ _KIND_PREFIX = re.compile(
 
 
 def _header(act: dict, section: str, ruler: "TokenRuler | None" = None,
-            max_tokens: int | None = None) -> str:
+            max_tokens: int | None = None, add_section: bool = True) -> str:
     """Шапка, приписываемая к чанку: чей это акт и какой раздел.
 
     Номер и дата идут первыми и не обрезаются никогда: по ним акт и опознают.
@@ -154,7 +154,7 @@ def _header(act: dict, section: str, ruler: "TokenRuler | None" = None,
     kind = act["kind"].capitalize()
     stem = f"{kind} Банка России № {act['number']} от {act['date']}"
     title = _KIND_PREFIX.sub("", act["title"].strip()).strip(' "«»')
-    tail = f". {section}" if section else ""
+    tail = f". {section}" if section and add_section else ""
 
     if ruler is None or not max_tokens:
         return f"{stem}. {title}{tail}"
@@ -186,12 +186,15 @@ def _split_long(text: str, ruler: TokenRuler, size: int, overlap: int,
 
 
 def chunk_act(act: dict, ruler: TokenRuler, *, size: int = 512, overlap_share: float = 0.15,
-              strategy: str = "structure", add_heading: bool = True) -> list[Chunk]:
+              strategy: str = "structure", add_heading: bool = True,
+              add_section: bool = True) -> list[Chunk]:
     """Нарезать один акт.
 
     size — целевая длина чанка в токенах; overlap_share — доля перекрытия;
     strategy — «structure» или «length»; add_heading — приписывать ли шапку
-    с названием акта и раздела (проверяется отдельной абляцией).
+    с названием акта и раздела, add_section — входит ли в шапку название
+    раздела (обе проверяются отдельными абляциями). Поле `section` в чанке
+    заполняется всегда: оно метаданные, а не текст для поиска.
     """
     overlap = int(size * overlap_share)
     text = act["text"]
@@ -208,7 +211,7 @@ def chunk_act(act: dict, ruler: TokenRuler, *, size: int = 512, overlap_share: f
 
     def header_for(section: str) -> tuple[str, int]:
         if section not in head_cache:
-            h = _header(act, section, ruler, max_head)
+            h = _header(act, section, ruler, max_head, add_section)
             head_cache[section] = (h, ruler.count(f"{h}\n\n"))
         return head_cache[section]
 
