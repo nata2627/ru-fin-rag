@@ -3,26 +3,26 @@
   "machine": "arm64 Darwin 25.6.0",
   "python": "3.11.6",
   "device": "cpu",
-  "corpus_version": "chunks62594-acts1554",
-  "load_seconds": 4.15,
-  "rss_after_load_mb": 809.9,
+  "corpus_version": "chunks62606-acts1555",
+  "load_seconds": 1.27,
+  "rss_after_load_mb": 178.9,
   "configs": {
     "bm25": {
       "config_version": "bm25+bm25+cand50",
       "measured_at": "2026-10-23",
       "queries": 20,
       "warmup_queries": 3,
-      "p50_ms": 1.79,
-      "p95_ms": 4.73,
-      "max_ms": 16.63,
+      "p50_ms": 1.54,
+      "p95_ms": 2.68,
+      "max_ms": 3.12,
       "stages_p50_ms": {
-        "bm25": 1.79
+        "bm25": 1.54
       },
-      "rss_peak_mb": 809.9,
+      "rss_peak_mb": 192.1,
       "replaced": {
-        "measured_at": "2026-10-21",
-        "p50_ms": 1.06,
-        "p95_ms": 2.5
+        "measured_at": "2026-10-23",
+        "p50_ms": 1.79,
+        "p95_ms": 4.73
       }
     },
     "dense": {
@@ -92,8 +92,9 @@
     "note": "медиана по тем же запросам, микросекунды на запрос",
     "queries": 20,
     "tokens_p50": 12,
-    "forms_us_p50": 5.4,
-    "stemmed_cold_us_p50": 293.6,
-    "stemmed_warm_us_p50": 6.2
-  }
+    "forms_us_p50": 6.9,
+    "stemmed_cold_us_p50": 288.5,
+    "stemmed_warm_us_p50": 8.0
+  },
+  "loaded": "только лексическая ступень"
 }
