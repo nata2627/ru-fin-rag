@@ -163,3 +163,38 @@ def test_http_code_tells_a_missing_issue_from_a_refusing_site():
     assert update_corpus.http_code(RuntimeError(refusal)) == 403
     assert update_corpus.http_code(RuntimeError(missing)) == 404
     assert update_corpus.http_code(RuntimeError(broken_pipe)) is None
+
+
+def test_repeat_run_asks_for_no_act_twice():
+    """Второй прогон на том же перечне обязан вернуть пустой разбор.
+
+    Это и есть идемпотентность докачки: ключ «номер плюс дата» сверяется с
+    корпусом, и акт, который уже лежит в корпусе, в разбор не попадает.
+    """
+    wanted = [
+        {"number": "9999-П", "date": "01.10.2026", "title": "О порядке"},
+        {"number": "1234-У", "date": "02.10.2026", "title": "О сроках"},
+    ]
+    first = update_corpus.pending_acts(wanted, set(), set(), lambda number: number)
+    assert sorted(first) == ["1234-У_02102026", "9999-П_01102026"]
+
+    added_to_corpus = set(first)
+    assert update_corpus.pending_acts(wanted, added_to_corpus, set(), lambda n: n) == {}
+
+
+def test_acts_that_did_not_give_in_are_not_asked_again():
+    """Память о неудачах тоже останавливает повтор: иначе 97 актов каждую ночь."""
+    wanted = [{"number": "9999-П", "date": "01.10.2026", "title": "О порядке"}]
+    blocked = {"9999-П_01102026"}
+    assert update_corpus.pending_acts(wanted, set(), blocked, lambda n: n) == {}
+
+
+def test_one_act_published_in_two_issues_is_taken_once():
+    """В перечне у cbr.ru такие позиции есть: 97 недостающих актов на 102 позиции."""
+    wanted = [
+        {"number": "9999-П", "date": "01.10.2026", "title": "О порядке", "issue": "1"},
+        {"number": "9999-П", "date": "01.10.2026", "title": "О порядке", "issue": "2"},
+    ]
+    assert list(update_corpus.pending_acts(wanted, set(), set(), lambda n: n)) == [
+        "9999-П_01102026"
+    ]

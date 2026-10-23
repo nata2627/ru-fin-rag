@@ -14,8 +14,8 @@ if ! "$PY" -c "import rufinrag" >/dev/null 2>&1; then
 fi
 
 echo "== ruff"
-"$PY" -m ruff check src tests
-"$PY" -m ruff format --check src tests
+"$PY" -m ruff check src tests dags
+"$PY" -m ruff format --check src tests dags
 
 echo "== pytest"
 "$PY" -m pytest
