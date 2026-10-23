@@ -346,8 +346,24 @@ def wait(ref: str, poll: int = 60, limit_hours: float = 12.0) -> str:
     return "timeout"
 
 
-def fetch(ref: str, dest: str) -> None:
+def fetch(ref: str, dest: str, только_лог: bool = False) -> None:
+    """Забрать вывод ядра. `только_лог` тащит один журнал прогона.
+
+    Журнал нужен чаще всего остального: по нему разбирают, почему ядро
+    упало. А вывод версии весит сотни мегабайт, и клиент тащит его целиком,
+    по одному файлу, без возможности остановиться. Разбор падения стоил
+    так восьми минут скачивания корпуса, который и уехал-то отсюда.
+    """
     os.makedirs(dest, exist_ok=True)
+    if только_лог:
+        # Отбор по имени есть только в питонном клиенте, у командного его нет.
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+        файлы, _ = api.kernels_output(ref, path=dest, file_pattern=r"\.log$",
+                                      quiet=False, force=True)
+        print("\n".join(файлы) or "журнала нет")
+        return
     r = run(["kaggle", "kernels", "output", ref, "-p", dest])
     print((r.stdout or r.stderr).strip())
 
@@ -394,6 +410,9 @@ def main() -> None:
     p = sub.add_parser("fetch", help="забрать результат")
     p.add_argument("slug")
     p.add_argument("--dest", default=os.path.join(ROOT, "data", "kaggle_out"))
+    p.add_argument("--log", action="store_true",
+                   help="только журнал прогона: по нему разбирают падение, "
+                        "а вывод версии весит сотни мегабайт")
 
     args = ap.parse_args()
     user = require_credentials()
@@ -612,7 +631,7 @@ def main() -> None:
 
     elif args.cmd == "fetch":
         ref = args.slug if "/" in args.slug else f"{user}/{args.slug}"
-        fetch(ref, args.dest)
+        fetch(ref, args.dest, args.log)
 
 
 if __name__ == "__main__":
