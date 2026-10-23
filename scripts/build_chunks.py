@@ -33,10 +33,24 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*", help="собрать только названные конфигурации")
     ap.add_argument("--limit", type=int, default=0, help="ограничить число актов (для пробы)")
+    # Нарезка, посчитанная здесь, не заменяет ту, по которой считались
+    # эмбеддинги: версия токенизатора другая и границы фрагментов сдвинутся.
+    # Для абляций, которые считаются целиком локально, нужна своя папка.
+    ap.add_argument("--outdir", help="писать не в data/chunks, а сюда")
     args = ap.parse_args()
 
-    os.makedirs(OUTDIR, exist_ok=True)
-    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+    outdir = args.outdir or OUTDIR
+    report = REPORT
+    if args.outdir:
+        # Имя отчета несет и папку, и состав прогона: иначе второй прогон
+        # с другими конфигурациями затрет числа первого. На таком затирании
+        # проект уже один раз потерял замер каппы.
+        part = "-".join(args.only or [c.name for c in GRID])
+        report = os.path.join(
+            os.path.dirname(REPORT),
+            f"build_chunks_{os.path.basename(args.outdir.rstrip('/'))}_{part}.txt")
+    os.makedirs(outdir, exist_ok=True)
+    os.makedirs(os.path.dirname(report), exist_ok=True)
 
     from transformers import AutoTokenizer
     ruler = TokenRuler(AutoTokenizer.from_pretrained(TOKENIZER))
@@ -58,7 +72,7 @@ def main() -> None:
     configs = [c for c in GRID if not args.only or c.name in args.only]
     for cfg in configs:
         t0 = time.monotonic()
-        path = os.path.join(OUTDIR, f"{cfg.name}.jsonl")
+        path = os.path.join(outdir, f"{cfg.name}.jsonl")
         n, lens = 0, []
         with open(path, "w", encoding="utf-8") as f:
             for act in acts:
@@ -73,9 +87,9 @@ def main() -> None:
             + (f"  ПРЕВЫШЕНИЙ РАЗМЕРА: {over}" if over else "")
             + f"  [{time.monotonic() - t0:.0f} с]")
 
-    with open(REPORT, "w", encoding="utf-8") as f:
+    with open(report, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    say("\nчанки: data/chunks/, отчёт: docs/raw/build_chunks.txt")
+    say(f"\nчанки: {os.path.relpath(outdir, ROOT)}/, отчёт: {os.path.relpath(report, ROOT)}")
 
 
 if __name__ == "__main__":
