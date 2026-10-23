@@ -77,7 +77,8 @@ def main() -> None:
         with open(path, "w", encoding="utf-8") as f:
             for act in acts:
                 for ch in chunk_act(act, ruler, size=cfg.size, overlap_share=cfg.overlap,
-                                    strategy=cfg.strategy, add_heading=cfg.heading):
+                                    strategy=cfg.strategy, add_heading=cfg.heading,
+                                    add_section=cfg.section):
                     f.write(json.dumps(ch.as_dict(), ensure_ascii=False) + "\n")
                     n += 1
                     lens.append(ruler.count(ch.text))

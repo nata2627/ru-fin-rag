@@ -27,6 +27,10 @@ class ChunkConfig:
     overlap: float
     heading: bool
     note: str
+    # название раздела внутри шапки. Отделено от самой шапки, потому что
+    # задание спрашивает именно про заголовок раздела, а шапка несет еще и
+    # вид, номер, дату и название акта, и их вклад заметно больше.
+    section: bool = True
 
 
 BASE = ChunkConfig("base", "structure", 512, 0.15, True, "базовая конфигурация")
@@ -40,6 +44,8 @@ GRID: tuple[ChunkConfig, ...] = (
     ChunkConfig("no-heading", "structure", 512,  0.15, False, "без шапки с актом и разделом"),
     ChunkConfig("size-256-no-heading", "structure", 256, 0.15, False,
                 "мелкая нарезка без шапки: клетка 2x2 к size-256 и no-heading"),
+    ChunkConfig("no-section", "structure", 512, 0.15, True,
+                "шапка без названия раздела", section=False),
 )
 
 BY_NAME = {c.name: c for c in GRID}

@@ -49,6 +49,10 @@ class ParentIndex:
         return cls(parents)
 
     def parent_of(self, act_id: str, start: int, end: int) -> str | None:
+        best = self.best_parent(act_id, start, end)
+        return best.chunk_id if best is not None else None
+
+    def best_parent(self, act_id: str, start: int, end: int) -> "Span | None":
         spans = self.by_act.get(act_id)
         if not spans:
             return None
@@ -64,14 +68,13 @@ class ParentIndex:
             if overlap > best_overlap:
                 best, best_overlap = span, overlap
         if best is not None:
-            return best.chunk_id
+            return best
         # пересечения нет вовсе: такое бывает у куска, который целиком попал
         # в текст, не покрытый базовой нарезкой. Берем ближайшего по началу,
         # иначе позиция выдачи просто исчезнет и ветвь получит преимущество.
         place = min(bisect.bisect_left(starts, start), len(spans) - 1)
-        nearest = min(spans[max(0, place - 1):place + 2],
-                      key=lambda s: abs(s.start - start))
-        return nearest.chunk_id
+        return min(spans[max(0, place - 1):place + 2],
+                   key=lambda s: abs(s.start - start))
 
     def lift(self, ranked: list[str], meta: dict[str, tuple[str, int, int]],
              top: int) -> list[str]:
