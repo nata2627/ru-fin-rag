@@ -64,6 +64,16 @@ def chunks_of_groups(chunks: list[dict], split: dict, groups: list[str]) -> list
     return out
 
 
+def видимые_карты() -> list[int]:
+    """Карты, которые отдал движок. Проверяется до подъёма модели: отказ
+    через полчаса монтирования весов стоит дороже отказа сразу."""
+    try:
+        import torch
+        return list(range(torch.cuda.device_count()))
+    except Exception:
+        return []
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--acts", default=None)
@@ -104,6 +114,21 @@ def main() -> None:
                     help="разметить только первые N пар. Нужно пробе: скорость "
                          "судьи на карте Kaggle не замерена, а прогноз времени "
                          "до полного прогона знать надо")
+    ap.add_argument("--judge-batch", type=int, default=512,
+                    help="пар в одной пачке судьи")
+    ap.add_argument("--judge-seed", type=int, default=20261024,
+                    help="семя движка и выборки токенов; идёт в метаданные "
+                         "разметки, потому что воспроизводимость прогона это "
+                         "одно из трёх чисел приёмки судьи")
+    ap.add_argument("--judge-max-tokens", type=int, default=24,
+                    help="токенов на ответ. Ответ судьи это три короткие "
+                         "строки, а не одна цифра: шкала собирается из двух "
+                         "ответов (rufin.annotation)")
+    ap.add_argument("--max-num-seqs", type=int, default=0,
+                    help="сколько подсказок движок держит в работе разом; "
+                         "0 — на усмотрение движка")
+    ap.add_argument("--gpu-util", type=float, default=0.90,
+                    help="доля видеопамяти под движок")
     ap.add_argument("--limit-acts", type=int, default=0)
     ap.add_argument("--batch", type=int, default=256,
                     help="сколько фрагментов в одной пачке генерации. Стиль "
@@ -280,15 +305,22 @@ def main() -> None:
         # Веса только из входов: хаб без токена не падает, а молча встаёт,
         # и два прогона по двенадцать часов так и простояли.
         путь = common.resolve_model(судья)
+        if args.tensor_parallel > 1 and len(видимые_карты()) < args.tensor_parallel:
+            raise SystemExit(
+                f"просят {args.tensor_parallel} карты, а видно "
+                f"{len(видимые_карты())}. Вторую карту прячет gpu_common; "
+                f"снимается она переменной RUFIN_CARDS=0,1 в окружении запуска")
         # Общий префикс подсказки это вся инструкция разметчику, около
-        # шестисот токенов из тысячи трёхсот. Кэш префикса считает её один
-        # раз на все восемь тысяч пар.
+        # девятисот токенов из тысячи шестисот. Кэш префикса считает её один
+        # раз на весь пул.
         llm = G.load_llm(путь, args.dtype, quant, args.tensor_parallel,
-                         args.max_model_len, prefix_caching=True)
+                         args.max_model_len, args.gpu_util, prefix_caching=True,
+                         max_num_seqs=args.max_num_seqs, seed=args.judge_seed)
         report["судья"] = J.judge(llm, pairs, texts,
-                                  os.path.join(qdir, args.judge_out))
-        report["судья"]["модель"] = судья
-        report["судья"]["веса"] = путь
+                                  os.path.join(qdir, args.judge_out),
+                                  batch=args.judge_batch, seed=args.judge_seed,
+                                  max_tokens=args.judge_max_tokens,
+                                  model=судья, weights=путь)
         free(llm)
         save()
 
