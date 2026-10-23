@@ -1,8 +1,18 @@
 {
   "started_at": "2026-10-22T18:33:43Z",
   "first_scheduled_run": "https://github.com/nata2627/ru-fin-rag/actions/runs/39832485547",
+  "scheduled_runs_total": 2,
   "scheduled_runs_green": 1,
-  "days_passed": 0.1,
+  "scheduled_runs_red": 1,
+  "streak_green_runs": 0,
+  "streak_started_at": null,
+  "streak_days": 0.0,
   "days_required": 14,
+  "days_since_first_run": 0.9,
+  "broken_by": {
+    "run": "https://github.com/nata2627/ru-fin-rag/actions/runs/39918625392",
+    "at": "2026-10-23T07:34:08Z",
+    "conclusion": "failure"
+  },
   "rule": "четырнадцать календарных дней подряд: плановый прогон проходит без участия человека, коммиты в истории делает только бот, постоянных расходов нет"
 }
