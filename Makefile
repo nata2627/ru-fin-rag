@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -33,6 +33,7 @@ help:
 	@echo "  gate         ворота по живым вопросам (CAND=... BASE=...)"
 	@echo "  length-effect    растёт ли отставание с длиной эталона (DENSE=...)"
 	@echo "  chunking-effect  меняется ли разрыв при смене нарезки (CHUNKS=...)"
+	@echo "  parent-effect    мелкая нарезка с подъемом к родителю и цена шапки"
 	@echo "  corpus       сбор корпуса: выпуски «Вестника» -> акты"
 	@echo "  chunks       нарезка актов на фрагменты (CONFIGS=base ...)"
 	@echo "  use-chunks   поставить нарезку, выгруженную с видеокарты (FILE=...)"
@@ -114,6 +115,12 @@ length-effect:
 chunking-effect:
 	$(PY) scripts/chunking_effect.py --from $(FROM) --to $(CHUNKS) --dense dense-$(DENSE)
 
+# Мелкая нарезка с подъемом к родительскому куску и цена шапки в тексте
+# фрагмента. Нужны локальные нарезки:
+#   make chunks CONFIGS="base no-heading" OUTDIR=data/chunks/local
+parent-effect:
+	$(PY) scripts/chunk_parent_effect.py $(if $(ONLY),--only $(ONLY),)
+
 corpus:
 	$(PY) scripts/build_corpus.py --pause $(PAUSE)
 
@@ -123,7 +130,7 @@ corpus:
 # токенизатора у себя и на Kaggle может отличаться, и тогда под прежним
 # именем окажется другой текст. Цель оставлена для разработки.
 chunks:
-	$(PY) scripts/build_chunks.py $(if $(CONFIGS),--only $(CONFIGS),--only base)
+	$(PY) scripts/build_chunks.py $(if $(CONFIGS),--only $(CONFIGS),--only base) $(if $(OUTDIR),--outdir $(OUTDIR),)
 
 # Нарезка, по которой считались эмбеддинги, ставится как рабочая: повторять
 # её локально нельзя, версия токенизатора другая и границы сдвинутся.

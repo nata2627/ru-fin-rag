@@ -147,11 +147,31 @@ def test_конфигурации_названы_уникально():
     assert BY_NAME.keys() == {c.name for c in GRID}
 
 
+# Клетка 2x2: отличается от базовой двумя параметрами, и это названо
+# в chunk_configs. Размер и шапка не независимы — шапке отводится доля чанка,
+# и при 256 токенах она занимает в нем вдвое больше места. Исключение
+# перечислено списком, чтобы следующее такое тоже пришлось объявить.
+ДВА_ПАРАМЕТРА = {"size-256-no-heading": {"size", "heading"}}
+
+
 def test_каждая_конфигурация_отличается_от_базовой_ровно_одним_параметром():
     # иначе по результату абляции нельзя сказать, что именно повлияло
     поля = ("strategy", "size", "overlap", "heading")
     for c in GRID:
         if c.name == BASE.name:
             continue
-        разошлись = [f for f in поля if getattr(c, f) != getattr(BASE, f)]
+        разошлись = {f for f in поля if getattr(c, f) != getattr(BASE, f)}
+        ожидаем = ДВА_ПАРАМЕТРА.get(c.name)
+        if ожидаем:
+            assert разошлись == ожидаем, f"{c.name}: разошлись {разошлись}"
+            continue
         assert len(разошлись) == 1, f"{c.name}: разошлись {разошлись}"
+
+
+def test_клетка_2x2_совпадает_по_параметрам_с_обоими_соседями():
+    # иначе разность разностей читалась бы не про взаимодействие
+    cell, fine, plain = (BY_NAME["size-256-no-heading"], BY_NAME["size-256"],
+                         BY_NAME["no-heading"])
+    assert (cell.size, cell.overlap, cell.strategy) == (fine.size, fine.overlap,
+                                                        fine.strategy)
+    assert cell.heading == plain.heading
