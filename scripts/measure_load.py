@@ -61,6 +61,10 @@ def main() -> int:
     env["RUFINRAG_DEFAULT_CONFIG"] = args.config
     if args.config in ("bm25", "bm25-rerank"):
         env["RUFINRAG_DISABLE_DENSE"] = "1"
+    # Журнал на время замера выключен: тысячи событий нагрузки это не трафик
+    # сервиса, а в репозиторий едут события сервиса (DECISIONS, решение 12).
+    # Скорость самой записи мерит отдельный прогон задачи 4.6.
+    env["RUFINRAG_EVENT_LOG"] = "off"
 
     service = subprocess.Popen(
         [
