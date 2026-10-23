@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv check lint test fmt serve warehouse logs-up logs-down clean
+.PHONY: help venv check lint test fmt serve warehouse drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -35,6 +35,9 @@ serve: ## поднять сервис локально
 
 warehouse: ## сверить режимы витрины: файлы через chdb против ClickHouse из compose
 	$(PY) scripts/compare_warehouses.py
+
+drain: ## репетиция выгрузки журнала: сервис процессом, выгрузка по сети, файлы в репозитории
+	$(PY) scripts/rehearse_drain.py
 
 logs-up: ## поднять ClickHouse для стройки (профиль logs)
 	docker compose --profile logs up -d clickhouse

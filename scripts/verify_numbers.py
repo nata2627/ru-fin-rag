@@ -49,6 +49,7 @@ def checks() -> list[tuple[str, str, str]]:
     first_run = load("corpus-update-first.json")
     load_report = load("load.json")
     warehouse = load("warehouse.json")
+    drain = load("events-rehearsal.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
     out: list[tuple[str, str, str]] = []
@@ -246,6 +247,53 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
     out.append(("запросов витрины", "warehouse.json", f"витрины {len(warehouse['queries'])}"))
+
+    # Числа репетиции выгрузки. Живой файл `results/events.json` растет каждым
+    # прогоном, поэтому в текст идут числа репетиции, а не его.
+    first, repeat, after = drain["drains"]
+    out.append(
+        (
+            "трафик в репетиции выгрузки",
+            "events-rehearsal.json",
+            f"{drain['service']['queries_sent']} запросов и "
+            f"{drain['service']['feedback_sent']} оценок",
+        )
+    )
+    out.append(
+        (
+            "первая выгрузка",
+            "events-rehearsal.json",
+            f"{first['added']} строк из {first['offered_lines']} предложенных",
+        )
+    )
+    out.append(
+        (
+            "повторная выгрузка",
+            "events-rehearsal.json",
+            f"добавила {repeat['added']} из {repeat['offered_lines']}",
+        )
+    )
+    out.append(
+        (
+            "дубли повторной выгрузки",
+            "events-rehearsal.json",
+            f"опознала {repeat['duplicates']} дублей",
+        )
+    )
+    out.append(
+        (
+            "выгрузка после новых запросов",
+            "events-rehearsal.json",
+            f"третья добавила {after['added']} из {after['offered_lines']} предложенных",
+        )
+    )
+    out.append(
+        (
+            "строк после третьей выгрузки",
+            "events-rehearsal.json",
+            f"стало {after['lines_in_repo']} строк",
+        )
+    )
     out.append(
         (
             "движки в сверке режимов",
