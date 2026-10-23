@@ -1,8 +1,14 @@
 {
-  "measured_at": "2026-10-22",
-  "chunks": 62594,
-  "acts": 1554,
-  "version": "chunks62594-acts1554",
+  "measured_at": "2026-10-23",
+  "chunks": 62606,
+  "acts": 1555,
+  "version": "chunks62606-acts1555",
   "file_mib": 22.7,
-  "file_bytes": 23807406
+  "file_bytes": 23812608,
+  "replaced": {
+    "measured_at": "2026-10-22",
+    "chunks": 62594,
+    "acts": 1554,
+    "version": "chunks62594-acts1554"
+  }
 }

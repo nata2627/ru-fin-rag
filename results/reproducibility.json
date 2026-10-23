@@ -1,27 +1,34 @@
 {
   "measured_at": "2026-10-23",
   "machine": "arm64 Darwin 25.6.0",
-  "corpus_version": "chunks62594-acts1554",
+  "corpus_version": "chunks62606-acts1555",
   "depth": 10,
   "note": "сверка с выдачами части А, посчитанными на видеокарте",
   "configs": {
     "bm25": {
+      "measured_at": "2026-10-23",
       "queries": 200,
       "order": 193,
-      "composition": 198,
-      "top1": 198
+      "composition": 199,
+      "top1": 199
     },
     "hybrid": {
+      "measured_at": "2026-10-23",
       "queries": 200,
       "order": 168,
       "composition": 193,
       "top1": 196
     },
     "dense": {
+      "measured_at": "2026-10-23",
       "queries": 200,
       "order": 164,
       "composition": 189,
       "top1": 197
     }
-  }
+  },
+  "skipped": [
+    "hybrid: data/vectors/rufin-384.npy: векторы собраны на другом корпусе (62594 против 62606)",
+    "dense: data/vectors/rufin-384.npy: векторы собраны на другом корпусе (62594 против 62606)"
+  ]
 }
