@@ -71,6 +71,22 @@ def main() -> int:
         },
         "difference_ndcg10": paired_diff_ci(values_run, values_base),
     }
+    if args.out.exists():
+        # Замеренное прежде остается в файле, а не только в истории git: в
+        # README рядом с новым числом стоит то, которое оно заменило, и писать
+        # его руками значит однажды написать не то. Хранится один шаг назад, не
+        # цепочка.
+        previous = json.loads(args.out.read_text(encoding="utf-8"))
+        if "runs" in previous:
+            report["replaced"] = {
+                "measured_at": previous["measured_at"],
+                "runs": {
+                    name: row["metrics"]["NDCG@10"] for name, row in previous["runs"].items()
+                },
+                "difference_ndcg10": {
+                    key: previous["difference_ndcg10"][key] for key in ("mean", "lo", "hi")
+                },
+            }
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
