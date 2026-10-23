@@ -52,6 +52,12 @@ from rufinrag import pipeline  # noqa: E402
 # образа Airflow.
 PYTHON = os.environ.get("RUFINRAG_PYTHON", str(ROOT / ".venv/bin/python"))
 
+# Пауза между попытками упавшей задачи. Плановое значение пять минут, а проверка
+# восстановления (`scripts/run_dag.sh`, третий прогон) ставит секунды: `airflow
+# dags test` честно спит эту паузу, и две попытки съедали бы десять минут
+# прогона CI на ожидание в логе.
+RETRY_MINUTES = float(os.environ.get("RUFINRAG_RETRY_MINUTES", "5"))
+
 log = logging.getLogger(__name__)
 
 
@@ -133,7 +139,7 @@ with DAG(
         # потому, что шаги идемпотентны: повторная докачка не добавит акт
         # дважды, повторная сборка перепишет индекс, а не допишет.
         "retries": 2,
-        "retry_delay": timedelta(minutes=5),
+        "retry_delay": timedelta(minutes=RETRY_MINUTES),
     },
     tags=["rufinrag", "corpus"],
 ) as dag:
