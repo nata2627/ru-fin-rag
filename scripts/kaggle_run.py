@@ -556,7 +556,14 @@ def main() -> None:
             # Судью поднимает vLLM, а его в образе Kaggle нет. Прежде это
             # значило, что команда из docs/11-polnota-razmetki.md падала
             # на импорте уже на карте.
-            packages = ("vllm", "sentence-transformers")
+            #
+            # Только vLLM, и это не экономия. Установка vLLM подтягивает свой
+            # transformers, а `pip install -U sentence-transformers` следом
+            # сдвигает его ещё раз, и transformers перестаёт импортироваться
+            # вовсе (`Could not import module 'TrainerCallback'`). Судье
+            # sentence-transformers не нужен: кросс-энкодер поднимает только
+            # фильтр учителя, а он в этом прогоне не участвует.
+            packages = ("vllm",)
         # Опыту нужна только исходная модель ученика: учитель весит 2,29 ГБ,
         # и Kaggle монтирует его перед каждым запуском впустую.
         if args.stage == "variants":
