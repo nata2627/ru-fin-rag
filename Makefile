@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -34,6 +34,9 @@ help:
 	@echo "  length-effect    растёт ли отставание с длиной эталона (DENSE=...)"
 	@echo "  chunking-effect  меняется ли разрыв при смене нарезки (CHUNKS=...)"
 	@echo "  parent-effect    мелкая нарезка с подъемом к родителю и цена шапки"
+	@echo "  friend-set       скачать набор соседа (формат MTEB) для контроля"
+	@echo "  friend-control   прогон нашего кода на его данных"
+	@echo "  morphology       цена отсутствия нормализации формы слова в BM25"
 	@echo "  corpus       сбор корпуса: выпуски «Вестника» -> акты"
 	@echo "  chunks       нарезка актов на фрагменты (CONFIGS=base ...)"
 	@echo "  use-chunks   поставить нарезку, выгруженную с видеокарты (FILE=...)"
@@ -120,6 +123,19 @@ chunking-effect:
 #   make chunks CONFIGS="base no-heading" OUTDIR=data/chunks/local
 parent-effect:
 	$(PY) scripts/chunk_parent_effect.py $(if $(ONLY),--only $(ONLY),)
+
+# Контроль на чужих данных: набор соседа в формате MTEB (3786 статей шести
+# кодексов). Качается один раз, в репозиторий не попадает.
+friend-set:
+	$(PY) scripts/fetch_friend_set.py --pause $(PAUSE)
+
+friend-control:
+	$(PY) scripts/friend_control.py
+
+# Сколько стоит отсутствие нормализации формы слова в BM25. Вопрос пришел
+# из контроля на чужих данных.
+morphology:
+	$(PY) scripts/morphology_effect.py
 
 corpus:
 	$(PY) scripts/build_corpus.py --pause $(PAUSE)
