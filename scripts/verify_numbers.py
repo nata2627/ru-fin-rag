@@ -257,7 +257,7 @@ def checks() -> list[tuple[str, str, str]]:
             f"{sample['orphan_feedback']} из {sample['feedback_events']}",
         )
     )
-    out.append(("запросов витрины", "warehouse.json", f"витрины {len(warehouse['queries'])}"))
+    out.append(("моделей витрины", "warehouse.json", f"моделей витрины {len(warehouse['models'])}"))
 
     # Числа репетиции выгрузки. Живой файл `results/events.json` растет каждым
     # прогоном, поэтому в текст идут числа репетиции, а не его.

@@ -27,6 +27,9 @@ data/corpus/*
 data/chunks/
 qdrant_storage/
 mlruns/
+# Сборка dbt: скомпилированные модели, отчет прогона и его лог. Это вывод
+# `dbt build`, он пересобирается кодом из репозитория.
+dbt/target/
 .ruff_cache/
 .pytest_cache/
 *.log
