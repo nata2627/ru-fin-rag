@@ -1,0 +1,44 @@
+{
+  "measured_at": "2026-10-23T10:14:20Z",
+  "note": "репетиция на локальном процессе: ручка выдачи появится на хостинге после пуша, числа здесь это числа репетиции",
+  "service": {
+    "version": "0.1.0",
+    "queries_sent": 25,
+    "feedback_sent": 5,
+    "written_by_process": 30
+  },
+  "drains": [
+    {
+      "new_events_before": 0,
+      "offered_lines": 25,
+      "added": 25,
+      "duplicates": 0,
+      "lines_in_repo": 25
+    },
+    {
+      "new_events_before": 0,
+      "offered_lines": 25,
+      "added": 0,
+      "duplicates": 25,
+      "lines_in_repo": 25
+    },
+    {
+      "new_events_before": 5,
+      "offered_lines": 30,
+      "added": 5,
+      "duplicates": 25,
+      "lines_in_repo": 30
+    }
+  ],
+  "repo": {
+    "files": [
+      "queries-2026-10-23.jsonl"
+    ],
+    "days": 1,
+    "lines": 30,
+    "query_events": 25,
+    "feedback_events": 5
+  },
+  "grew": true,
+  "no_duplicates": true
+}
