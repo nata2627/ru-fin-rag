@@ -143,7 +143,11 @@ def top_k(vectors: np.ndarray, qvec: np.ndarray, k: int) -> list[list[tuple[int,
     фрагментов и сотнях запросов перебор занимает доли секунды, так что
     терять тут нечего.
     """
-    scores = (qvec.astype("float32") @ vectors.astype("float32").T)
+    # asarray, а не astype: astype копирует всегда, и на матрице мелкой
+    # нарезки (134 844 вектора по 1024) это полгигабайта лишней копии
+    # на каждую пачку запросов.
+    scores = (np.asarray(qvec, dtype="float32")
+              @ np.asarray(vectors, dtype="float32").T)
     k = min(k, scores.shape[1])
     part = np.argpartition(-scores, k - 1, axis=1)[:, :k]
     out = []
