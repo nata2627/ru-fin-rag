@@ -569,7 +569,12 @@ def шаг_final(env: Окружение, args, journal: Journal) -> None:
                           env.device, dims=dims, batch_size=args.batch_size)
         полная = E.размерности(итог)[0]
         for dim in E.размерности(итог):
-            имя = "dense-rufin" if dim == полная else f"dense-rufin-{dim}"
+            # Имя выдачи включает метку этапа, когда меток несколько.
+            # Иначе второй кандидат молча затирает выдачу первого: имя
+            # «dense-rufin» одно на всех, а этап 3б прогоняет через ворота
+            # нескольких кандидатов одним процессом.
+            корень = "dense-rufin" if len(метки) == 1 else f"dense-rufin-{метка}"
+            имя = корень if dim == полная else f"{корень}-{dim}"
             путь = E.save_runs(args.runs, итог[dim]["runs"], имя)
             print(f"   {имя}: {путь}", flush=True)
             итоги[имя] = {"dev+тест вместе, NDCG@10": итог[dim]["NDCG@10"],

@@ -40,6 +40,13 @@ for _ключ in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE
 # просить пришлось бы в каждом месте, где модель попадает в чужие руки.
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
+# Где искать входы: модели и файлы набора. На Kaggle это /kaggle/input,
+# и прежде путь был зашит здесь. Прогоны этапа 3б идут на чужой машине
+# по SSH, где каталога /kaggle нет и создать его без прав нельзя,
+# а код оценки обязан остаться тем же: иначе сравнение моделей станет
+# сравнением протоколов.
+ВХОДЫ = os.environ.get("RUFIN_INPUTS", "/kaggle/input")
+
 from rufin.chunk_configs import BY_NAME  # noqa: E402
 from rufin.chunking import TokenRuler, chunk_act  # noqa: E402
 
@@ -85,8 +92,8 @@ def resolve_acts(path: str | None = None) -> str:
     candidates: list[str] = []
     if path:
         candidates += [path, path[:-3] if path.endswith(".gz") else path + ".gz"]
-    candidates += sorted(glob.glob("/kaggle/input/**/acts.jsonl*", recursive=True),
-                         key=len)
+    candidates += sorted(glob.glob(os.path.join(ВХОДЫ, "**", "acts.jsonl*"),
+                                   recursive=True), key=len)
     candidates += sorted(glob.glob("/kaggle/working/acts.jsonl*"))
     candidates += sorted(glob.glob("acts.jsonl*"))
     for c in candidates:
@@ -119,7 +126,7 @@ def build_chunks(acts: list[dict], config: str, ruler: TokenRuler) -> list[dict]
     return out
 
 
-def find_embeddings(root: str = "/kaggle/input") -> str | None:
+def find_embeddings(root: str = "") -> str | None:
     """Найти папку с матрицами эмбеддингов среди подключённых входов.
 
     Вывод ноутбука Kaggle монтирует не там же, где датасеты, и глубина пути
@@ -127,6 +134,7 @@ def find_embeddings(root: str = "/kaggle/input") -> str | None:
     рядом с каждой матрицей лежит ids.txt, и его дед по дереву — искомый
     корень «эмбеддинги / нарезка / модель».
     """
+    root = root or ВХОДЫ
     marks = glob.glob(os.path.join(root, "**", "ids.txt"), recursive=True)
     roots: dict[str, int] = {}
     for m in marks:
@@ -138,7 +146,7 @@ def find_embeddings(root: str = "/kaggle/input") -> str | None:
     return max(roots.items(), key=lambda kv: kv[1])[0]
 
 
-def find_file(name: str, root: str = "/kaggle/input") -> str | None:
+def find_file(name: str, root: str = "") -> str | None:
     """Найти файл среди подключённых входов.
 
     Два правила Kaggle, на которых проект терял время не раз, и потому
@@ -153,6 +161,7 @@ def find_file(name: str, root: str = "/kaggle/input") -> str | None:
     а загруженный папкой может приехать и распакованным zip-ом. Поэтому
     имя ищется в обоих видах — со сжатием и без.
     """
+    root = root or ВХОДЫ
     names = [name]
     if name.endswith(".gz"):
         names.append(name[:-3])
@@ -209,7 +218,7 @@ def pick_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def resolve_model(hf_id: str, root: str = "/kaggle/input",
+def resolve_model(hf_id: str, root: str = "",
                   обязательно: bool = True) -> str:
     """Путь к весам: сначала модель, подключённая входом, потом HuggingFace.
 
@@ -227,6 +236,7 @@ def resolve_model(hf_id: str, root: str = "/kaggle/input",
     запасной путь, а не ошибка. Какой из двух сработал, печатается —
     молча подменять источник весов нельзя.
     """
+    root = root or ВХОДЫ
     имя = hf_id.split("/")[-1].lower()
     находки = []
     for path in glob.glob(os.path.join(root, "**", "config.json"), recursive=True):
