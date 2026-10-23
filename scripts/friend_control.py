@@ -46,7 +46,7 @@ from rufin.benchmark import read_qrels  # noqa: E402
 from rufin.retrieval.bm25 import BM25Index  # noqa: E402
 from rufin.retrieval.dense import DenseIndex  # noqa: E402
 from rufin.retrieval.model_specs import MODELS  # noqa: E402
-from rufin.retrieval.text import tokenize, truncate_tokens  # noqa: E402
+from rufin.retrieval.text import split_tokens, tokenize, truncate_tokens  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 FRIEND = os.path.join(ROOT, "data", "friend")
@@ -77,9 +77,12 @@ HIS_TK_HARD = 0.480
 # реализациями, и расхождение читается как расхождение кода.
 SAME_MODEL = {"frida": "FRIDA"}
 
-# Две токенизации. Первая рабочая, вторая диагностическая: она отвечает на
-# один вопрос, в морфологии ли дело.
-TOKENIZERS = {"как есть": tokenize, "обрезка до 6": truncate_tokens}
+# Три токенизации. «Как есть» это состояние BM25 до решения 16, разбиение без
+# снятия формы слова: на нем измерено отставание от его числа. Обрезка это
+# диагностика, которой отставание было объяснено. Стеммер это рабочая
+# токенизация, и прогон отвечает, держится ли на его данных тот же уровень.
+TOKENIZERS = {"как есть": split_tokens, "обрезка до 6": truncate_tokens,
+              "стеммер": tokenize}
 
 
 def read_jsonl(path: str):
