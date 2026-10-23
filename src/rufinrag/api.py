@@ -11,18 +11,19 @@
 from __future__ import annotations
 
 import os
+import secrets
 import time
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
 from . import __version__, events
-from .config import ConfigError, live_mode, load_catalog
+from .config import ConfigError, env, live_mode, load_catalog
 from .corpus import CorpusError
 from .events import EventLog
 from .search import SearchError, SearchService
@@ -32,6 +33,12 @@ from .search import SearchError, SearchService
 # нашел нагрузочный замер: сервис отвечал 422 на настоящие вопросы.
 MAX_QUERY_CHARS = 4000
 MAX_TOP = 50
+
+# Предел одной выдачи журнала. Ответ целиком собирается в памяти, а памяти на
+# бесплатном тарифе 512 МБ вместе с индексом. Отдаются первые строки в порядке
+# суток, а не последние: что не уехало, уедет следующей выгрузкой, потому что
+# сервис ничего не удаляет.
+MAX_DRAIN_LINES = 50_000
 
 state: dict[str, object] = {}
 
@@ -179,6 +186,11 @@ def health():
         "version": __version__,
         "live": live_mode(),
         "startup_seconds": state.get("startup_seconds"),
+        # Сколько живет этот процесс. По нему ночная выгрузка узнает, был ли
+        # между двумя выгрузками перезапуск контейнера: если был, события,
+        # записанные до него, пропали вместе с эфемерным диском, и это окно
+        # потери считается числом (scripts/drain_events.py).
+        "uptime_seconds": round(time.time() - float(state.get("started_at") or time.time()), 1),
         "configs": sorted(catalog.configs),
         "default_config": catalog.default,
     }
@@ -262,3 +274,52 @@ def feedback(request: FeedbackRequest):
         raise HTTPException(status_code=503, detail="журнал запросов выключен")
     record(events.feedback(request.request_id, request.rating))
     return {"accepted": True}
+
+
+# Выдача журнала ночной выгрузке. Диск бесплатного тарифа эфемерный, и события
+# живут только до перезапуска контейнера, а сам сервис в репозиторий коммитить
+# не может: коммит делает прогон (DECISIONS, решение 12). Значит нужен путь, по
+# которому прогон забирает строки у живого процесса.
+#
+# Это ручка над текстами чужих запросов, поэтому она закрыта секретом из
+# окружения и выключена, пока секрета нет: без переменной маршрут отвечает 404,
+# то есть снаружи его не существует. На странице `/docs` он не показывается не
+# ради скрытности (в README он описан), а потому что человеку с улицы делать
+# тут нечего.
+#
+# Строки отдаются как есть и не удаляются: повторная выгрузка безопасна, ее
+# разбирает прогон по `request_id`, а удаление теряло бы события при неудачном
+# коммите.
+@app.get("/events", include_in_schema=False, response_class=PlainTextResponse)
+def events_dump(token: str = Header(default="", alias="X-Events-Token")):
+    expected = env("RUFINRAG_EVENTS_TOKEN")
+    if not expected:
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=403, detail="неверный токен выгрузки")
+    event_log = state.get("events")
+    if event_log is None:
+        raise HTTPException(status_code=503, detail="журнал запросов выключен")
+
+    files = sorted(event_log.directory.glob("queries-*.jsonl"))
+    lines: list[str] = []
+    truncated = False
+    for path in files:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            if len(lines) >= MAX_DRAIN_LINES:
+                truncated = True
+                break
+            lines.append(line)
+        if truncated:
+            break
+    return PlainTextResponse(
+        "".join(line + "\n" for line in lines),
+        media_type="application/x-ndjson; charset=utf-8",
+        headers={
+            "X-Events-Lines": str(len(lines)),
+            "X-Events-Files": str(len(files)),
+            "X-Events-Truncated": "1" if truncated else "0",
+        },
+    )
