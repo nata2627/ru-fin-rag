@@ -125,6 +125,9 @@ def main() -> int:
         "measured_at": time.strftime("%Y-%m-%d"),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
         "image": os.environ.get("AIRFLOW_IMAGE", "не записан"),
+        # Номер прогона CI, в котором снят замер: по нему открывается лог задач
+        # в артефактах. На маке поля нет, и это видно по `machine`.
+        "ci_run": os.environ.get("GITHUB_RUN_ID") or None,
         "dag_id": DAG_ID,
         "peak_memory_mb": int(os.environ.get("RUFINRAG_DAG_PEAK_MB", 0)) or None,
         "tasks": len(EXPECTED[0]),
