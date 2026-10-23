@@ -63,6 +63,19 @@ jobs:
           RUFINRAG_DISABLE_DENSE: "1"
         run: python scripts/run_regression.py --config bm25
 
+      # Журнал запросов живет на эфемерном диске хостинга и пропадает вместе с
+      # контейнером, а сам сервис коммитить в репозиторий не может: для этого
+      # нужен был бы токен со сроком (DECISIONS, решение 12). Поэтому строки
+      # забирает прогон. Шаг не роняет прогон ни при одном внешнем отказе:
+      # спящий сервис, незаданный секрет и пустой журнал это нормальные
+      # состояния, а красный main останавливает часы приемки автономности.
+      # Состояние последней выгрузки лежит в results/events.json.
+      - name: Drain the query log into the repository
+        env:
+          RUFINRAG_SERVICE_URL: https://ru-fin-rag.onrender.com
+          RUFINRAG_EVENTS_TOKEN: ${{ secrets.RUFINRAG_EVENTS_TOKEN }}
+        run: python scripts/drain_events.py
+
       - name: Verify published numbers
         run: python scripts/verify_numbers.py
 
@@ -78,11 +91,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
-            results/corpus-update.json results/regression.json results/regulation.json
+            results/corpus-update.json results/regression.json results/regulation.json \
+            data/events results/events.json
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
-            git commit -m "Nightly corpus update and regression"
+            git commit -m "Nightly corpus update, regression and query log"
             # Ветка могла уехать вперед, пока шел прогон: человек пушит в тот же
             # main. Перебазируемся и пробуем снова, иначе прогон падает на ровном
             # месте и открывает issue про поломку, которой нет.
