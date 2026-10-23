@@ -1,0 +1,329 @@
+{
+  "measured_at": "2026-10-23T10:28:17Z",
+  "commit": "ba85679",
+  "machine": "arm64 Darwin 25.6.0",
+  "python": "3.11.6",
+  "cpu_count": 8,
+  "load_average_at_start": [
+    4.45,
+    5.25,
+    5.84
+  ],
+  "queries": 20,
+  "hosted": {
+    "url": "https://ru-fin-rag.onrender.com",
+    "note": "только GET /health, нагрузка на бесплатный тариф не подавалась",
+    "status": "ok",
+    "version": "0.1.0",
+    "startup_seconds": 17.3,
+    "event_log": "поля нет: развернут код без журнала"
+  },
+  "load_average_at_end": [
+    6.99,
+    5.73,
+    5.97
+  ],
+  "service": {
+    "config": "bm25",
+    "dense": "off",
+    "corpus_version": "chunks62594-acts1554",
+    "top": 10
+  },
+  "writer": {
+    "pool_events": 2012,
+    "events_per_run": 50000,
+    "runs": [
+      {
+        "threads": 1,
+        "repeats": 3,
+        "median_events_per_second": 47166.0,
+        "min_events_per_second": 47036.8,
+        "max_events_per_second": 48036.3,
+        "median_us_per_event": 21.2,
+        "reps": [
+          {
+            "threads": 1,
+            "events": 50000,
+            "seconds": 1.041,
+            "events_per_second": 48036.3,
+            "mean_us_per_event": 20.82,
+            "load_average_1m": 5.15
+          },
+          {
+            "threads": 1,
+            "events": 50000,
+            "seconds": 1.063,
+            "events_per_second": 47036.8,
+            "mean_us_per_event": 21.26,
+            "load_average_1m": 5.15
+          },
+          {
+            "threads": 1,
+            "events": 50000,
+            "seconds": 1.06,
+            "events_per_second": 47166.0,
+            "mean_us_per_event": 21.2,
+            "load_average_1m": 5.54
+          }
+        ]
+      },
+      {
+        "threads": 2,
+        "repeats": 3,
+        "median_events_per_second": 39492.7,
+        "min_events_per_second": 35897.4,
+        "max_events_per_second": 41461.9,
+        "median_us_per_event": 25.32,
+        "reps": [
+          {
+            "threads": 2,
+            "events": 50000,
+            "seconds": 1.206,
+            "events_per_second": 41461.9,
+            "mean_us_per_event": 24.12,
+            "load_average_1m": 5.54
+          },
+          {
+            "threads": 2,
+            "events": 50000,
+            "seconds": 1.266,
+            "events_per_second": 39492.7,
+            "mean_us_per_event": 25.32,
+            "load_average_1m": 5.54
+          },
+          {
+            "threads": 2,
+            "events": 50000,
+            "seconds": 1.393,
+            "events_per_second": 35897.4,
+            "mean_us_per_event": 27.86,
+            "load_average_1m": 5.54
+          }
+        ]
+      },
+      {
+        "threads": 4,
+        "repeats": 3,
+        "median_events_per_second": 36090.8,
+        "min_events_per_second": 24210.6,
+        "max_events_per_second": 38722.0,
+        "median_us_per_event": 27.71,
+        "reps": [
+          {
+            "threads": 4,
+            "events": 50000,
+            "seconds": 1.385,
+            "events_per_second": 36090.8,
+            "mean_us_per_event": 27.71,
+            "load_average_1m": 7.17
+          },
+          {
+            "threads": 4,
+            "events": 50000,
+            "seconds": 1.291,
+            "events_per_second": 38722.0,
+            "mean_us_per_event": 25.83,
+            "load_average_1m": 7.17
+          },
+          {
+            "threads": 4,
+            "events": 50000,
+            "seconds": 2.065,
+            "events_per_second": 24210.6,
+            "mean_us_per_event": 41.3,
+            "load_average_1m": 7.17
+          }
+        ]
+      },
+      {
+        "threads": 8,
+        "repeats": 3,
+        "median_events_per_second": 34050.7,
+        "min_events_per_second": 32270.0,
+        "max_events_per_second": 34985.9,
+        "median_us_per_event": 29.37,
+        "reps": [
+          {
+            "threads": 8,
+            "events": 50000,
+            "seconds": 1.468,
+            "events_per_second": 34050.7,
+            "mean_us_per_event": 29.37,
+            "load_average_1m": 7.08
+          },
+          {
+            "threads": 8,
+            "events": 50000,
+            "seconds": 1.429,
+            "events_per_second": 34985.9,
+            "mean_us_per_event": 28.58,
+            "load_average_1m": 7.08
+          },
+          {
+            "threads": 8,
+            "events": 50000,
+            "seconds": 1.549,
+            "events_per_second": 32270.0,
+            "mean_us_per_event": 30.99,
+            "load_average_1m": 7.08
+          }
+        ]
+      }
+    ],
+    "lock_cost": {
+      "single_thread_eps": 47166.0,
+      "best_multi_thread_eps": 39492.7,
+      "threads_of_best": 2
+    },
+    "failed_writes": {
+      "attempts": 5000,
+      "failed": 5000,
+      "written": 0,
+      "seconds": 0.21,
+      "events_per_second": 23762.0,
+      "mean_us_per_event": 42.08,
+      "last_error": "FileExistsError: [Errno 17] File exists: '/var/folders/s2/ld1v95g51tsbkcsqpf3p08g40000gn/T/rufinrag-logging-87uwogz0/blocked-writer'"
+    },
+    "query_normalized_cost": {
+      "calls": 50000,
+      "mean_us": 5.57
+    }
+  },
+  "request": {
+    "order": [
+      "on",
+      "off",
+      "off",
+      "on",
+      "on",
+      "off",
+      "off",
+      "on"
+    ],
+    "requests_per_mode": 2000,
+    "on": {
+      "p50_ms": 5.166,
+      "p95_ms": 7.876,
+      "events_written": 2012
+    },
+    "off": {
+      "p50_ms": 5.202,
+      "p95_ms": 8.41,
+      "event_log": "off"
+    },
+    "difference_p50": {
+      "point_ms": -0.035,
+      "lo_ms": -0.124,
+      "hi_ms": 0.05,
+      "draws": 2000
+    },
+    "difference_p95": {
+      "point_ms": -0.534,
+      "lo_ms": -1.265,
+      "hi_ms": 0.304,
+      "draws": 2000
+    },
+    "server_total_p50_ms": {
+      "on": 0.971,
+      "off": 1.001
+    },
+    "hosted_p50_ms": 470.6
+  },
+  "size": {
+    "groups": {
+      "answered-top10": {
+        "events": 2012,
+        "mean_bytes": 1799.2,
+        "min_bytes": 1596,
+        "max_bytes": 2113
+      },
+      "answered-top50": {
+        "events": 20,
+        "mean_bytes": 19071.8,
+        "min_bytes": 19070,
+        "max_bytes": 19072
+      },
+      "feedback": {
+        "events": 20,
+        "mean_bytes": 134.0,
+        "min_bytes": 134,
+        "max_bytes": 134
+      },
+      "rejected-422": {
+        "events": 20,
+        "mean_bytes": 302.0,
+        "min_bytes": 302,
+        "max_bytes": 302
+      },
+      "rejected-422-truncated": {
+        "events": 20,
+        "mean_bytes": 7739.0,
+        "min_bytes": 7739,
+        "max_bytes": 7739
+      }
+    },
+    "file_bytes": 4164890,
+    "gzip_bytes": 592288,
+    "distinct_queries": 20,
+    "distinct_bytes": 35989,
+    "distinct_gzip_bytes": 6808,
+    "gzip_ratio_repeating": 7.03,
+    "gzip_ratio_distinct": 5.29
+  },
+  "month": {
+    "kind": "экстраполяция по среднему размеру события, живого трафика нет",
+    "days": 30,
+    "gzip_ratio": 5.29,
+    "mean_bytes_per_event": 1799.2,
+    "base_per_day": 1000,
+    "base_reason": "предположение: ссылка в резюме, десятки открытий в сутки, 1000 взято с запасом вверх",
+    "ceiling_per_day": 14304347,
+    "ceiling_reason": "сутки на найденном пределе одного процесса 165.6 запроса в секунду (results/load.json, связка bm25 на 150 пользователях)",
+    "levels": {
+      "100": {
+        "requests_per_month": 3000,
+        "raw_mb": 5.4,
+        "gzip_mb": 1.02
+      },
+      "1000": {
+        "requests_per_month": 30000,
+        "raw_mb": 53.98,
+        "gzip_mb": 10.2
+      },
+      "10000": {
+        "requests_per_month": 300000,
+        "raw_mb": 539.76,
+        "gzip_mb": 102.03
+      },
+      "14304347": {
+        "requests_per_month": 429130410,
+        "raw_mb": 772091.43,
+        "gzip_mb": 145953.01
+      }
+    }
+  },
+  "failure": {
+    "requests": 50,
+    "answered_200": 50,
+    "write_attempts": 53,
+    "p50_ms": 5.821,
+    "p95_ms": 13.708,
+    "health_status": "ok",
+    "event_log": {
+      "dir": "/var/folders/s2/ld1v95g51tsbkcsqpf3p08g40000gn/T/rufinrag-logging-87uwogz0/blocked-service",
+      "written": 0,
+      "failed": 53,
+      "last_error": "FileExistsError: [Errno 17] File exists: '/var/folders/s2/ld1v95g51tsbkcsqpf3p08g40000gn/T/rufinrag-logging-87uwogz0/blocked-service'"
+    }
+  },
+  "shapes": {
+    "repeats": 20,
+    "long_query_chars": 4000,
+    "huge_query_chars": 1040000,
+    "event_log": {
+      "dir": "/var/folders/s2/ld1v95g51tsbkcsqpf3p08g40000gn/T/rufinrag-logging-87uwogz0/events",
+      "written": 80,
+      "failed": 0
+    }
+  }
+}
