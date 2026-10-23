@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
+.PHONY: help test lint act-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -34,8 +34,10 @@ help:
 	@echo "  length-effect    растёт ли отставание с длиной эталона (DENSE=...)"
 	@echo "  chunking-effect  меняется ли разрыв при смене нарезки (CHUNKS=...)"
 	@echo "  parent-effect    мелкая нарезка с подъемом к родителю и цена шапки"
+	@echo "                   плотная ступень: DENSE=user-bge-m3, нужны векторы ветвей"
 	@echo "  friend-set       скачать набор соседа (формат MTEB) для контроля"
-	@echo "  friend-control   прогон нашего кода на его данных"
+	@echo "  friend-control   прогон нашего кода на его данных (DENSE=frida для плотной)"
+	@echo "  export-gpu       выгрузить тексты под счет векторов на карте (OUT=...)"
 	@echo "  morphology       цена отсутствия нормализации формы слова в BM25"
 	@echo "  corpus       сбор корпуса: выпуски «Вестника» -> акты"
 	@echo "  chunks       нарезка актов на фрагменты (CONFIGS=base ...)"
@@ -121,8 +123,16 @@ chunking-effect:
 # Мелкая нарезка с подъемом к родительскому куску и цена шапки в тексте
 # фрагмента. Нужны локальные нарезки:
 #   make chunks CONFIGS="base no-heading" OUTDIR=data/chunks/local
+# Плотная ступень читает готовые векторы ветвей, они считаются на карте:
+#   make export-gpu OUT=/tmp/gpu_in      и дальше на машине с картой
+#   python scripts/embed_chunks.py --input chunks-<ветвь>.jsonl.gz \
+#       --model user-bge-m3 --out data/embeddings/<ветвь>/user-bge-m3
 parent-effect:
-	$(PY) scripts/chunk_parent_effect.py $(if $(ONLY),--only $(ONLY),)
+	$(PY) scripts/chunk_parent_effect.py $(if $(ONLY),--only $(ONLY),) \
+		$(if $(DENSE),--dense $(DENSE),)
+
+export-gpu:
+	$(PY) scripts/export_for_gpu.py --what branches queries friend --out $(OUT)
 
 # Контроль на чужих данных: набор соседа в формате MTEB (3786 статей шести
 # кодексов). Качается один раз, в репозиторий не попадает.
@@ -130,7 +140,7 @@ friend-set:
 	$(PY) scripts/fetch_friend_set.py --pause $(PAUSE)
 
 friend-control:
-	$(PY) scripts/friend_control.py
+	$(PY) scripts/friend_control.py $(if $(DENSE),--dense $(DENSE),)
 
 # Сколько стоит отсутствие нормализации формы слова в BM25. Вопрос пришел
 # из контроля на чужих данных.
