@@ -39,6 +39,7 @@ import json
 import os
 import sys
 import time
+from itertools import chain
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -385,6 +386,27 @@ def по_метке(метка: str, journal: Journal) -> TrainConfig:
     raise SystemExit(f"нет такого этапа: {метка}. Есть: {', '.join(BY_TAG)}")
 
 
+def ужатая(cfg: TrainConfig, сколько: int) -> TrainConfig:
+    """Та же конфигурация, ужатая под свободную видеопамять.
+
+    Нужно там, где карту делят с кем-то еще: в песочнице на RTX 3070
+    рабочий стол Windows держит часть памяти, и остаток известен только
+    замером. Автоматическое ужатие в `trainer.ужать` срабатывает по ошибке
+    нехватки памяти, а в WSL нехватка ошибкой не кончается: драйвер
+    начинает подкачивать память карты через хост, и шаг обучения становится
+    в десятки раз дольше, не сказав об этом ни слова. Поэтому размер
+    задается пробой заранее, тем же кодом, который ужимает по ошибке:
+    у контрастива уменьшается мини-батч, у дистилляции делится батч
+    с удвоением накопления, и смысл этапа при этом сохраняется.
+    """
+    for _ in range(max(сколько, 0)):
+        меньше = T.ужать(cfg)
+        if меньше is None:
+            break
+        cfg = меньше
+    return cfg
+
+
 def план(args, journal: Journal):
     """Этапы по порядку, лениво.
 
@@ -394,12 +416,12 @@ def план(args, journal: Journal):
     до прогона, то есть по вчерашнему журналу.
     """
     if args.tags:
-        for метка in args.tags:
-            yield по_метке(метка, journal)
-        return
-    yield from FIXED
-    yield from stage_d(состав_лучшего(journal))
-    yield from stage_e(состав_лучшего(journal))
+        порядок = (по_метке(метка, journal) for метка in args.tags)
+    else:
+        основа = состав_лучшего(journal)
+        порядок = chain(FIXED, stage_d(основа), stage_e(основа))
+    for cfg in порядок:
+        yield ужатая(cfg, args.shrink)
 
 
 def шаг_замер(env: Окружение, args, journal: Journal) -> None:
@@ -668,6 +690,11 @@ def main() -> None:
     ap.add_argument("--per-query", type=int, default=2)
     ap.add_argument("--probe-chunks", type=int, default=4096,
                     help="на скольких фрагментах мерить скорость кодирования")
+    ap.add_argument("--shrink", type=int, default=0,
+                    help="сколько раз ужать конфигурацию под свободную "
+                         "видеопамять до старта. Подбирается пробой: на карте, "
+                         "которую делят с рабочим столом, нехватка памяти "
+                         "в WSL не падает, а уходит в подкачку через хост")
     ap.add_argument("--probe-steps", type=int, default=6,
                     help="сколько шагов обучения мерить на каждый состав")
     ap.add_argument("--limit-chunks", type=int, default=0,
