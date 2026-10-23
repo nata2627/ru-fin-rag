@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: stg_queries
+    description: Событие запроса, по строке на запрос.
+    columns:
+      - name: request_id
+        description: >
+          Идентификатор запроса, он же ключ соединения с оценками. Уникален по
+          построению: событие запроса пишется один раз. Проверка на
+          уникальность здесь ловит двойную выгрузку журнала: выгрузка опознает дубли по ключу события
+          (scripts/drain_events.py), и если это сломается, в витрине вырастет
+          трафик, которого не было.
+        tests:
+          - not_null
+          - unique
+      - name: day
+        description: Сутки запроса по UTC, как они нарезаны в файле журнала.
+        tests:
+          - not_null
+      - name: outcome
+        description: Чем кончился запрос.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["ok", "rejected", "unavailable"]
+      - name: received_at
+        tests:
+          - not_null
+
+  - name: stg_feedback
+    description: >
+      Оценка ответа. Уникальности по `request_id` здесь нет и быть не должно:
+      пользователь нажимает кнопку сколько хочет, и каждое нажатие это
+      событие. Поэтому модели качества сворачивают оценки по запросу прежде,
+      чем считать запросы с оценкой.
+    columns:
+      - name: request_id
+        tests:
+          - not_null
+      - name: rating
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["up", "down"]
+      - name: received_at
+        tests:
+          - not_null

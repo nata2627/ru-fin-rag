@@ -1,15 +1,18 @@
-"""Аналитика над журналом запросов: один набор запросов, два режима хранения.
+"""Аналитика над журналом запросов: одни модели, два режима хранения.
 
-На стройке события лежат в ClickHouse сервером (профиль `logs` в
-`docker-compose.yml`), в бесплатном режиме сервера нет и не будет: события это
-файлы JSONL в репозитории (DECISIONS, решение 12), и считает по ним `chdb`,
-тот же движок ClickHouse внутри процесса. Чтобы два режима не разъехались,
-текст запросов витрины здесь один (`MART`), а различается только то, откуда
-берется отношение `events`: подзапрос `file(...)` или таблица на сервере.
-Совпадение проверяется тестом `tests/test_warehouse.py`, а не глазами.
+Модели витрины лежат в проекте dbt (`dbt/models`), и других копий у них нет.
+На стройке и в прогоне CI их собирает dbt в ClickHouse сервером (профиль `logs`
+в `docker-compose.yml`): слой `staging` чистит события, слой `marts` отвечает на
+вопросы, схема и тесты лежат рядом с моделями. В бесплатном режиме сервера нет
+и не будет: события это файлы JSONL в репозитории (DECISIONS, решение 12), dbt
+по ним работать не может, и тот же текст модели исполняет `chdb`, движок
+ClickHouse внутри процесса.
 
-Эти же запросы станут моделями dbt в задаче 4.4, поэтому они написаны как
-представления над `events`, без ссылок на имя файла или базы внутри текста.
+Поэтому здесь нет ни одного запроса витрины, здесь исполнитель моделей dbt без
+dbt: `ref` разворачивается в общее табличное выражение, `source` в тот источник
+событий, который есть у режима (подзапрос `file(...)` или таблица на сервере), и
+модель становится одним запросом. Что dbt и `chdb` считают по моделям одно и то
+же, проверяет `scripts/build_mart.py`, а не глаза.
 
 `quantileExact`, а не `quantile`: приближенный квантиль ClickHouse считает по
 выборке из потока, и два режима дали бы разные числа на одних данных по
@@ -19,8 +22,10 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +36,7 @@ EVENT_COLUMNS = (
     ("kind", "String"),
     ("request_id", "String"),
     ("received_at", "String"),
+    ("query_normalized", "String"),
     ("query_chars", "UInt32"),
     ("outcome", "String"),
     ("status", "UInt16"),
@@ -42,7 +48,12 @@ EVENT_COLUMNS = (
     ("rating", "String"),
 )
 
-TABLE = "rufinrag.query_events"
+SCHEMA = "rufinrag"
+TABLE = f"{SCHEMA}.query_events"
+
+DBT_PROJECT = Path(__file__).resolve().parents[2] / "dbt"
+MARTS = "marts"
+STAGING = "staging"
 
 # Настройки стоят в тексте запроса, а не в клиенте: иначе один режим читал бы
 # события с настройками, а другой без них.
@@ -56,99 +67,104 @@ SETTINGS = (
     "join_use_nulls = 0"
 )
 
-# Трафик по суткам. Сутки берутся из начала `received_at` строкой: файл журнала
-# уже нарезан по суткам UTC (events.py), и разбор в дату с часовым поясом
-# добавил бы ошибку там, где ее нет.
-TRAFFIC_BY_DAY = """
-SELECT
-    substring(received_at, 1, 10) AS day,
-    count() AS queries,
-    countIf(outcome = 'ok') AS answered,
-    countIf(outcome = 'rejected') AS rejected,
-    countIf(outcome = 'unavailable') AS unavailable
-FROM events
-WHERE kind = 'query'
-GROUP BY day
-ORDER BY day
-"""
-
-# Задержка по ступеням. Ступени приходят картой, а не колонками: их состав
-# зависит от связки поиска (у bm25 нет плотной ступени, у hybrid-rerank есть
-# переранжирование), и колонка под каждую ступень половину времени стояла бы
-# пустой.
-STAGE_LATENCY = """
-SELECT
-    stage,
-    count() AS runs,
-    round(quantileExact(0.5)(ms), 3) AS p50_ms,
-    round(quantileExact(0.95)(ms), 3) AS p95_ms,
-    round(max(ms), 3) AS max_ms
-FROM (
-    SELECT
-        arrayJoin(timings_ms) AS pair,
-        pair.1 AS stage,
-        pair.2 AS ms
-    FROM events
-    WHERE kind = 'query' AND outcome = 'ok'
-)
-GROUP BY stage
-ORDER BY stage
-"""
-
-# Доля запросов с оценкой по суткам. Числитель и знаменатель стоят рядом
-# числами (AGENTS.md, раздел 2), долю считает тот, кто печатает текст.
-RATED_SHARE = """
-SELECT
-    day,
-    count() AS answered,
-    countIf(ratings > 0) AS rated
-FROM (
-    SELECT substring(received_at, 1, 10) AS day, request_id
-    FROM events
-    WHERE kind = 'query' AND outcome = 'ok'
-) AS q
-LEFT JOIN (
-    SELECT request_id, count() AS ratings
-    FROM events
-    WHERE kind = 'feedback'
-    GROUP BY request_id
-) AS r USING (request_id)
-GROUP BY day
-ORDER BY day
-"""
-
-# Соединение оценок с запросами по `request_id`. Оценка без своего запроса это
-# не мусор, который можно выбросить молча: процесс сервиса не проверяет
-# существование идентификатора (api.py), и такая строка приходит и от опечатки
-# клиента, и от оценки запроса, чьи сутки уже уехали в другой файл. Поэтому
-# сирота считается числом рядом с общим числом оценок.
-FEEDBACK_MATCH = """
-SELECT
-    count() AS feedback_events,
-    countIf(known = 1) AS matched,
-    countIf(known = 0) AS orphans,
-    countIf(rating = 'up') AS up,
-    countIf(rating = 'down') AS down
-FROM (
-    SELECT request_id, rating
-    FROM events
-    WHERE kind = 'feedback'
-) AS f
-LEFT JOIN (
-    SELECT DISTINCT request_id, 1 AS known
-    FROM events
-    WHERE kind = 'query'
-) AS q USING (request_id)
-"""
-
-MART = {
-    "traffic_by_day": TRAFFIC_BY_DAY,
-    "stage_latency": STAGE_LATENCY,
-    "rated_share": RATED_SHARE,
-    "feedback_match": FEEDBACK_MATCH,
-}
-
 OUTPUT_FORMAT = "TabSeparatedWithNames"
+
+# Место источника событий в тексте модели. Строка, а не разметка jinja: дальше
+# текст идет в ClickHouse, и остаток jinja в нем должен быть виден как ошибка.
+SOURCE_PLACEHOLDER = "__journal_query_events__"
+
+_REF = re.compile(r"\{\{\s*ref\(\s*'([a-z0-9_]+)'\s*\)\s*\}\}")
+_SOURCE = re.compile(r"\{\{\s*source\(\s*'journal'\s*,\s*'query_events'\s*\)\s*\}\}")
+
+
+class WarehouseError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class Model:
+    """Модель dbt без разметки: текст, слой и имена моделей, от которых зависит."""
+
+    name: str
+    layer: str
+    body: str
+    refs: tuple[str, ...]
+
+
+def load_models(project: Path | None = None) -> dict[str, Model]:
+    directory = (project or DBT_PROJECT) / "models"
+    if not directory.is_dir():
+        raise WarehouseError(f"нет моделей dbt в {directory}")
+    models: dict[str, Model] = {}
+    for path in sorted(directory.glob("*/*.sql")):
+        text = path.read_text(encoding="utf-8")
+        refs = tuple(dict.fromkeys(_REF.findall(text)))
+        body = _SOURCE.sub(SOURCE_PLACEHOLDER, _REF.sub(r"\1", text)).strip()
+        if "{{" in body:
+            raise WarehouseError(
+                f"в модели {path.name} осталась разметка jinja, бесплатный режим ее не исполняет"
+            )
+        models[path.stem] = Model(path.stem, path.parent.name, body, refs)
+    if not models:
+        raise WarehouseError(f"в {directory} нет ни одной модели")
+    return models
+
+
+def upstream(models: dict[str, Model], name: str) -> list[str]:
+    """Модели, от которых зависит `name`, в порядке, годном для цепочки CTE."""
+    order: list[str] = []
+    done: set[str] = set()
+    path: list[str] = []
+
+    def walk(current: str) -> None:
+        if current in path:
+            raise WarehouseError("модели ссылаются по кругу: " + " -> ".join([*path, current]))
+        if current in done:
+            return
+        path.append(current)
+        for ref in models[current].refs:
+            if ref not in models:
+                raise WarehouseError(f"{current} ссылается на модель {ref}, которой нет")
+            walk(ref)
+        path.pop()
+        done.add(current)
+        if current != name:
+            order.append(current)
+
+    walk(name)
+    return order
+
+
+class _Marts(Mapping[str, str]):
+    """Модели слоя `marts`: имя и текст.
+
+    Читается при первом обращении, а не при импорте модуля: в образе сервиса
+    проекта dbt нет (туда едут пакет, конфигурация и индекс), и модуль обязан
+    импортироваться там без него.
+    """
+
+    def __init__(self) -> None:
+        self._bodies: dict[str, str] | None = None
+
+    def _load(self) -> dict[str, str]:
+        if self._bodies is None:
+            models = load_models()
+            self._bodies = {
+                name: model.body for name, model in models.items() if model.layer == MARTS
+            }
+        return self._bodies
+
+    def __getitem__(self, name: str) -> str:
+        return self._load()[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._load())
+
+    def __len__(self) -> int:
+        return len(self._load())
+
+
+MART = _Marts()
 
 
 def structure() -> str:
@@ -160,8 +176,38 @@ def columns() -> str:
 
 
 def compose(name: str, source: str) -> str:
-    """Запрос витрины поверх своего источника событий."""
-    return f"WITH events AS (\n{source.strip()}\n){MART[name].strip()}\nSETTINGS {SETTINGS}"
+    """Модель dbt как один запрос: зависимости становятся CTE, `source` подзапросом."""
+    models = load_models()
+    if name not in models:
+        raise WarehouseError(f"нет модели {name}, есть {', '.join(sorted(models))}")
+    chain = [
+        f"{dep} AS (\n{_resolve(models[dep].body, source)}\n)" for dep in upstream(models, name)
+    ]
+    body = _resolve(models[name].body, source)
+    if not chain:
+        return f"{body}\nSETTINGS {SETTINGS}"
+    # Своя секция `with` у модели сливается с цепочкой зависимостей: секция в
+    # запросе бывает одна, а своя у моделей есть.
+    own, body = _merge_with(body)
+    return "WITH " + ",\n".join(chain) + (",\n" if own else "\n") + body + f"\nSETTINGS {SETTINGS}"
+
+
+def _resolve(body: str, source: str) -> str:
+    return body.replace(SOURCE_PLACEHOLDER, f"(\n{source.strip()}\n)")
+
+
+def _merge_with(body: str) -> tuple[bool, str]:
+    """Снять с модели ключевое слово `with`, если оно у нее есть."""
+    lines = body.splitlines()
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("--"):
+            continue
+        if not re.match(r"with\s", stripped, flags=re.IGNORECASE):
+            return False, body
+        lines[index] = re.sub(r"^(\s*)with\s+", r"\1", line, flags=re.IGNORECASE)
+        return True, "\n".join(lines)
+    return False, body
 
 
 def parse_table(text: str) -> tuple[list[str], list[list[str]]]:
@@ -175,16 +221,12 @@ def parse_table(text: str) -> tuple[list[str], list[list[str]]]:
     return lines[0].split("\t"), [line.split("\t") for line in lines[1:]]
 
 
-class WarehouseError(Exception):
-    pass
-
-
 @dataclass
 class FilesWarehouse:
     """Бесплатный режим: события читаются из файлов JSONL, сервера нет.
 
     Движок тот же ClickHouse, он работает внутри процесса python, поэтому
-    запрос витрины на бесплатном тарифе и на стройке пишется один раз.
+    модель витрины на бесплатном тарифе и на стройке пишется один раз.
     """
 
     directory: Path
@@ -250,7 +292,7 @@ class ServerWarehouse:
         files = sorted(Path(directory).resolve().glob(pattern))
         if not files:
             raise WarehouseError(f"нет файлов {pattern} в {directory}")
-        self.execute("CREATE DATABASE IF NOT EXISTS rufinrag")
+        self.execute(f"CREATE DATABASE IF NOT EXISTS {SCHEMA}")
         self.execute(f"DROP TABLE IF EXISTS {TABLE}")
         self.execute(
             f"CREATE TABLE {TABLE} (\n    {columns()}\n) "
@@ -274,9 +316,13 @@ class ServerWarehouse:
     def run(self, name: str) -> str:
         return self.execute(compose(name, self.source()))
 
+    def read_model(self, name: str) -> str:
+        """Вывод модели, которую собрал dbt, прямо из базы."""
+        return self.execute(f"SELECT * FROM {SCHEMA}.{name}")
+
 
 def mart(warehouse: FilesWarehouse | ServerWarehouse) -> dict[str, str]:
-    return {name: warehouse.run(name) for name in MART}
+    return {name: warehouse.run(name) for name in sorted(MART)}
 
 
 def report(rows: dict[str, str]) -> dict:

@@ -1,10 +1,17 @@
-"""Витрина над журналом: одни запросы, два режима хранения, один результат.
+"""Витрина над журналом: одни модели, два режима хранения, один результат.
 
 Главная проверка здесь `test_both_modes_return_the_same_table`: она гоняет
-запросы витрины по файлам JSONL через chdb и по тому же набору, залитому в
+модели витрины по файлам JSONL через chdb и по тому же набору, залитому в
 ClickHouse сервером, и сравнивает выходы как текст. Эта проверка требует
 докера, поэтому помечена маркером `clickhouse` и пропускается, когда сервера
 нет. Остальное проверяется в бесплатном режиме, который работает везде.
+
+Сами модели лежат в проекте dbt, и сюда приходит их текст. Поэтому тут же
+проверяется связность проекта: что у каждой модели есть описание и тесты в
+`schema.yml`, что марты читают события через слой `staging`, и что после
+разворота модели в один запрос в тексте не осталось разметки jinja. Собирает
+проект и сверяет его вывод с бесплатным режимом `scripts/build_mart.py`:
+для этого нужен и сервер, и сам dbt, которого в прогоне тестов нет.
 """
 
 from __future__ import annotations
@@ -14,6 +21,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from rufinrag import warehouse
 
@@ -45,14 +53,54 @@ def rows(text: str) -> list[dict[str, str]]:
     return [dict(zip(header, row, strict=True)) for row in body]
 
 
+@pytest.fixture(scope="module")
+def models():
+    return warehouse.load_models()
+
+
 def test_mart_query_text_is_the_same_for_both_modes():
-    """Разный только источник событий, сам запрос витрины один текст."""
+    """Разный только источник событий, остальной текст модели один."""
     files = warehouse.FilesWarehouse(Path("/tmp/events")).source()
     server = warehouse.ServerWarehouse().source()
     assert files != server
-    for name, body in warehouse.MART.items():
-        assert body.strip() in warehouse.compose(name, files)
-        assert body.strip() in warehouse.compose(name, server)
+    for name in warehouse.MART:
+        by_files = warehouse.compose(name, files)
+        assert by_files.replace(files, server) == warehouse.compose(name, server)
+
+
+def test_composed_model_keeps_no_jinja(models):
+    """Разметку dbt исполняет dbt, а бесплатный режим обязан развернуть ее всю."""
+    source = warehouse.FilesWarehouse(Path("/tmp/events")).source()
+    for name in models:
+        composed = warehouse.compose(name, source)
+        assert "{{" not in composed and warehouse.SOURCE_PLACEHOLDER not in composed
+
+
+def test_marts_read_the_journal_through_staging(models):
+    """Март читает события только через `staging`.
+
+    Иначе чистка событий (сутки из `received_at`, ступень `total` из карты)
+    разъехалась бы между моделями, и трафик в одной модели считался бы по
+    другому набору строк, чем качество в соседней.
+    """
+    for name, model in models.items():
+        reads_journal = warehouse.SOURCE_PLACEHOLDER in model.body
+        assert reads_journal == (model.layer == warehouse.STAGING), name
+        if model.layer == warehouse.MARTS:
+            assert model.refs, f"март {name} ни на что не ссылается"
+
+
+def test_every_model_is_described_and_tested(models):
+    """У каждой модели есть описание и хотя бы один тест в своем `schema.yml`."""
+    described: dict[str, dict] = {}
+    for path in (warehouse.DBT_PROJECT / "models").glob("*/schema.yml"):
+        for entry in yaml.safe_load(path.read_text(encoding="utf-8"))["models"]:
+            described[entry["name"]] = entry
+    assert set(described) == set(models)
+    for name, entry in described.items():
+        assert entry.get("description", "").strip(), name
+        tests = [test for column in entry["columns"] for test in column.get("tests", ())]
+        assert tests, name
 
 
 def test_traffic_by_day_splits_days_and_outcomes(free, sample):
@@ -91,6 +139,68 @@ def test_orphan_feedback_is_counted_not_dropped(free, sample):
     assert int(row["orphans"]) == info["orphan_feedback"]
     assert int(row["matched"]) + int(row["orphans"]) == int(row["feedback_events"])
     assert int(row["up"]) + int(row["down"]) == int(row["feedback_events"])
+
+
+@pytest.fixture(scope="module")
+def gapped(tmp_path_factory):
+    """Журнал с дырой в ряду суток: 1, 2 и 10 октября, между ними сервис молчал.
+
+    Дыра тут обычное состояние бесплатного хостинга, а не редкость, и именно
+    на ней видно, по чему идет недельное окно.
+    """
+    pytest.importorskip("chdb", reason="нет chdb, поставить: pip install -e '.[analytics]'")
+    directory = tmp_path_factory.mktemp("gapped")
+    batch = compare_warehouses.sample_events(
+        days=("2026-10-01", "2026-10-02", "2026-10-10"), per_day=10
+    )
+    compare_warehouses.write_sample(directory, batch)
+    return warehouse.FilesWarehouse(directory)
+
+
+def test_week_window_counts_calendar_days_not_rows(gapped):
+    """Недельное окно идет по номеру суток, а не по строкам.
+
+    По строкам сутки с дырой попали бы в одно окно с теми, что были неделей
+    раньше, и «за последние семь суток» означало бы «за последние три записи».
+    """
+    table = {row["day"]: row for row in rows(gapped.run("traffic_by_day"))}
+    assert list(table) == ["2026-10-01", "2026-10-02", "2026-10-10"]
+    assert [table[day]["days_in_7d"] for day in table] == ["1", "2", "1"]
+    assert table["2026-10-02"]["queries_7d"] == "20"
+    # Восьмое число суток назад в окно не попадает, поэтому недельное число
+    # последних суток это только они сами.
+    assert table["2026-10-10"]["queries_7d"] == "10"
+    quality = {row["day"]: row for row in rows(gapped.run("quality_by_day"))}
+    assert [quality[day]["days_in_7d"] for day in quality] == ["1", "2", "1"]
+
+
+def test_running_total_and_change_come_from_the_window(gapped):
+    table = rows(gapped.run("traffic_by_day"))
+    running = 0
+    previous = None
+    for row in table:
+        running += int(row["queries"])
+        assert int(row["queries_total"]) == running
+        # У первых суток предыдущих нет, значит разницы нет: ноль означал бы,
+        # что трафик не изменился.
+        expected = r"\N" if previous is None else str(int(row["queries"]) - previous)
+        assert row["queries_change"] == expected
+        previous = int(row["queries"])
+
+
+def test_repeat_window_tells_the_first_ask_from_a_repeat(gapped):
+    """Место запроса в ряду повторов своего текста считается окном.
+
+    Группировкой это не считается: номер повтора живет на строке журнала, а не
+    на группе, поэтому первые обращения видны только в первых сутках, хотя
+    текстов в каждых сутках одни и те же пять.
+    """
+    table = rows(gapped.run("repeat_queries"))
+    assert [row["first_time"] for row in table] == ["5", "0", "0"]
+    assert [row["distinct_texts"] for row in table] == ["5", "5", "5"]
+    for row in table:
+        assert int(row["first_time"]) + int(row["repeated"]) == int(row["answered"])
+    assert int(table[-1]["median_gap_seconds"]) > 0
 
 
 def test_quantiles_are_exact_so_two_runs_agree(free):
