@@ -219,7 +219,8 @@ def main() -> None:
     fields = [k for k in (take[0].keys() if take else ["query_id"]) if not k.startswith("_")]
     tsv = os.path.join(OUT, f"errors_{base}.tsv")
     with open(tsv, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields, delimiter="\t", extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=fields, delimiter="\t", extrasaction="ignore",
+                           lineterminator="\n")
         w.writeheader()
         w.writerows(take)
 
