@@ -12,11 +12,13 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import pytest
 
 from rufinrag.corpus import corpus_path
 
+ROOT = Path(__file__).resolve().parents[1]
 PORT = 8765
 TIMEOUT_SECONDS = 90
 
@@ -34,7 +36,7 @@ def wait_for_health(url: str, deadline: float, process: subprocess.Popen) -> dic
 
 
 @pytest.mark.slow
-def test_service_answers_over_http():
+def test_service_answers_over_http(event_dir_outside_the_repo):
     if not corpus_path().exists():
         pytest.skip("нет корпуса, собрать: python scripts/import_corpus.py")
 
@@ -45,6 +47,11 @@ def test_service_answers_over_http():
             "-m",
             "uvicorn",
             "rufinrag.api:app",
+            # Та же команда, что в Makefile и в README: без `--app-dir` uvicorn
+            # берет пакет из site-packages, и тест проверял бы установленную
+            # копию вместо рабочего дерева. Один раз уже проверял.
+            "--app-dir",
+            str(ROOT / "src"),
             "--host",
             "127.0.0.1",
             "--port",
@@ -76,6 +83,20 @@ def test_service_answers_over_http():
         assert len(body["results"]) == 10
         assert body["corpus_version"] == health["corpus_version"]
         assert body["results"][0]["url"].startswith("https://www.cbr.ru/")
+
+        # Подпроцесс наследует RUFINRAG_EVENT_DIR из tests/conftest.py, поэтому
+        # событие прогона лежит в каталоге pytest, а не в data/events
+        # репозитория, куда едут события сервиса (DECISIONS, решение 12).
+        logged = "".join(
+            path.read_text(encoding="utf-8")
+            for path in event_dir_outside_the_repo.glob("queries-*.jsonl")
+        )
+        assert body["request_id"] in logged
+        in_repo = "".join(
+            path.read_text(encoding="utf-8")
+            for path in (ROOT / "data/events").glob("queries-*.jsonl")
+        )
+        assert body["request_id"] not in in_repo
     finally:
         process.terminate()
         process.wait(timeout=30)

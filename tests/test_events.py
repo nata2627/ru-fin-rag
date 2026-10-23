@@ -9,12 +9,16 @@ from __future__ import annotations
 import json
 import os
 import time
+from pathlib import Path
 
 import pytest
 
 from rufinrag import events
+from rufinrag.config import data_dir
 from rufinrag.retrieval.text import tokenize
 from rufinrag.search import Hit, SearchResult
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _hit(rank: int) -> Hit:
@@ -191,6 +195,28 @@ def test_from_env_off_disables_the_log(monkeypatch):
     assert events.EventLog.from_env() is None
 
 
+def test_default_event_dir_is_the_service_data_dir(monkeypatch):
+    """В рабочем режиме события пишутся в data/events и едут в репозиторий."""
+    monkeypatch.delenv("RUFINRAG_EVENT_LOG", raising=False)
+    monkeypatch.delenv("RUFINRAG_EVENT_DIR", raising=False)
+    log = events.EventLog.from_env()
+    assert log is not None
+    assert log.directory == data_dir() / "events"
+
+
+def test_the_test_run_writes_events_outside_the_repo(event_dir_outside_the_repo):
+    """Обратная сторона предыдущего теста: прогон тестов в дерево не пишет.
+
+    Один раз уже написал: сверка задачи 4.1 нашла в data/events 77 событий
+    тестов. Каталог ставит tests/conftest.py на весь прогон, поэтому правило
+    держится и на тестах, которые поднимают сервис подпроцессом.
+    """
+    log = events.EventLog.from_env()
+    assert log is not None
+    assert log.directory == event_dir_outside_the_repo
+    assert ROOT not in log.directory.parents
+
+
 def test_from_env_uses_event_dir_override(tmp_path, monkeypatch):
     monkeypatch.delenv("RUFINRAG_EVENT_LOG", raising=False)
     monkeypatch.setenv("RUFINRAG_EVENT_DIR", str(tmp_path / "custom-events"))
@@ -199,8 +225,9 @@ def test_from_env_uses_event_dir_override(tmp_path, monkeypatch):
     assert log.directory == tmp_path / "custom-events"
 
 
-# Тесты уровня API: свой TestClient с журналом в tmp_path_factory, чтобы
-# контрактные тесты не писали события в data/events репозитория.
+# Тесты уровня API: свой TestClient с журналом в каталоге прогона (tests/
+# conftest.py), чтобы контрактные тесты не писали события в data/events
+# репозитория.
 
 
 def _today_lines(event_dir) -> list[str]:
@@ -211,23 +238,23 @@ def _today_lines(event_dir) -> list[str]:
 
 
 @pytest.fixture(scope="module")
-def api_client(tmp_path_factory):
+def api_client(event_dir_outside_the_repo):
     from rufinrag.corpus import corpus_path
 
     if not corpus_path().exists():
         pytest.skip("нет корпуса, собрать: python scripts/import_corpus.py")
 
-    event_dir = tmp_path_factory.mktemp("events")
+    # Каталог журнала свой фикстура не ставит: его ставит conftest на весь
+    # прогон. Своя переменная здесь однажды уже снялась в teardown вместе с
+    # общей, и события следующего теста ушли в рабочее дерево.
     os.environ["RUFINRAG_DISABLE_DENSE"] = "1"
-    os.environ["RUFINRAG_EVENT_DIR"] = str(event_dir)
     from fastapi.testclient import TestClient
 
     from rufinrag.api import app
 
     with TestClient(app) as test_client:
-        yield test_client, event_dir
+        yield test_client, event_dir_outside_the_repo
     os.environ.pop("RUFINRAG_DISABLE_DENSE", None)
-    os.environ.pop("RUFINRAG_EVENT_DIR", None)
 
 
 def test_successful_search_writes_exactly_one_event_with_matching_request_id(api_client):
