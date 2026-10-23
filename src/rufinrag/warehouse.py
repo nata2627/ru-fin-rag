@@ -258,7 +258,12 @@ class ServerWarehouse:
     timeout: int = 60
 
     def execute(
-        self, sql: str, body: bytes | None = None, fmt: str = OUTPUT_FORMAT, **settings: str
+        self,
+        sql: str,
+        body: bytes | None = None,
+        fmt: str = OUTPUT_FORMAT,
+        timeout: int | None = None,
+        **settings: str,
     ) -> str:
         params = {"default_format": fmt, **settings}
         if body is not None:
@@ -269,16 +274,22 @@ class ServerWarehouse:
         request = urllib.request.Request(
             f"{self.url}/?{urllib.parse.urlencode(params)}", data=data, method="POST"
         )
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout or self.timeout) as response:
             return response.read().decode("utf-8")
 
     def scalar(self, sql: str) -> str:
         return self.execute(sql, fmt="TabSeparated").strip()
 
     def available(self) -> bool:
+        """Сервер отвечает и пускает нас внутрь.
+
+        Проверка запросом, а не `/ping`: `/ping` отвечает «Ok.» вообще без
+        авторизации. Сервер, закрывший сетевой доступ пользователю `default`,
+        выглядел из-за этого доступным, а 401 вылетал уже посреди загрузки
+        журнала. Теперь проверка отвечает на тот вопрос, который ей задают.
+        """
         try:
-            with urllib.request.urlopen(f"{self.url}/ping", timeout=5) as response:
-                return response.read().decode("utf-8").strip() == "Ok."
+            return self.execute("SELECT 1", fmt="TabSeparated", timeout=5).strip() == "1"
         except OSError:
             return False
 
