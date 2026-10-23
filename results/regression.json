@@ -6,7 +6,7 @@
   "chunks": 62606,
   "queries_scored": 991,
   "queries_total": 1182,
-  "seconds": 6.8,
+  "seconds": 6.9,
   "metrics": {
     "Recall@1": 0.3025,
     "Recall@5": 0.5436,
