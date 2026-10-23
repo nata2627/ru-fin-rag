@@ -1,0 +1,454 @@
+{
+  "measured_at": "2026-10-23",
+  "machine": "Darwin arm64",
+  "python": "3.11.6",
+  "builds": {
+    "sample": {
+      "source": "собранный набор, scripts/compare_warehouses.py",
+      "live": false,
+      "empty": false,
+      "journal": {
+        "files": [
+          "queries-2026-10-21.jsonl",
+          "queries-2026-10-22.jsonl"
+        ],
+        "days": 2,
+        "lines": 253,
+        "last_event_at": "2026-10-22T23:54:00.000Z"
+      },
+      "corpus_version": "chunks62594-acts1554",
+      "config_version": "hybrid+hybrid+cand50+rufin",
+      "built_at": "2026-10-23 13:24:48Z",
+      "mart_models": [
+        "feedback_match",
+        "quality_by_day",
+        "rated_share",
+        "repeat_queries",
+        "stage_latency",
+        "traffic_by_day"
+      ],
+      "numbers": 75,
+      "charts": 4,
+      "page_bytes": 15737,
+      "seconds": 1.55,
+      "page_kb": 15.4,
+      "external_resources": 0
+    },
+    "empty": {
+      "source": "журнал сервиса, data/events",
+      "live": true,
+      "empty": true,
+      "journal": {
+        "files": [],
+        "days": 0,
+        "lines": 0,
+        "last_event_at": ""
+      },
+      "corpus_version": "chunks62594-acts1554",
+      "config_version": "hybrid+hybrid+cand50+rufin",
+      "built_at": "2026-10-23 13:24:48Z",
+      "mart_models": [],
+      "numbers": 1,
+      "charts": 0,
+      "page_bytes": 6375,
+      "seconds": 0.0,
+      "page_kb": 6.2,
+      "external_resources": 0
+    }
+  },
+  "mart_matches_warehouse_json": true,
+  "days_shown": 14,
+  "snapshot": {
+    "journal": {
+      "files": [
+        "queries-2026-10-21.jsonl",
+        "queries-2026-10-22.jsonl"
+      ],
+      "days": 2,
+      "lines": 253,
+      "last_event_at": "2026-10-22T23:54:00.000Z"
+    },
+    "corpus_version": "chunks62594-acts1554",
+    "corpus_source": "results/regulation.json",
+    "config_version": "hybrid+hybrid+cand50+rufin",
+    "source": "собранный набор, scripts/compare_warehouses.py",
+    "built_at": "2026-10-23 13:24:48Z"
+  },
+  "values": [
+    {
+      "label": "traffic_by_day.queries 2026-10-21",
+      "text": "100",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.answered 2026-10-21",
+      "text": "96",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.rejected 2026-10-21",
+      "text": "2",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.unavailable 2026-10-21",
+      "text": "2",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_total 2026-10-21",
+      "text": "100",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_7d 2026-10-21",
+      "text": "100",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.days_in_7d 2026-10-21",
+      "text": "1",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_change 2026-10-21",
+      "text": "нет",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries 2026-10-22",
+      "text": "100",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.answered 2026-10-22",
+      "text": "96",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.rejected 2026-10-22",
+      "text": "2",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.unavailable 2026-10-22",
+      "text": "2",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_total 2026-10-22",
+      "text": "200",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_7d 2026-10-22",
+      "text": "200",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.days_in_7d 2026-10-22",
+      "text": "2",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "traffic_by_day.queries_change 2026-10-22",
+      "text": "0",
+      "source": "traffic_by_day"
+    },
+    {
+      "label": "stage_latency.runs bm25",
+      "text": "192",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p50_ms bm25",
+      "text": "21,188",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p95_ms bm25",
+      "text": "37,539",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.max_ms bm25",
+      "text": "39,505",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.runs dense",
+      "text": "128",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p50_ms dense",
+      "text": "19,973",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p95_ms dense",
+      "text": "37,793",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.max_ms dense",
+      "text": "39,731",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.runs fusion",
+      "text": "128",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p50_ms fusion",
+      "text": "20,189",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p95_ms fusion",
+      "text": "37,091",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.max_ms fusion",
+      "text": "39,12",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.runs rerank",
+      "text": "64",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p50_ms rerank",
+      "text": "22,165",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p95_ms rerank",
+      "text": "38,44",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.max_ms rerank",
+      "text": "39,926",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.runs total",
+      "text": "192",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p50_ms total",
+      "text": "59,558",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.p95_ms total",
+      "text": "104,798",
+      "source": "stage_latency"
+    },
+    {
+      "label": "stage_latency.max_ms total",
+      "text": "139,824",
+      "source": "stage_latency"
+    },
+    {
+      "label": "rated_share.share 2026-10-21",
+      "text": "24 из 96",
+      "source": "rated_share"
+    },
+    {
+      "label": "rated_share.share 2026-10-22",
+      "text": "24 из 96",
+      "source": "rated_share"
+    },
+    {
+      "label": "feedback_match.orphans",
+      "text": "5 из 53",
+      "source": "feedback_match"
+    },
+    {
+      "label": "feedback_match.feedback_events",
+      "text": "53",
+      "source": "feedback_match"
+    },
+    {
+      "label": "feedback_match.matched",
+      "text": "48",
+      "source": "feedback_match"
+    },
+    {
+      "label": "feedback_match.orphans",
+      "text": "5",
+      "source": "feedback_match"
+    },
+    {
+      "label": "feedback_match.up",
+      "text": "24",
+      "source": "feedback_match"
+    },
+    {
+      "label": "feedback_match.down",
+      "text": "29",
+      "source": "feedback_match"
+    },
+    {
+      "label": "quality_by_day.answered 2026-10-21",
+      "text": "96",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.rated 2026-10-21",
+      "text": "24",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.up 2026-10-21",
+      "text": "12",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.down 2026-10-21",
+      "text": "12",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.p95_total_ms 2026-10-21",
+      "text": "104,03",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.answered_7d 2026-10-21",
+      "text": "96",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.rated_7d 2026-10-21",
+      "text": "24",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.up_7d 2026-10-21",
+      "text": "12",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.days_in_7d 2026-10-21",
+      "text": "1",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.p95_worst_7d 2026-10-21",
+      "text": "104,03",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.answered 2026-10-22",
+      "text": "96",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.rated 2026-10-22",
+      "text": "24",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.up 2026-10-22",
+      "text": "12",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.down 2026-10-22",
+      "text": "12",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.p95_total_ms 2026-10-22",
+      "text": "106,704",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.answered_7d 2026-10-22",
+      "text": "192",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.rated_7d 2026-10-22",
+      "text": "48",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.up_7d 2026-10-22",
+      "text": "24",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.days_in_7d 2026-10-22",
+      "text": "2",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "quality_by_day.p95_worst_7d 2026-10-22",
+      "text": "106,704",
+      "source": "quality_by_day"
+    },
+    {
+      "label": "repeat_queries.answered 2026-10-21",
+      "text": "96",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.first_time 2026-10-21",
+      "text": "5",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.repeated 2026-10-21",
+      "text": "91",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.distinct_texts 2026-10-21",
+      "text": "5",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.median_gap_seconds 2026-10-21",
+      "text": "305",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.answered 2026-10-22",
+      "text": "96",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.first_time 2026-10-22",
+      "text": "0",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.repeated 2026-10-22",
+      "text": "96",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.distinct_texts 2026-10-22",
+      "text": "5",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "repeat_queries.median_gap_seconds 2026-10-22",
+      "text": "305",
+      "source": "repeat_queries"
+    },
+    {
+      "label": "journal.lines",
+      "text": "253",
+      "source": "journal"
+    }
+  ]
+}
