@@ -17,6 +17,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
+sys.path.insert(0, str(ROOT / "src"))
+
+from rufinrag import dashboard  # noqa: E402
 
 
 def ru(value: float, digits: int = 2) -> str:
@@ -62,6 +65,7 @@ def checks() -> list[tuple[str, str, str]]:
     mart = load("dbt.json")
     drain = load("events-rehearsal.json")
     logging_report = load("logging.json")
+    page = load("dashboard.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
     out: list[tuple[str, str, str]] = []
@@ -450,7 +454,59 @@ def checks() -> list[tuple[str, str, str]]:
             f"{ru(logging_report['request']['on']['p50_ms'], 3)} мс",
         )
     )
+
+    # Числа страницы дашборда. Сами числа витрины на страницу печатает
+    # `rufinrag/dashboard.py`, а здесь проверяются числа про саму страницу:
+    # сколько их на ней, сколько она весит и сколько стоит сборка.
+    sample = page["builds"]["sample"]
+    empty = page["builds"]["empty"]
+    out.append(("чисел на странице дашборда", "dashboard.json", f"{sample['numbers']} чисел"))
+    out.append(("графиков на странице", "dashboard.json", f"{sample['charts']} графика"))
+    out.append(("вес страницы", "dashboard.json", f"{ru(sample['page_kb'], 1)} КБ"))
+    out.append(("сборка страницы", "dashboard.json", f"{ru(sample['seconds'], 2)} с"))
+    out.append(("страница на пустом журнале", "dashboard.json", f"{ru(empty['page_kb'], 1)} КБ"))
+    out.append(("чисел на пустом журнале", "dashboard.json", f"{empty['numbers']} число"))
+    out.append(
+        (
+            "внешние ссылки страницы",
+            "dashboard.json",
+            f"{sample['external_resources'] + empty['external_resources']} ссылок на чужие машины",
+        )
+    )
+    out.append(("суток на странице", "dashboard.json", f"последние {page['days_shown']} суток"))
     return out
+
+
+def dashboard_values() -> list[str]:
+    """Пересчет чисел самой страницы: страница собирается заново и сверяется.
+
+    Вход сборки лежит в двух файлах результата: вывод моделей витрины на
+    собранном наборе в `warehouse.json`, остальное состояние в
+    `dashboard.json`. Движок витрины для этого не нужен, поэтому проверка
+    работает и там, где его не ставили. Расходится она, если страница начала
+    печатать не то, что считает витрина: потеряла знаменатель, округлила
+    число или подставила значение мимо модели.
+    """
+    page = load("dashboard.json")
+    snapshot = dashboard.Snapshot(
+        mart=load("warehouse.json")["mart"], live=False, regulation=None, **page["snapshot"]
+    )
+    rendered = dashboard.render(snapshot)
+    rebuilt = [
+        {"label": value.label, "text": value.text, "source": value.source}
+        for value in rendered.values
+    ]
+    known = page["values"]
+    if rebuilt == known:
+        return []
+    problems = [
+        f"  {old['label']}: в витрине {new['text']}, на странице было {old['text']}"
+        for old, new in zip(known, rebuilt, strict=False)
+        if old != new
+    ]
+    if len(rebuilt) != len(known):
+        problems.append(f"  чисел на странице {len(rebuilt)}, в замере {len(known)}")
+    return problems
 
 
 def main() -> int:
@@ -464,7 +520,15 @@ def main() -> int:
         for what, source, expected in missing:
             print(f"  {what}: в {source} стоит {expected}, в README такого нет", file=sys.stderr)
         return 1
-    print(f"числа README сошлись с замерами, проверок {len(checks())}")
+    problems = dashboard_values()
+    if problems:
+        print("страница дашборда разошлась с витриной:", file=sys.stderr)
+        print("\n".join(problems), file=sys.stderr)
+        return 1
+    print(
+        f"числа README сошлись с замерами, проверок {len(checks())}; "
+        f"страница дашборда пересобрана, чисел {len(load('dashboard.json')['values'])}"
+    )
     return 0
 
 
