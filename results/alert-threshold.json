@@ -1,0 +1,565 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "metric": "NDCG@10",
+  "config": "bm25",
+  "queries_scored": 991,
+  "corpus_version": "chunks62606-acts1555",
+  "full_corpus_ndcg10": 0.57116,
+  "same_path_as_service": {
+    "queries": 991,
+    "service_ndcg10": 0.57116,
+    "corpus_version": "chunks62606-acts1555"
+  },
+  "rule": {
+    "safety": 5.0,
+    "step": 0.005,
+    "seed": 20261024,
+    "text": "порог это наибольшее по модулю изменение метрики среди прогонов доливки, умноженное на пять, округленное вверх до шага 0,005, но не меньше одного шага и меньше половины наименьшего реального сдвига качества",
+    "written_before": "orchestration/EXPERIMENTS.md, S16"
+  },
+  "history": {
+    "runs": 11,
+    "distinct_values": [
+      0.4839,
+      0.5675,
+      0.5712
+    ],
+    "repeated_value": 0.4839,
+    "repeated_runs": 9,
+    "repeated_machines": [
+      "arm64 Darwin 25.6.0",
+      "x86_64 Linux 6.17.0-1022-azure",
+      "x86_64 Linux 7.0.0-1017-azure"
+    ],
+    "repeated_corpus_versions": [
+      "chunks62594-acts1554",
+      "chunks62606-acts1555"
+    ],
+    "real_shift_same_corpus": 0.0836,
+    "stored_precision": 0.0001,
+    "runs_listed": [
+      {
+        "commit": "40995c9",
+        "at": "22.10 11:33",
+        "file": "results/regression.json",
+        "machine": "x86_64 Linux 7.0.0-1017-azure",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "8e47e8c",
+        "at": "22.10 13:55",
+        "file": "results/regression.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "8e47e8c",
+        "at": "22.10 13:55",
+        "file": "results/regression-baseline.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "6022ad1",
+        "at": "22.10 14:17",
+        "file": "results/regression.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "fdac89b",
+        "at": "22.10 14:23",
+        "file": "results/regression.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "fdac89b",
+        "at": "22.10 14:23",
+        "file": "results/regression-baseline.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "928838d",
+        "at": "22.10 18:37",
+        "file": "results/regression.json",
+        "machine": "x86_64 Linux 6.17.0-1022-azure",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "2b95364",
+        "at": "23.10 15:47",
+        "file": "results/regression.json",
+        "machine": "x86_64 Linux 6.17.0-1022-azure",
+        "corpus_version": "chunks62606-acts1555",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "3aa0513",
+        "at": "23.10 16:06",
+        "file": "results/regression.json",
+        "machine": "x86_64 Linux 6.17.0-1022-azure",
+        "corpus_version": "chunks62606-acts1555",
+        "NDCG@10": 0.4839
+      },
+      {
+        "commit": "3b8b655",
+        "at": "23.10 19:10",
+        "file": "results/regression-baseline.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62594-acts1554",
+        "NDCG@10": 0.5675
+      },
+      {
+        "commit": "ca57958",
+        "at": "23.10 20:20",
+        "file": "results/regression-baseline.json",
+        "machine": "arm64 Darwin 25.6.0",
+        "corpus_version": "chunks62606-acts1555",
+        "NDCG@10": 0.5712
+      }
+    ]
+  },
+  "delivery_noise": {
+    "runs": 40,
+    "single_act_runs": 30,
+    "group_act_runs": 10,
+    "acts_in_group": 5,
+    "chunks_removed_min": 1,
+    "chunks_removed_max": 1250,
+    "mean_drop": 0.000244,
+    "stdev_drop": 0.000912,
+    "max_drop": 0.00209,
+    "min_drop": -0.003745,
+    "ceiling": 0.003745,
+    "runs_listed": [
+      {
+        "acts_removed": 1,
+        "chunks_removed": 49,
+        "acts": [
+          "6044-У_28122021"
+        ],
+        "NDCG@10": 0.571075,
+        "drop": -8.5e-05
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 11,
+        "acts": [
+          "5702-У_11012021"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 75,
+        "acts": [
+          "445-П_15122014"
+        ],
+        "NDCG@10": 0.571462,
+        "drop": 0.000301
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 18,
+        "acts": [
+          "4256-У_28122016"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 10,
+        "acts": [
+          "7276-У_12012026"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 79,
+        "acts": [
+          "621-П_25122017"
+        ],
+        "NDCG@10": 0.571572,
+        "drop": 0.000412
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 4,
+        "acts": [
+          "3437-У_06112014"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 16,
+        "acts": [
+          "5963-У_04102021"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 8,
+        "acts": [
+          "5616-У_10112020"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 8,
+        "acts": [
+          "3896-У_14122015"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 33,
+        "acts": [
+          "3808-У_25092015"
+        ],
+        "NDCG@10": 0.57128,
+        "drop": 0.00012
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 7,
+        "acts": [
+          "3335-У_22072014"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 4,
+        "acts": [
+          "5390-У_17012020"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 6,
+        "acts": [
+          "6181-У_29062022"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 22,
+        "acts": [
+          "578-П_22022017"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 58,
+        "acts": [
+          "3462-У_30112014"
+        ],
+        "NDCG@10": 0.571436,
+        "drop": 0.000275
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 3,
+        "acts": [
+          "556-П_11112016"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 190,
+        "acts": [
+          "758-П_11052021"
+        ],
+        "NDCG@10": 0.567415,
+        "drop": -0.003745
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 1,
+        "acts": [
+          "3488-У_15122014"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 17,
+        "acts": [
+          "6675-У_19012024"
+        ],
+        "NDCG@10": 0.571205,
+        "drop": 4.4e-05
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 31,
+        "acts": [
+          "747-П_23122020"
+        ],
+        "NDCG@10": 0.571292,
+        "drop": 0.000132
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 20,
+        "acts": [
+          "3277-У_11062014"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 1250,
+        "acts": [
+          "803-П_01082022"
+        ],
+        "NDCG@10": 0.571573,
+        "drop": 0.000413
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 11,
+        "acts": [
+          "3388-У_22092014"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 17,
+        "acts": [
+          "3588-У_11032015"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 68,
+        "acts": [
+          "32-МР_18122017"
+        ],
+        "NDCG@10": 0.573023,
+        "drop": 0.001863
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 31,
+        "acts": [
+          "474-П_10062015"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 67,
+        "acts": [
+          "602-П_22092017"
+        ],
+        "NDCG@10": 0.571292,
+        "drop": 0.000132
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 28,
+        "acts": [
+          "6504-У_14082023"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 1,
+        "chunks_removed": 7,
+        "acts": [
+          "4391-У_29052017"
+        ],
+        "NDCG@10": 0.57116,
+        "drop": 0.0
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 71,
+        "acts": [
+          "7025-У_31032025",
+          "6206-У_20072022",
+          "4463-У_12072017",
+          "5479-У_19062020",
+          "6401-У_06042023"
+        ],
+        "NDCG@10": 0.572874,
+        "drop": 0.001713
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 94,
+        "acts": [
+          "4980-У_27112018",
+          "4145-У_30092016",
+          "6381-У_27032023",
+          "6044-У_28122021",
+          "3510-У_28122014"
+        ],
+        "NDCG@10": 0.571316,
+        "drop": 0.000155
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 425,
+        "acts": [
+          "4892-У_31082018",
+          "4777-У_19042018",
+          "3922-У_28122015",
+          "6043-У_28122021",
+          "4509-У_30082017"
+        ],
+        "NDCG@10": 0.571364,
+        "drop": 0.000203
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 131,
+        "acts": [
+          "6824-У_12082024",
+          "3804-У_22092015",
+          "4718-У_09022018",
+          "5608-У_02112020",
+          "774-П_23092021"
+        ],
+        "NDCG@10": 0.571346,
+        "drop": 0.000186
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 110,
+        "acts": [
+          "3605-У_23032015",
+          "4641-У_07122017",
+          "3493-У_16122014",
+          "521-П_17122015",
+          "4954-У_31102018"
+        ],
+        "NDCG@10": 0.57304,
+        "drop": 0.00188
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 79,
+        "acts": [
+          "4242-У_20122016",
+          "6171-У_28062022",
+          "5830-У_28062021",
+          "4298-У_22022017",
+          "4278-У_03022017"
+        ],
+        "NDCG@10": 0.571267,
+        "drop": 0.000106
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 191,
+        "acts": [
+          "6950-У_22112024",
+          "6864-У_26092024",
+          "3719-У_09072015",
+          "3590-У_12032015",
+          "4176-У_02112016"
+        ],
+        "NDCG@10": 0.57325,
+        "drop": 0.00209
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 121,
+        "acts": [
+          "5175-У_18062019",
+          "3592-У_13032015",
+          "437-П_17102014",
+          "6685-У_26022024",
+          "5046-У_27122018"
+        ],
+        "NDCG@10": 0.57286,
+        "drop": 0.0017
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 109,
+        "acts": [
+          "6018-У_16122021",
+          "3770-У_01092015",
+          "3813-У_05102015",
+          "7060-У_21052025",
+          "6044-У_28122021"
+        ],
+        "NDCG@10": 0.572866,
+        "drop": 0.001706
+      },
+      {
+        "acts_removed": 5,
+        "chunks_removed": 71,
+        "acts": [
+          "831-П_07112023",
+          "6264-У_26092022",
+          "6535-У_21092023",
+          "5895-У_19082021",
+          "6036-У_24122021"
+        ],
+        "NDCG@10": 0.571303,
+        "drop": 0.000143
+      }
+    ]
+  },
+  "real_delivery": {
+    "commit": "46d5cc4",
+    "corpus_version": "chunks62594-acts1554",
+    "chunks_added_by_delivery": 12,
+    "NDCG@10": 0.57116,
+    "drop": 0.0
+  },
+  "level_bootstrap": {
+    "mean": 0.5712,
+    "lo": 0.5472,
+    "hi": 0.5953,
+    "note": "интервал уровня метрики, а не разности. Порог из него не выводится: набор заморожен, и оба замера идут на одних и тех же вопросах"
+  },
+  "real_shift_same_corpus": 0.0836,
+  "cap": 0.0418,
+  "threshold": 0.02,
+  "seconds": 475.6,
+  "passed": true
+}
