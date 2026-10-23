@@ -224,3 +224,43 @@ def test_both_modes_return_the_same_table(free, sample):
 
     for name in warehouse.MART:
         assert server.run(name) == free.run(name), f"режимы разошлись на {name}"
+
+
+@pytest.mark.parametrize(
+    ("code", "answer", "expected"),
+    [(200, b"1\n", True), (401, b"Unauthorized", False)],
+)
+def test_available_asks_the_question_it_claims_to_ask(code, answer, expected):
+    """Доступность это «пустят ли нас внутрь», а не «отвечает ли порт».
+
+    Проверка стояла на `/ping`, который отвечает «Ok.» без всякой авторизации.
+    Из-за этого в прогоне CI сервер, закрывший сетевой доступ пользователю
+    `default`, выглядел доступным, а 401 вылетал уже посреди загрузки журнала
+    (прогон 39976224616).
+    """
+    import http.server
+    import threading
+
+    class Stub(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Ok.\n")
+
+        def do_POST(self):
+            self.send_response(code)
+            self.send_header("Content-Length", str(len(answer)))
+            self.end_headers()
+            self.wfile.write(answer)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Stub)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        host, port = server.server_address[:2]
+        assert warehouse.ServerWarehouse(f"http://{host}:{port}").available() is expected
+    finally:
+        server.shutdown()
+        server.server_close()
