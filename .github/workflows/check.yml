@@ -49,3 +49,51 @@ jobs:
           PY: python
           RUFINRAG_DISABLE_DENSE: "1"
         run: scripts/check.sh
+
+  # Витрина собирается отдельной работой, а не рядом с тестами: dbt тянет свое
+  # замыкание зависимостей (results/dbt.json), а тестам оно не нужно ни одной
+  # строкой. Так прогон проверки не ждет установки dbt, а сборка витрины не
+  # ждет тестов.
+  mart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "wget -qO- http://127.0.0.1:8123/ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # `analytics` здесь рядом с `dbt` не случайно: прогон сравнивает вывод
+      # собранных моделей с тем, что по тем же моделям считает бесплатный
+      # режим, и для этого нужны оба движка.
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[analytics,dbt]'
+
+      - name: Build the mart and compare it with the free mode
+        run: python scripts/build_mart.py
+
+      # Отчет dbt о прогоне и скомпилированный SQL каждой модели: по ним видно,
+      # что именно собралось, без повторного запуска на чужой машине.
+      - name: Keep the dbt build report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-target
+          path: dbt/target
+          retention-days: 14
