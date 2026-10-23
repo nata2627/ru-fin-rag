@@ -17,11 +17,14 @@ from __future__ import annotations
 import time
 from array import array
 from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 from scipy.sparse import csc_matrix
 
 from .text import tokenize
+
+Tokenizer = Callable[[str], list[str]]
 
 K1 = 1.5
 B = 0.75
@@ -39,11 +42,15 @@ class BM25Index:
     idf: np.ndarray
     doc_norm: np.ndarray             # k1 * (1 - b + b * |d| / avgdl)
     build_seconds: float = 0.0
+    # Токенизация хранится в индексе, а не берется из модуля при каждом
+    # запросе: иначе абляция токенизации сравнивала бы индекс, собранный
+    # одним разбиением, с запросом, разобранным другим.
+    tokenizer: Tokenizer = tokenize
     _scores: np.ndarray = field(default=None, repr=False)
 
     @classmethod
     def build(cls, chunk_ids: list[str], texts: list[str], k1: float = K1,
-              b: float = B) -> "BM25Index":
+              b: float = B, tokenizer: Tokenizer = tokenize) -> "BM25Index":
         t0 = time.monotonic()
         vocab: dict[str, int] = {}
         # Компактные массивы, а не списки питона: у корпуса около двенадцати
@@ -57,7 +64,7 @@ class BM25Index:
         for col, text in enumerate(texts):
             counts: dict[int, int] = {}
             n = 0
-            for tok in tokenize(text):
+            for tok in tokenizer(text):
                 idx = vocab.get(tok)
                 if idx is None:
                     idx = vocab[tok] = len(vocab)
@@ -86,7 +93,8 @@ class BM25Index:
         doc_norm = (k1 * (1.0 - b + b * lengths / (avgdl or 1.0))).astype(np.float32)
 
         return cls(ids=list(chunk_ids), vocab=vocab, matrix=matrix.tocsr(), idf=idf,
-                   doc_norm=doc_norm, build_seconds=time.monotonic() - t0)
+                   doc_norm=doc_norm, build_seconds=time.monotonic() - t0,
+                   tokenizer=tokenizer)
 
     def scores(self, query: str, k1: float = K1) -> np.ndarray:
         """Оценки по всем документам. Буфер переиспользуется между запросами."""
@@ -94,7 +102,7 @@ class BM25Index:
             self._scores = np.zeros(len(self.ids), dtype=np.float32)
         out = self._scores
         out.fill(0.0)
-        for tok in tokenize(query):
+        for tok in self.tokenizer(query):
             idx = self.vocab.get(tok)
             if idx is None:
                 continue
