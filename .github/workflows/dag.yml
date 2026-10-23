@@ -1,0 +1,51 @@
+# Прогон DAG регламента в контейнере Airflow. Смысл работы в том, чтобы DAG
+# исполнялся, а не лежал в репозитории мертвым кодом: расписание проекту дает
+# `nightly.yml`, Airflow бесплатно и без рук не держится (SPEC, раздел 2), и
+# единственный честный способ показать навык это прогонять DAG здесь.
+#
+# Прогонов два подряд, и это не повтор ради повтора. Первый обязан сделать
+# работу, второй обязан ее не повторить: датчики свежести видят, что вход не
+# менялся. `scripts/check_dag_rerun.py` сверяет оба исхода с ожиданием и роняет
+# работу, если DAG пропустил все шаги сразу или если корпус за два прогона
+# изменился.
+#
+# Красный прогон здесь не останавливает часы приемки автономности: она считается
+# по плановым прогонам `nightly.yml` (scripts/record_acceptance.py).
+name: dag
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: dag-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # Образ тянется самим `docker run`: он же стоит в скрипте, то есть на маке
+      # и в прогоне работает один и тот же способ, а не два похожих.
+      - name: Run the DAG twice in the Airflow container
+        run: scripts/run_dag.sh
+
+      # Лог задач, состояния каждого прогона и вывод проверки повторного
+      # прогона. Окружение внутри контейнера в артефакт не идет: это 250 МБ
+      # установленных пакетов.
+      - name: Keep the task log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dag-task-log
+          path: |
+            logs/airflow-home/dag-test-*.log
+            logs/airflow-home/states-*.json
+            logs/airflow-home/db-migrate.log
+            results/dag-rerun.json
+          retention-days: 14

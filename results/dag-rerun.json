@@ -1,0 +1,48 @@
+{
+  "measured_at": "2026-10-23",
+  "machine": "aarch64 Linux 7.0.12-linuxkit",
+  "image": "apache/airflow:2.10.5-python3.11",
+  "dag_id": "corpus_refresh",
+  "peak_memory_mb": 711,
+  "tasks": 4,
+  "runs": [
+    {
+      "states_file": "states-1.json",
+      "tasks": {
+        "fetch_acts": "skipped",
+        "build_index": "success",
+        "run_regression": "success",
+        "record_heartbeat": "success"
+      }
+    },
+    {
+      "states_file": "states-2.json",
+      "tasks": {
+        "fetch_acts": "skipped",
+        "build_index": "skipped",
+        "run_regression": "skipped",
+        "record_heartbeat": "success"
+      }
+    }
+  ],
+  "skipped_on_repeat": [
+    "build_index",
+    "fetch_acts",
+    "run_regression"
+  ],
+  "corpus_before": {
+    "digest": "d68be7417d0f3750",
+    "chunks": 62606,
+    "acts": 1555,
+    "unique_chunk_ids": 62606
+  },
+  "corpus_after": {
+    "digest": "d68be7417d0f3750",
+    "chunks": 62606,
+    "acts": 1555,
+    "unique_chunk_ids": 62606
+  },
+  "added_chunks": 0,
+  "duplicate_chunk_ids": 0,
+  "passed": true
+}

@@ -159,9 +159,7 @@ def checks() -> list[tuple[str, str, str]]:
         # Прогон, который порвал цепочку, назван в README по ссылке. Проверка
         # держит README и файл вместе: иначе рассказ про приемку легко оставить
         # прежним, когда счет уже другой.
-        out.append(
-            ("прогон, порвавший цепочку", "acceptance.json", acceptance["broken_by"]["run"])
-        )
+        out.append(("прогон, порвавший цепочку", "acceptance.json", acceptance["broken_by"]["run"]))
     out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
     out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
     out.append(
@@ -604,9 +602,7 @@ def checks() -> list[tuple[str, str, str]]:
         out.append((label, "latency-local.json", f"{ru(tokens[key], 1)} мкс"))
     # Без слова после числа нарочно: падеж зависит от последней цифры, а
     # словарь растет каждой докачкой корпуса.
-    out.append(
-        ("словарь индекса", "index.json", f"словарь индекса {ru_spaced(index['vocab'], 0)}")
-    )
+    out.append(("словарь индекса", "index.json", f"словарь индекса {ru_spaced(index['vocab'], 0)}"))
     # Размер кэша основ сверяется не с замером, а с самим кодом: это константа
     # токенизации, и README называет ее числом.
     from rufinrag.retrieval.text import stem
@@ -616,6 +612,35 @@ def checks() -> list[tuple[str, str, str]]:
             "кэш основ",
             "rufinrag/retrieval/text.py",
             f"{ru_spaced(stem.cache_info().maxsize, 0)} записями",
+        )
+    )
+
+    # Прогон DAG в контейнере: чем поднят Airflow, сколько он съел памяти и что
+    # показали два прогона подряд. Числа идут из той же проверки повторного
+    # прогона, которая роняет работу CI при расхождении.
+    dag = load("dag-rerun.json")
+    out.append(("образ Airflow", "dag-rerun.json", dag["image"]))
+    out.append(("пик памяти контейнера DAG", "dag-rerun.json", f"{dag['peak_memory_mb']} МБ"))
+    out.append(
+        (
+            "пропуск задач на повторном прогоне",
+            "dag-rerun.json",
+            f"пропускает {len(dag['skipped_on_repeat'])} задачи из {dag['tasks']}",
+        )
+    )
+    out.append(
+        (
+            "добавлено фрагментов на повторе",
+            "dag-rerun.json",
+            f"добавляет {dag['added_chunks']} фрагментов",
+        )
+    )
+    out.append(
+        (
+            "повторы идентификаторов",
+            "dag-rerun.json",
+            f"{dag['duplicate_chunk_ids']} повторов идентификаторов на "
+            f"{ru_spaced(dag['corpus_after']['chunks'], 0)} фрагментов",
         )
     )
     return out
