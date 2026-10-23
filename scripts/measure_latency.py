@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.benchmark import load_queries  # noqa: E402
+from rufinrag.config import load_catalog  # noqa: E402
 from rufinrag.retrieval.text import split_tokens, stem, tokenize  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
@@ -53,7 +54,17 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=ROOT / "results/latency-local.json")
     args = parser.parse_args()
 
-    service = SearchService.build()
+    # Плотная ступень поднимается только там, где ее просит хотя бы одна из
+    # меряемых связок. Иначе лексическую строку нельзя переснять на машине, где
+    # векторы отстали от корпуса после ночной докачки, а прибавка стеммера
+    # меряется как раз на ней.
+    names = [name.strip() for name in args.configs.split(",")]
+    catalog = load_catalog()
+    needs_dense = any(
+        catalog.get(name).first_stage != "bm25" or catalog.get(name).dense_model
+        for name in names
+    )
+    service = SearchService.build(with_dense=needs_dense)
     queries = [q.text for q in load_queries().values()][: args.queries]
     if len(queries) < args.queries:
         print(f"в наборе {len(queries)} запросов", file=sys.stderr)
@@ -73,12 +84,15 @@ def main() -> int:
             "corpus_version": service.corpus_version,
             "load_seconds": round(service.load_seconds, 2),
             "rss_after_load_mb": round(rss_mb(), 1),
+            # Что именно поднялось в этом прогоне: без этой строки «старт 4,15 с»
+            # можно прочитать как старт полного сервиса, хотя прогон за одной
+            # лексической связкой плотную ступень не грузит вовсе.
+            "loaded": "поиск целиком" if needs_dense else "только лексическая ступень",
         }
     )
     report.setdefault("configs", {})
 
-    for name in args.configs.split(","):
-        name = name.strip()
+    for name in names:
         # Прежний замер этой связки остается в строке «replaced» со своей датой:
         # иначе «было столько, стало столько» в README пришлось бы держать
         # руками, а проверка чисел такое сверить не может.

@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.benchmark import load_qrels, load_queries  # noqa: E402
+from rufinrag.config import load_catalog  # noqa: E402
 from rufinrag.metrics import DEPTH, evaluate, queries_scored  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
@@ -41,7 +42,13 @@ def main() -> int:
     parser.add_argument("--update-baseline", action="store_true")
     args = parser.parse_args()
 
-    service = SearchService.build()
+    # Плотная часть поднимается только там, где связка ее просит. Иначе
+    # лексическую регрессию нельзя пересчитать на машине, где векторы отстали
+    # от корпуса после ночной докачки: сборка отказывается, хотя проверяемой
+    # связке векторы не нужны вовсе.
+    config = load_catalog().get(args.config)
+    needs_dense = config.first_stage != "bm25" or config.dense_model is not None
+    service = SearchService.build(with_dense=needs_dense)
     qrels = load_qrels()
     queries = load_queries()
 
