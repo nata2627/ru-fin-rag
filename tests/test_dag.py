@@ -13,6 +13,7 @@ cbr.ru уронил вместе с докачкой переиндексаци�
 
 from __future__ import annotations
 
+from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
 
@@ -56,3 +57,8 @@ def test_runs_do_not_pile_up(dag):
     """Два прогона над одним файлом корпуса одновременно это гонка."""
     assert dag.max_active_runs == 1
     assert dag.catchup is False
+
+
+def test_retry_pause_is_five_minutes_unless_a_drill_shortens_it(dag):
+    """Плановое значение паузы, которое учебная тревога подменяет переменной."""
+    assert dag.get_task("build_index").retry_delay == timedelta(minutes=5)
