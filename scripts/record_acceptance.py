@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import calendar
 import json
 import subprocess
 import time
@@ -50,7 +51,9 @@ def main() -> int:
 
     first = min(runs, key=lambda r: r["createdAt"])
     started = first["createdAt"]
-    days = (time.time() - time.mktime(time.strptime(started, "%Y-%m-%dT%H:%M:%SZ"))) / 86400
+    # `timegm`, а не `mktime`: второй читает разобранное время как местное, и
+    # счет дней уезжал бы на часовой пояс машины, где идет прогон.
+    days = (time.time() - calendar.timegm(time.strptime(started, "%Y-%m-%dT%H:%M:%SZ"))) / 86400
     report = {
         "started_at": started,
         "first_scheduled_run": first["url"],
