@@ -151,17 +151,27 @@ def notebook_from_script(script: str, args_line: str,
         "    print('токен HuggingFace недоступен, скачивание будет медленным:', e)\n",
         "\n",
         f"ПАКЕТЫ = {list(packages)!r}\n",
-        "for пакет in ПАКЕТЫ:\n",
-        "    print('ставлю', пакет, flush=True)\n",
-        "    subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-U',\n",
-        "                    пакет], check=False)\n",
+        "# Одной командой на все пакеты, и это не сокращение записи. По одному\n",
+        "# вторая установка сдвигает то, что поставила первая: vLLM тянет свой\n",
+        "# torch, а следующая команда подбирает к нему версию по отдельности,\n",
+        "# и torch с torchaudio расходятся по версии CUDA.\n",
+        "print('ставлю:', ', '.join(ПАКЕТЫ), flush=True)\n",
+        "subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-U',\n",
+        "                *ПАКЕТЫ], check=False)\n",
         "\n",
         "# Импорт проверяется свежим процессом, а не здесь: установка vLLM\n",
         "# обновляет torch вместе с библиотеками CUDA, а уже загруженный в этот\n",
         "# процесс старый torch держит прежнюю версию. Падать на этом надо\n",
         "# на второй минуте, а не на третьем часу счёта.\n",
-        "код = 'import ' + ', '.join(п.replace('-', '_') for п in ПАКЕТЫ)\n",
-        "проба = subprocess.run([sys.executable, '-c', код + \"; print('ок')\"],\n",
+        "#\n",
+        "# `AutoProcessor` проверяется отдельно и нарочно: через него\n",
+        "# transformers тянет torchaudio и torchvision, и расхождение версий\n",
+        "# CUDA вылезает именно там. Сам по себе `import vllm` при этом проходит,\n",
+        "# то есть проверка одного импорта пропустила бы поломку до загрузки\n",
+        "# модели, где она стоит уже пяти минут монтирования весов.\n",
+        "код = ('import ' + ', '.join(п.replace('-', '_') for п in ПАКЕТЫ)\n",
+        "       + \"; from transformers import AutoProcessor; print('ок')\")\n",
+        "проба = subprocess.run([sys.executable, '-c', код],\n",
         "                       capture_output=True, text=True)\n",
         "assert проба.returncode == 0, ('не импортируется то, что поставлено: '\n",
         "                               + проба.stderr[-1500:])\n",
@@ -571,13 +581,20 @@ def main() -> None:
             # значило, что команда из docs/11-polnota-razmetki.md падала
             # на импорте уже на карте.
             #
-            # Только vLLM, и это не экономия. Установка vLLM подтягивает свой
-            # transformers, а `pip install -U sentence-transformers` следом
-            # сдвигает его ещё раз, и transformers перестаёт импортироваться
-            # вовсе (`Could not import module 'TrainerCallback'`). Судье
-            # sentence-transformers не нужен: кросс-энкодер поднимает только
-            # фильтр учителя, а он в этом прогоне не участвует.
-            packages = ("vllm",)
+            # Без sentence-transformers, и это не экономия. Установка vLLM
+            # подтягивает свой transformers, а `pip install -U
+            # sentence-transformers` следом сдвигает его ещё раз, и transformers
+            # перестаёт импортироваться вовсе (`Could not import module
+            # 'TrainerCallback'`). Судье sentence-transformers не нужен:
+            # кросс-энкодер поднимает только фильтр учителя, а он в этом
+            # прогоне не участвует.
+            #
+            # torchaudio и torchvision идут той же командой. Сами они судье
+            # не нужны, но они есть в образе, собраны под CUDA 12.8, а torch
+            # от vLLM приезжает под 13.0. Проверку версий делает torchaudio
+            # при импорте, и падает на ней transformers, подтягивающий его
+            # через `AutoProcessor`.
+            packages = ("vllm", "torchaudio", "torchvision")
         # Опыту нужна только исходная модель ученика: учитель весит 2,29 ГБ,
         # и Kaggle монтирует его перед каждым запуском впустую.
         if args.stage == "variants":
