@@ -59,6 +59,7 @@ def checks() -> list[tuple[str, str, str]]:
     first_run = load("corpus-update-first.json")
     load_report = load("load.json")
     warehouse = load("warehouse.json")
+    mart = load("dbt.json")
     drain = load("events-rehearsal.json")
     logging_report = load("logging.json")
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
@@ -258,6 +259,56 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
     out.append(("моделей витрины", "warehouse.json", f"моделей витрины {len(warehouse['models'])}"))
+
+    # Числа сборки витрины dbt. Моделей и тестов считает сам dbt в своем
+    # отчете о прогоне (`run_results.json`), а не разбор его вывода.
+    counts = mart["build"]["counts"]
+    out.append(
+        (
+            "моделей dbt",
+            "dbt.json",
+            f"{counts['models']}: {counts['staging_models']} в `staging` "
+            f"и {counts['mart_models']} в `marts`",
+        )
+    )
+    out.append(
+        (
+            "тестов dbt",
+            "dbt.json",
+            f"{counts['tests']}: {counts['generic_tests']} типовой "
+            f"и {counts['singular_tests']} своих",
+        )
+    )
+    out.append(
+        (
+            "падений в сборке витрины",
+            "dbt.json",
+            f"{counts['failed']} из {counts['models'] + counts['tests']}",
+        )
+    )
+    agreed = mart["agreed"]
+    out.append(
+        (
+            "согласие dbt с бесплатным режимом",
+            "dbt.json",
+            f"на {sum(agreed.values())} моделях из {len(agreed)}",
+        )
+    )
+    out.append(
+        (
+            "вес замыкания dbt",
+            "dbt.json",
+            f"{mart['dbt']['packages']} пакетов и {ru(mart['dbt']['disk_mb'], 1)} МБ",
+        )
+    )
+    out.append(
+        (
+            "версии dbt",
+            "dbt.json",
+            f"dbt-core {mart['dbt']['versions']['dbt-core']} с адаптером "
+            f"dbt-clickhouse {mart['dbt']['versions']['dbt-clickhouse']}",
+        )
+    )
 
     # Числа репетиции выгрузки. Живой файл `results/events.json` растет каждым
     # прогоном, поэтому в текст идут числа репетиции, а не его.
