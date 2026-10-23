@@ -1,0 +1,25 @@
+{
+  "measured_at": "2026-10-23",
+  "model": "data/models/rufin",
+  "device": "cpu",
+  "dim": 384,
+  "dtype": "float16",
+  "corpus_version": "chunks62606-acts1555",
+  "chunks_before": 62594,
+  "chunks_after": 62606,
+  "added": 12,
+  "seconds": 1.0,
+  "model_load_seconds": 2.7,
+  "per_second": 12.5,
+  "agreement_with_part_a": {
+    "sample": 200,
+    "cosine_median": 0.999997,
+    "cosine_min": 0.999995,
+    "cosine_mean": 0.999997
+  },
+  "replaced": {
+    "measured_at": "2026-10-21",
+    "chunks": 62594,
+    "source": "перенос из части А, scripts/import_corpus.py"
+  }
+}

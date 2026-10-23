@@ -1,42 +1,54 @@
 {
-  "measured_at": "2026-10-22",
+  "measured_at": "2026-10-23",
   "queries_scored": 991,
   "runs": {
     "hybrid-rerank, связка сервиса": {
       "file": "rerank-hybrid-rufin.jsonl",
       "metrics": {
-        "Recall@1": 0.4891,
-        "Recall@5": 0.7709,
-        "Recall@10": 0.8163,
-        "MRR@10": 0.6867,
-        "NDCG@10": 0.6977
+        "Recall@1": 0.4973,
+        "Recall@5": 0.7849,
+        "Recall@10": 0.8299,
+        "MRR@10": 0.6985,
+        "NDCG@10": 0.7096
       },
       "ndcg10": {
-        "mean": 0.6977,
-        "lo": 0.6756,
-        "hi": 0.7186
+        "mean": 0.7096,
+        "lo": 0.6882,
+        "hi": 0.73
       }
     },
     "hybrid, связка сервиса": {
-      "file": "base__hybrid-rufin.jsonl",
+      "file": "run-hybrid.jsonl",
       "metrics": {
-        "Recall@1": 0.3555,
-        "Recall@5": 0.6366,
-        "Recall@10": 0.7368,
-        "MRR@10": 0.5408,
-        "NDCG@10": 0.5692
+        "Recall@1": 0.4066,
+        "Recall@5": 0.6776,
+        "Recall@10": 0.7578,
+        "MRR@10": 0.5912,
+        "NDCG@10": 0.6126
       },
       "ndcg10": {
-        "mean": 0.5692,
-        "lo": 0.5457,
-        "hi": 0.5926
+        "mean": 0.6126,
+        "lo": 0.5893,
+        "hi": 0.6359
       }
     }
   },
   "difference_ndcg10": {
-    "mean": 0.1285,
-    "lo": 0.1095,
-    "hi": 0.147,
+    "mean": 0.097,
+    "lo": 0.0776,
+    "hi": 0.116,
     "p": 0.0
+  },
+  "replaced": {
+    "measured_at": "2026-10-22",
+    "runs": {
+      "hybrid-rerank, связка сервиса": 0.6977,
+      "hybrid, связка сервиса": 0.5692
+    },
+    "difference_ndcg10": {
+      "mean": 0.1285,
+      "lo": 0.1095,
+      "hi": 0.147
+    }
   }
 }

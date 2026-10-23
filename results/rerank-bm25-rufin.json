@@ -1,0 +1,13 @@
+{
+  "model": "BAAI/bge-reranker-v2-m3",
+  "device": "cuda",
+  "source_run": "run-bm25.jsonl",
+  "queries": 1182,
+  "depth": 50,
+  "pairs": 59100,
+  "batch_size": 32,
+  "max_length": 512,
+  "seconds": 645.7,
+  "pairs_per_second": 91.5,
+  "peak_vram_mb": 1451.4
+}

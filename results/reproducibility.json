@@ -15,8 +15,8 @@
     "hybrid": {
       "measured_at": "2026-10-23",
       "queries": 200,
-      "order": 168,
-      "composition": 193,
+      "order": 174,
+      "composition": 192,
       "top1": 196
     },
     "dense": {
@@ -26,9 +26,5 @@
       "composition": 189,
       "top1": 197
     }
-  },
-  "skipped": [
-    "hybrid: data/vectors/rufin-384.npy: векторы собраны на другом корпусе (62594 против 62606)",
-    "dense: data/vectors/rufin-384.npy: векторы собраны на другом корпусе (62594 против 62606)"
-  ]
+  }
 }

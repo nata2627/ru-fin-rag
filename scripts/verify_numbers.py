@@ -45,6 +45,15 @@ def load(name: str) -> dict:
     return json.loads((RESULTS / name).read_text(encoding="utf-8"))
 
 
+def gain_text(diff: dict) -> str:
+    """Разница со своим интервалом так, как она пишется в тексте проекта.
+
+    Одной записью на все прибавки нарочно: разных записей было бы столько же,
+    сколько строк в README, и разойтись они могли бы незаметно.
+    """
+    return f"+{ru(diff['mean'], 3)} [{ru(diff['lo'], 3)}; {ru(diff['hi'], 3)}]"
+
+
 def checks() -> list[tuple[str, str, str]]:
     """Список проверок: что проверяем, в каком файле лежит, что должно быть в тексте."""
     latency = load("latency-local.json")
@@ -58,7 +67,10 @@ def checks() -> list[tuple[str, str, str]]:
     acceptance = load("acceptance.json")
     hosted = load("latency-hosted.json")
     rerank = load("rerank-quality.json")
+    rerank_bm25 = load("rerank-quality-bm25.json")
+    first_stage = load("rerank-first-stage.json")
     rerank_run = load("rerank-hybrid-rufin.json")
+    vectors = load("vectors.json")
     first_run = load("corpus-update-first.json")
     load_report = load("load.json")
     warehouse = load("warehouse.json")
@@ -167,9 +179,51 @@ def checks() -> list[tuple[str, str, str]]:
     out.append(("качество связки с реранком", "rerank-quality.json", f"{ru(reranked, 3)}"))
     out.append(
         (
-            "прибавка реранка",
+            "первая ступень под реранком",
             "rerank-quality.json",
-            f"{ru(gain['mean'], 3)} NDCG@10 с интервалом [{ru(gain['lo'], 3)}; {ru(gain['hi'], 3)}]",
+            f"{ru(rerank['runs']['hybrid, связка сервиса']['metrics']['NDCG@10'], 3)}",
+        )
+    )
+    out.append(("прибавка реранка", "rerank-quality.json", gain_text(gain)))
+    # Замененный замер стоит в README рядом с новым, и берется он из того же
+    # файла полем `replaced`, а не из памяти автора.
+    was = rerank["replaced"]
+    out.append(
+        (
+            "прежнее качество связки с реранком",
+            "rerank-quality.json",
+            f"{ru(was['runs']['hybrid-rerank, связка сервиса'], 3)}",
+        )
+    )
+    out.append(
+        (
+            "прежняя первая ступень под реранком",
+            "rerank-quality.json",
+            f"{ru(was['runs']['hybrid, связка сервиса'], 3)}",
+        )
+    )
+    out.append(
+        ("прежняя прибавка реранка", "rerank-quality.json", gain_text(was["difference_ndcg10"]))
+    )
+    out.append(
+        (
+            "качество реранка поверх BM25",
+            "rerank-quality-bm25.json",
+            f"{ru(rerank_bm25['runs']['bm25-rerank, связка сервиса']['metrics']['NDCG@10'], 3)}",
+        )
+    )
+    out.append(
+        (
+            "прибавка реранка поверх BM25",
+            "rerank-quality-bm25.json",
+            gain_text(rerank_bm25["difference_ndcg10"]),
+        )
+    )
+    out.append(
+        (
+            "цена гибридной первой ступени после реранка",
+            "rerank-first-stage.json",
+            gain_text(first_stage["difference_ndcg10"]),
         )
     )
     out.append(
@@ -255,6 +309,35 @@ def checks() -> list[tuple[str, str, str]]:
                 f"{row['composition']} из {row['queries']}",
             )
         )
+        out.append(
+            (
+                f"воспроизведение {name}, порядок десятки",
+                "reproducibility.json",
+                f"{row['order']} из {row['queries']}",
+            )
+        )
+
+    # Догон векторов до выросшего корпуса. Проверяется и согласие с матрицей
+    # части А: без него дописанный хвост может оказаться из другого
+    # пространства, и по метрикам поиска на двенадцати фрагментах это не видно.
+    agreement = vectors["agreement_with_part_a"]
+    out.append(
+        ("дописано векторов", "vectors.json", f"недостающие {vectors['added']} это один акт")
+    )
+    out.append(
+        ("выборка сверки векторов", "vectors.json", f"{agreement['sample']} уже посчитанных")
+    )
+    out.append(
+        (
+            "согласие с матрицей части А",
+            "vectors.json",
+            f"косинуса {ru(agreement['cosine_median'], 6)}, "
+            f"минимум {ru(agreement['cosine_min'], 6)}",
+        )
+    )
+    out.append(
+        ("время счета векторов", "vectors.json", f"за {ru(vectors['seconds'], 1)} с на процессоре")
+    )
 
     sample = warehouse["events"]
     out.append(("строк в наборе сверки", "warehouse.json", f"{sample['lines']} строк"))
