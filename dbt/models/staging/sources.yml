@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: journal
+    schema: rufinrag
+    description: >
+      Журнал запросов сервиса, залитый в ClickHouse из файлов JSONL
+      (src/rufinrag/warehouse.py, ServerWarehouse.load). Состав колонок
+      описан там же в EVENT_COLUMNS, одним описанием на оба режима хранения.
+    tables:
+      - name: query_events
+        description: >
+          Строка на событие. Событий два вида: запрос (`kind = 'query'`) и
+          оценка ответа (`kind = 'feedback'`) с тем же `request_id`. Витрина
+          соединяет их по нему, потому что оценка приходит позже ответа и в
+          строке запроса поля для нее нет (src/rufinrag/events.py).

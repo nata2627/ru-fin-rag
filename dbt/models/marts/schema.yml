@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: traffic_by_day
+    description: Трафик по суткам с накоплением и недельным окном.
+    columns:
+      - name: day
+        tests:
+          - not_null
+          - unique
+      - name: queries
+        tests:
+          - not_null
+      - name: days_in_7d
+        description: Сколько суток попало в недельное окно, знаменатель `queries_7d`.
+        tests:
+          - not_null
+
+  - name: stage_latency
+    description: Задержка по ступеням поиска в точных квантилях.
+    columns:
+      - name: stage
+        tests:
+          - not_null
+          - unique
+      - name: runs
+        tests:
+          - not_null
+
+  - name: rated_share
+    description: Отвеченные запросы и из них с оценкой, по суткам.
+    columns:
+      - name: day
+        tests:
+          - not_null
+          - unique
+      - name: answered
+        tests:
+          - not_null
+      - name: rated
+        tests:
+          - not_null
+
+  - name: feedback_match
+    description: >
+      Соединение оценок с запросами, одна строка на весь журнал. Сироты
+      считаются колонкой, а не отбрасываются, поэтому тест `relationships`
+      между оценкой и запросом здесь заведомо красный и его тут нет: сирота
+      это нормальное состояние журнала, а не поломка модели. Что сирота
+      посчитана, а не потеряна, проверяет tests/feedback_orphans_are_counted.sql.
+    columns:
+      - name: feedback_events
+        tests:
+          - not_null
+      - name: orphans
+        tests:
+          - not_null
+
+  - name: quality_by_day
+    description: Оценки и задержка по суткам рядом с теми же числами за неделю.
+    columns:
+      - name: day
+        tests:
+          - not_null
+          - unique
+      - name: answered
+        tests:
+          - not_null
+      - name: days_in_7d
+        tests:
+          - not_null
+
+  - name: repeat_queries
+    description: Первые обращения против повторов и пауза между повторами, по суткам.
+    columns:
+      - name: day
+        tests:
+          - not_null
+          - unique
+      - name: first_time
+        tests:
+          - not_null
+      - name: repeated
+        tests:
+          - not_null

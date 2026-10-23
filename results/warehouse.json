@@ -20,42 +20,129 @@
     "version": "25.8.33.6",
     "checked": true
   },
-  "queries": [
+  "models": [
     "feedback_match",
+    "quality_by_day",
     "rated_share",
+    "repeat_queries",
     "stage_latency",
     "traffic_by_day"
   ],
   "agreed": {
-    "traffic_by_day": true,
-    "stage_latency": true,
+    "feedback_match": true,
+    "quality_by_day": true,
     "rated_share": true,
-    "feedback_match": true
+    "repeat_queries": true,
+    "stage_latency": true,
+    "traffic_by_day": true
   },
   "all_agreed": true,
   "mart": {
-    "traffic_by_day": {
+    "feedback_match": {
+      "columns": [
+        "feedback_events",
+        "matched",
+        "orphans",
+        "up",
+        "down"
+      ],
+      "rows": [
+        {
+          "feedback_events": "53",
+          "matched": "48",
+          "orphans": "5",
+          "up": "24",
+          "down": "29"
+        }
+      ]
+    },
+    "quality_by_day": {
       "columns": [
         "day",
-        "queries",
         "answered",
-        "rejected",
-        "unavailable"
+        "rated",
+        "up",
+        "down",
+        "p95_total_ms",
+        "answered_7d",
+        "rated_7d",
+        "up_7d",
+        "days_in_7d",
+        "p95_worst_7d"
       ],
       "rows": [
         {
           "day": "2026-10-21",
-          "queries": "100",
           "answered": "96",
-          "rejected": "2",
-          "unavailable": "2"
+          "rated": "24",
+          "up": "12",
+          "down": "12",
+          "p95_total_ms": "104.03",
+          "answered_7d": "96",
+          "rated_7d": "24",
+          "up_7d": "12",
+          "days_in_7d": "1",
+          "p95_worst_7d": "104.03"
         },
         {
           "day": "2026-10-22",
-          "queries": "100",
           "answered": "96",
-          "rejected": "2",
-          "unavailable": "2"
+          "rated": "24",
+          "up": "12",
+          "down": "12",
+          "p95_total_ms": "106.704",
+          "answered_7d": "192",
+          "rated_7d": "48",
+          "up_7d": "24",
+          "days_in_7d": "2",
+          "p95_worst_7d": "106.704"
+        }
+      ]
+    },
+    "rated_share": {
+      "columns": [
+        "day",
+        "answered",
+        "rated"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "rated": "24"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "rated": "24"
+        }
+      ]
+    },
+    "repeat_queries": {
+      "columns": [
+        "day",
+        "answered",
+        "first_time",
+        "repeated",
+        "distinct_texts",
+        "median_gap_seconds"
+      ],
+      "rows": [
+        {
+          "day": "2026-10-21",
+          "answered": "96",
+          "first_time": "5",
+          "repeated": "91",
+          "distinct_texts": "5",
+          "median_gap_seconds": "305"
+        },
+        {
+          "day": "2026-10-22",
+          "answered": "96",
+          "first_time": "0",
+          "repeated": "96",
+          "distinct_texts": "5",
+          "median_gap_seconds": "305"
         }
       ]
     },
@@ -105,40 +192,40 @@
         }
       ]
     },
-    "rated_share": {
+    "traffic_by_day": {
       "columns": [
         "day",
+        "queries",
         "answered",
-        "rated"
+        "rejected",
+        "unavailable",
+        "queries_total",
+        "queries_7d",
+        "days_in_7d",
+        "queries_change"
       ],
       "rows": [
         {
           "day": "2026-10-21",
+          "queries": "100",
           "answered": "96",
-          "rated": "24"
+          "rejected": "2",
+          "unavailable": "2",
+          "queries_total": "100",
+          "queries_7d": "100",
+          "days_in_7d": "1",
+          "queries_change": "\\N"
         },
         {
           "day": "2026-10-22",
+          "queries": "100",
           "answered": "96",
-          "rated": "24"
-        }
-      ]
-    },
-    "feedback_match": {
-      "columns": [
-        "feedback_events",
-        "matched",
-        "orphans",
-        "up",
-        "down"
-      ],
-      "rows": [
-        {
-          "feedback_events": "53",
-          "matched": "48",
-          "orphans": "5",
-          "up": "24",
-          "down": "29"
+          "rejected": "2",
+          "unavailable": "2",
+          "queries_total": "200",
+          "queries_7d": "200",
+          "days_in_7d": "2",
+          "queries_change": "0"
         }
       ]
     }

@@ -1,8 +1,10 @@
 """Сверка двух режимов хранения журнала запросов на одном наборе событий.
 
 Режим стройки это ClickHouse сервером из compose (профиль `logs`), бесплатный
-режим это `chdb` поверх файлов JSONL, без сервера. Запросы витрины у них одни
-(`rufinrag/warehouse.py`), и этот прогон печатает, совпали ли выходы.
+режим это `chdb` поверх файлов JSONL, без сервера. Модели витрины у них одни
+(проект `dbt`, разворачивает их в запрос `rufinrag/warehouse.py`), и этот
+прогон печатает, совпали ли выходы. Сборку тех же моделей самим dbt проверяет
+`scripts/build_mart.py`: ему нужен сервер, которого в бесплатном режиме нет.
 
 События здесь собранные, а не живые: открытый сервис еще не работал, и брать
 числа трафика из воздуха нельзя. Набор строится теми же функциями, которыми
@@ -182,7 +184,7 @@ def main() -> int:
             "version": server.scalar("SELECT version()") if built else None,
             "checked": built is not None,
         },
-        "queries": sorted(warehouse.MART),
+        "models": sorted(warehouse.MART),
         "agreed": agreed,
         "all_agreed": bool(agreed) and all(agreed.values()),
         "mart": warehouse.report(free),
