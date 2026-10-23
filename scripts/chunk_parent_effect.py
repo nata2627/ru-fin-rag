@@ -211,17 +211,23 @@ def main() -> None:
 
     branches = {k: v for k, v in BRANCHES.items()
                 if not args.only or k in args.only}
+    skipped: list[str] = []
     if args.dense:
-        no_vectors = [k for k in branches
-                      if not os.path.exists(os.path.join(args.embeddings, k,
-                                                         args.dense,
-                                                         "vectors.npy"))]
-        if no_vectors:
+        # Ветви без векторов выбрасываются, а не считаются молча пустыми, и
+        # список выброшенных печатается: векторы каждой ветви стоят прогона на
+        # карте, и какие из них посчитаны, должно быть видно в отчете.
+        skipped = [k for k in branches
+                   if not os.path.exists(os.path.join(args.embeddings, k,
+                                                      args.dense,
+                                                      "vectors.npy"))]
+        branches = {k: v for k, v in branches.items() if k not in skipped}
+        if not branches:
             raise SystemExit(
-                "нет векторов ветвей: " + ", ".join(no_vectors)
-                + f"\nсчитаются на видеокарте: scripts/embed_chunks.py "
-                  f"--model {args.dense} --out "
-                  f"{os.path.relpath(args.embeddings, ROOT)}/<ветвь>/{args.dense}")
+                f"нет векторов ни у одной ветви в "
+                f"{os.path.relpath(args.embeddings, ROOT)}/<ветвь>/{args.dense}."
+                f"\nСчитаются на видеокарте: scripts/embed_chunks.py "
+                f"--model {args.dense} --out "
+                f"{os.path.relpath(args.embeddings, ROOT)}/<ветвь>/{args.dense}")
     missing = [k for k, v in branches.items() if not os.path.exists(v)]
     if missing:
         raise SystemExit("нет нарезок: " + ", ".join(
@@ -240,6 +246,8 @@ def main() -> None:
 
     say("мелкая нарезка с выдачей родительского куска и цена шапки")
     say(f"ступень: {stage}")
+    if skipped:
+        say(f"ветви без векторов, в замер не входят: {', '.join(skipped)}")
     say(f"разметка: data/queries/qrels.tsv, запросов с эталоном и текстом {len(qids)}")
     for name, part in parts.items():
         if name != "все":
