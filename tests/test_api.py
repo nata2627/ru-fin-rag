@@ -19,9 +19,13 @@ def client():
     if not corpus_path().exists():
         pytest.skip("нет корпуса, собрать: python scripts/import_corpus.py")
     os.environ["RUFINRAG_DISABLE_DENSE"] = "1"
+    # Контракты эндпоинтов не о журнале запросов: без этого каждый тестовый
+    # прогон дописывал бы строки в data/events репозитория.
+    os.environ["RUFINRAG_EVENT_LOG"] = "off"
     with TestClient(app) as test_client:
         yield test_client
     os.environ.pop("RUFINRAG_DISABLE_DENSE", None)
+    os.environ.pop("RUFINRAG_EVENT_LOG", None)
 
 
 def test_health_reports_versions(client):

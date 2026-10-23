@@ -13,14 +13,18 @@ from __future__ import annotations
 import os
 import time
 from contextlib import asynccontextmanager
+from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
-from . import __version__
+from . import __version__, events
 from .config import ConfigError, live_mode, load_catalog
 from .corpus import CorpusError
+from .events import EventLog
 from .search import SearchError, SearchService
 
 # Предел длины запроса взят по эталонному набору: самый длинный живой вопрос
@@ -47,9 +51,13 @@ async def lifespan(app: FastAPI):
         # перезапускает контейнер по кругу и причина не видна.
         state["service"] = None
         state["error"] = str(exc)
+    state["events"] = EventLog.from_env()
     state["started_at"] = time.time()
     state["startup_seconds"] = round(time.monotonic() - t0, 2)
     yield
+    event_log = state.get("events")
+    if event_log is not None:
+        event_log.close()
     state.clear()
 
 
@@ -78,11 +86,42 @@ class SearchRequest(BaseModel):
         return value
 
 
-def service() -> SearchService:
-    current = state.get("service")
-    if current is None:
-        raise HTTPException(status_code=503, detail=f"сервис не готов: {state.get('error')}")
-    return current
+class FeedbackRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    request_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    rating: Literal["up", "down"]
+
+
+def record(event: dict) -> None:
+    event_log = state.get("events")
+    if event_log is not None:
+        event_log.append(event)
+
+
+# Грязный ввод до обработчика не доходит: его отвергает схема запроса. Без
+# этого перехвата такой запрос не попал бы в журнал, и доля отказов считалась
+# бы только по тем ошибкам, которые сервис заметил сам (QUALITY, раздел 3).
+@app.exception_handler(RequestValidationError)
+async def log_rejected(request: Request, exc: RequestValidationError):
+    body = exc.body if isinstance(exc.body, dict) else {}
+    if request.url.path == "/search":
+        query = body.get("query")
+        top = body.get("top")
+        record(
+            events.rejected(
+                request_id=events.new_request_id(),
+                received_at=events.utc_now(),
+                query=query if isinstance(query, str) else "",
+                top=top if isinstance(top, int) else None,
+                status=422,
+                reason="; ".join(
+                    f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()
+                ),
+                service_version=__version__,
+            )
+        )
+    return JSONResponse({"detail": jsonable_encoder(exc.errors())}, status_code=422)
 
 
 # Корень отдает страницу, а не 404. Ссылка на сервис стоит в резюме, и человек,
@@ -155,6 +194,8 @@ def health():
             "degraded": current.degraded,
         }
     )
+    event_log = state.get("events")
+    body["event_log"] = event_log.stats() if event_log is not None else "off"
     if current.dense_off:
         body["dense_off_reason"] = current.dense_off
     if current.degraded:
@@ -164,14 +205,29 @@ def health():
 
 @app.post("/search")
 def search(request: SearchRequest):
-    current = service()
+    request_id = events.new_request_id()
+    received_at = events.utc_now()
+    current = state.get("service")
+    if current is None:
+        detail = f"сервис не готов: {state.get('error')}"
+        record(
+            events.rejected(
+                request_id, received_at, request.query, request.top, 503, detail, __version__
+            )
+        )
+        raise HTTPException(status_code=503, detail=detail)
     try:
         result = current.search(request.query, top=request.top, config=request.config)
-    except ConfigError as exc:
+    except (ConfigError, SearchError) as exc:
+        record(
+            events.rejected(
+                request_id, received_at, request.query, request.top, 400, str(exc), __version__
+            )
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except SearchError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    record(events.answered(request_id, received_at, request.top, result, __version__))
     return {
+        "request_id": request_id,
         "query": result.query,
         "config": result.config,
         "config_version": result.config_version,
@@ -193,3 +249,16 @@ def search(request: SearchRequest):
             for hit in result.hits
         ],
     }
+
+
+# Оценка приходит отдельным событием: она появляется после ответа, и поле
+# «оценка» в строке запроса всегда стояло бы пустым (events.py). Существование
+# идентификатора здесь не проверяется, процесс держит в памяти только текущий
+# файл: оценку без своего запроса витрина отбросит на соединении и посчитает
+# числом.
+@app.post("/feedback", status_code=202)
+def feedback(request: FeedbackRequest):
+    if state.get("events") is None:
+        raise HTTPException(status_code=503, detail="журнал запросов выключен")
+    record(events.feedback(request.request_id, request.rating))
+    return {"accepted": True}
