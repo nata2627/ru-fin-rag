@@ -9,7 +9,7 @@ configs:
     first_stage: bm25
     candidates: 50
     rerank: null
-    note: базовая линия, 0,484 NDCG@10 на 991 запросе в части А
+    note: базовая линия, 0,571 NDCG@10 на 991 запросе в части А
 
   dense:
     first_stage: dense
