@@ -519,7 +519,11 @@ def checks() -> list[tuple[str, str, str]]:
         ("прежнее разбиение", "forms_us_p50"),
     ):
         out.append((label, "latency-local.json", f"{ru(tokens[key], 1)} мкс"))
-    out.append(("словарь индекса", "index.json", f"{ru_spaced(index['vocab'], 0)} слова"))
+    # Без слова после числа нарочно: падеж зависит от последней цифры, а
+    # словарь растет каждой докачкой корпуса.
+    out.append(
+        ("словарь индекса", "index.json", f"словарь индекса {ru_spaced(index['vocab'], 0)}")
+    )
     # Размер кэша основ сверяется не с замером, а с самим кодом: это константа
     # токенизации, и README называет ее числом.
     from rufinrag.retrieval.text import stem
