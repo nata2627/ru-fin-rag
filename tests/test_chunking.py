@@ -156,7 +156,7 @@ def test_конфигурации_названы_уникально():
 
 def test_каждая_конфигурация_отличается_от_базовой_ровно_одним_параметром():
     # иначе по результату абляции нельзя сказать, что именно повлияло
-    поля = ("strategy", "size", "overlap", "heading")
+    поля = ("strategy", "size", "overlap", "heading", "section")
     for c in GRID:
         if c.name == BASE.name:
             continue
@@ -175,3 +175,15 @@ def test_клетка_2x2_совпадает_по_параметрам_с_обо
     assert (cell.size, cell.overlap, cell.strategy) == (fine.size, fine.overlap,
                                                         fine.strategy)
     assert cell.heading == plain.heading
+
+
+def test_шапка_без_раздела_несет_акт_но_не_главу(act, ruler):
+    # задание спрашивает про заголовок раздела отдельно, значит его вклад
+    # должен отделяться от вклада номера и названия акта
+    с_разделом = chunk_act(act, ruler, size=256)
+    без_раздела = chunk_act(act, ruler, size=256, add_section=False)
+    assert any("Глава 1" in c.text.split("\n\n")[0] for c in с_разделом)
+    assert not any("Глава 1" in c.text.split("\n\n")[0] for c in без_раздела)
+    # раздел остается метаданными: по нему собирается выдача и ссылка
+    assert {c.section for c in без_раздела} == {c.section for c in с_разделом}
+    assert all("590-П" in c.text for c in без_раздела)
