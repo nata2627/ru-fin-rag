@@ -33,6 +33,13 @@ def main() -> int:
 
     corpus = load_corpus()
     acts = {chunk.act.act_id for chunk in corpus.chunks}
+    # Прежний снимок остается строкой «replaced»: так видно, с какого состава
+    # корпуса сдвинулись числа README, и прежнее значение не живет только в
+    # истории git. Хранится один предыдущий снимок, не цепочка.
+    previous = None
+    if args.out.exists():
+        was = json.loads(args.out.read_text(encoding="utf-8"))
+        previous = {k: was[k] for k in ("measured_at", "chunks", "acts", "version") if k in was}
     report = {
         "measured_at": time.strftime("%Y-%m-%d"),
         "chunks": len(corpus),
@@ -43,6 +50,8 @@ def main() -> int:
         "file_mib": round(corpus.source.stat().st_size / 1048576, 1),
         "file_bytes": corpus.source.stat().st_size,
     }
+    if previous and previous.get("version") != corpus.version:
+        report["replaced"] = previous
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False))
     return 0
