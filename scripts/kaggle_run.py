@@ -63,6 +63,18 @@ MODELS = {
     # полные были бы 29 ГБ и две. На P100 ядра AWQ не работают, нужна
     # Turing или новее, то есть `--machine ""` (T4 x2), а не `p100`.
     "judge": "qwen-lm/qwen2.5/transformers/14b-instruct-awq/1",
+    # Второй судья, Qwen2.5-32B-Instruct-AWQ, 18,00 ГиБ по пяти файлам весов.
+    # Берётся затем, что один судья неотличим от собственной погрешности:
+    # голосуют двое, и пара, где они разошлись, в метрику не идёт.
+    #
+    # Почему именно 32B и именно в четырёх битах. В одну карту T4 (15,84 ГиБ)
+    # эти 18 ГиБ не входят, а на двух с тензорным параллелизмом выходит
+    # по 9,0 ГиБ весов на карту и при `--gpu-util 0.90` остаётся по 5,2 ГиБ
+    # под кэш ключей. Следующая выкладка того же Qwen это 72B-instruct-awq,
+    # у неё веса около 41 ГиБ, то есть в 31,7 ГиБ узла она не входит вовсе.
+    # Полные веса 32B были бы 65 ГиБ. Турингу нужны ядра AWQ, а не Marlin,
+    # то есть `--machine ""` (T4 x2), не `p100`.
+    "judge2": "qwen-lm/qwen2.5/transformers/32b-instruct-awq/1",
 }
 
 
@@ -276,7 +288,12 @@ def notebook_from_script(script: str, args_line: str,
         "import os, subprocess, sys\n",
         f"cmd = [sys.executable, {script!r}] + {args_line!r}.split()\n",
         "print('запуск:', ' '.join(cmd), flush=True)\n",
+        "# RUFIN_CARDS снимает сокрытие второй карты (gpu_common). Нужно только\n",
+        "# судье в тридцать два миллиарда параметров: 18 ГиБ весов в одну T4\n",
+        "# не входят, и тензорный параллелизм тут не ускорение, а условие.\n",
         "env = dict(os.environ, VLLM_WORKER_MULTIPROC_METHOD='spawn')\n",
+        "if '--tensor-parallel 2' in ' '.join(cmd):\n",
+        "    env['RUFIN_CARDS'] = '0,1'\n",
         "p = subprocess.run(cmd, cwd='/kaggle/working', env=env)\n",
         "\n",
         "# Корпус и нарезка приехали из входов, а рабочая папка целиком\n",
@@ -626,7 +643,11 @@ def main() -> None:
         # гигабайтов перед каждым прогоном стоит минут впустую.
         packages = ("sentence-transformers",)
         if args.stage == "c" and "--judge" in args.args:
-            models = [MODELS["judge"]]
+            # Судей двое, и монтировать обоих разом незачем: 18 ГиБ второго
+            # стоят минут впустую в прогоне первого. Выбор по подстроке имени
+            # в аргументах, потому что `--judge-model` это hub-идентификатор,
+            # а вход задаётся слагом Kaggle, и связать их больше негде.
+            models = [MODELS["judge2"] if "32B" in args.args else MODELS["judge"]]
             # Судью поднимает vLLM, а его в образе Kaggle нет. Прежде это
             # значило, что команда из docs/11-polnota-razmetki.md падала
             # на импорте уже на карте.
