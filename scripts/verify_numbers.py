@@ -481,6 +481,56 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
     out.append(("суток на странице", "dashboard.json", f"последние {page['days_shown']} суток"))
+
+    # Лексическая ступень после решения 16: уровень качества, прежний уровень
+    # рядом с ним, цена стеммера на запросе и словарь собранного индекса.
+    # Прежние числа берутся из строк «replaced» тех же файлов, поэтому
+    # оборот «было столько, стало столько» тоже под проверкой.
+    baseline = load("regression-baseline.json")
+    index = load("index.json")
+    out.append(
+        (
+            "базовая линия лексической связки",
+            "regression-baseline.json",
+            ru(baseline["metrics"]["NDCG@10"], 3),
+        )
+    )
+    out.append(
+        (
+            "рост базовой линии",
+            "regression-baseline.json",
+            f"с {ru(baseline['replaced']['NDCG@10'], 3)} до "
+            f"{ru(baseline['metrics']['NDCG@10'], 3)}",
+        )
+    )
+    lexical = latency["configs"]["bm25"]
+    out.append(
+        (
+            "рост задержки лексической связки",
+            "latency-local.json",
+            f"с {ru(lexical['replaced']['p50_ms'])} мс до {ru(lexical['p50_ms'])} мс",
+        )
+    )
+    tokens = latency["lexical_tokenization"]
+    out.append(("токенов в запросе", "latency-local.json", f"из {tokens['tokens_p50']} токенов"))
+    for label, key in (
+        ("стеммер на пустом кэше", "stemmed_cold_us_p50"),
+        ("стеммер на теплом кэше", "stemmed_warm_us_p50"),
+        ("прежнее разбиение", "forms_us_p50"),
+    ):
+        out.append((label, "latency-local.json", f"{ru(tokens[key], 1)} мкс"))
+    out.append(("словарь индекса", "index.json", f"{ru_spaced(index['vocab'], 0)} слова"))
+    # Размер кэша основ сверяется не с замером, а с самим кодом: это константа
+    # токенизации, и README называет ее числом.
+    from rufinrag.retrieval.text import stem
+
+    out.append(
+        (
+            "кэш основ",
+            "rufinrag/retrieval/text.py",
+            f"{ru_spaced(stem.cache_info().maxsize, 0)} записями",
+        )
+    )
     return out
 
 

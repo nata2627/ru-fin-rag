@@ -1,26 +1,33 @@
 {
-  "measured_at": "2026-10-21",
+  "measured_at": "2026-10-23",
   "machine": "arm64 Darwin 25.6.0",
   "python": "3.11.6",
   "device": "cpu",
   "corpus_version": "chunks62594-acts1554",
-  "load_seconds": 4.05,
-  "rss_after_load_mb": 1083.9,
+  "load_seconds": 4.15,
+  "rss_after_load_mb": 809.9,
   "configs": {
     "bm25": {
       "config_version": "bm25+bm25+cand50",
+      "measured_at": "2026-10-23",
       "queries": 20,
       "warmup_queries": 3,
-      "p50_ms": 1.06,
-      "p95_ms": 2.5,
-      "max_ms": 3.33,
+      "p50_ms": 1.79,
+      "p95_ms": 4.73,
+      "max_ms": 16.63,
       "stages_p50_ms": {
-        "bm25": 1.06
+        "bm25": 1.79
       },
-      "rss_peak_mb": 989.2
+      "rss_peak_mb": 809.9,
+      "replaced": {
+        "measured_at": "2026-10-21",
+        "p50_ms": 1.06,
+        "p95_ms": 2.5
+      }
     },
     "dense": {
       "config_version": "dense+dense+cand50+rufin",
+      "measured_at": "2026-10-21",
       "queries": 20,
       "warmup_queries": 3,
       "p50_ms": 87.86,
@@ -34,6 +41,7 @@
     },
     "hybrid": {
       "config_version": "hybrid+hybrid+cand50+rufin",
+      "measured_at": "2026-10-21",
       "queries": 20,
       "warmup_queries": 3,
       "p50_ms": 92.17,
@@ -49,6 +57,7 @@
     },
     "bm25-rerank": {
       "config_version": "bm25-rerank+bm25+cand50+rerank50",
+      "measured_at": "2026-10-21",
       "queries": 5,
       "warmup_queries": 1,
       "p50_ms": 43924.04,
@@ -62,6 +71,7 @@
     },
     "hybrid-rerank": {
       "config_version": "hybrid-rerank+hybrid+cand50+rufin+rerank50",
+      "measured_at": "2026-10-21",
       "queries": 5,
       "warmup_queries": 1,
       "p50_ms": 43944.78,
@@ -76,5 +86,14 @@
       },
       "rss_peak_mb": 2177.4
     }
+  },
+  "note": "дата у каждой связки своя: 23.10 переснята лексическая ступень после решения 16 (прежний замер остался в ее строке «replaced»), остальные строки с замера 2026-10-21",
+  "lexical_tokenization": {
+    "note": "медиана по тем же запросам, микросекунды на запрос",
+    "queries": 20,
+    "tokens_p50": 12,
+    "forms_us_p50": 5.4,
+    "stemmed_cold_us_p50": 293.6,
+    "stemmed_warm_us_p50": 6.2
   }
 }
