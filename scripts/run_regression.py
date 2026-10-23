@@ -68,6 +68,17 @@ def main() -> int:
     }
 
     if args.update_baseline or not args.baseline.exists():
+        # Замененный эталон остается в файле строкой «replaced»: иначе прежнее
+        # число живет только в истории git, а в README его приходится писать
+        # руками. Переписывается при этом одна строка, не цепочка: хранится тот
+        # эталон, который заменили сейчас, со своей датой.
+        if args.baseline.exists():
+            previous = json.loads(args.baseline.read_text(encoding="utf-8"))
+            report["replaced"] = {
+                "measured_at": previous["measured_at"],
+                "config": previous["config"],
+                WATCHED: previous["metrics"][WATCHED],
+            }
         args.baseline.write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
