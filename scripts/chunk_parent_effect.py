@@ -21,7 +21,10 @@
 канонической: версия токенизатора локально (4.41.2) и на Kaggle (5.0.0)
 разная, границы фрагментов от нее сдвигаются, и сравнение с канонической
 мерило бы шапку вместе с версией библиотеки. Расхождение двух базовых
-нарезок печатается отдельной строкой как контроль.
+нарезок печатается отдельной строкой как контроль, и такой же контроль есть
+для двух мелких нарезок. Кагловская мелкая ветвь `size-256` сравнивается со
+своей же базовой, то есть пара про размер фрагмента считается дважды в двух
+независимых сборках, а разность этих двух пар печатается отдельно.
 
 Лексическая ступень считается на маке: BM25 строится здесь же, подъем к
 родителю это арифметика по символьным границам. Плотная ступень просит
@@ -86,11 +89,22 @@ PAIRS = (
     ("fine-no-heading", "fine-local", "цена шапки при размере 256"),
     ("fine-no-heading", "no-heading", "мелкая нарезка там, где шапки нет вовсе"),
     ("base-local", "base", "контроль: локальная сборка против кагловской"),
+    ("size-256", "fine-local",
+     "контроль: кагловская мелкая против локальной мелкой"),
 )
-# Взаимодействие: размер и шапка не независимы, шапке отводится доля чанка.
-# Разность разностей считается по тем же запросам, поэтому парным бутстрэпом,
-# а не вычитанием двух средних.
-INTERACTION = (("fine-no-heading", "fine-local"), ("no-heading", "base-local"))
+# Разности разностей. Первая про взаимодействие: размер и шапка не независимы,
+# шапке отводится доля чанка. Вторая отвечает на вопрос, повторяет ли кагловская
+# мелкая ветвь вывод локальной пары: если разность разностей не установлена,
+# две сборки говорят одно. Считается по тем же запросам, поэтому парным
+# бутстрэпом, а не вычитанием двух средних.
+DIFF_OF_DIFFS = (
+    ("взаимодействие размера и шапки: насколько снятие шапки при 256 дороже, "
+     "чем при 512",
+     ("fine-no-heading", "fine-local"), ("no-heading", "base-local")),
+    ("кагловская пара против локальной: насколько мелкая нарезка в кагловской "
+     "сборке отличается от той же пары в локальной",
+     ("size-256", "base"), ("fine-local", "base-local")),
+)
 
 
 def read_chunks(path: str):
@@ -148,6 +162,84 @@ def load_run(path: str) -> dict[str, list[str]]:
                 for r in (json.loads(l) for l in f if l.strip())}
 
 
+def divergence(ref: dict[str, list[str]], fresh: dict[str, list[str]],
+               scored: dict[str, list[tuple[str, float]]], qids: list[str],
+               say) -> dict:
+    """Из чего складывается расхождение свежей выдачи `base` с выдачей этапа B.
+
+    Нарезка у двух прогонов одна и та же, файл один и тот же, предел входа
+    один и тот же, поэтому ни сдвига границ, ни разной обрезки хвоста между
+    ними быть не может. Зато слагаемых все равно два, и доля совпадения их
+    складывает. Первое: сохраненная выдача этапа B это фрагменты, а свежая
+    поднята к родителю, и у базовой ветви подъем не вполне тождественный,
+    потому что фрагмент, целиком накрытый соседом по перекрытию, отдает ничью
+    соседу. Второе: численная разница самого поиска на другой машине с другой
+    версией библиотек. Первое слагаемое отделяется сравнением без подъема,
+    второе читается по тому, куда в свежей выдаче ушли выпавшие позиции: место
+    сразу за десяткой с ничейным отрывом это шум ранжирования, а уход за
+    глубину чтения означал бы, что дело не в шуме.
+    """
+    places: list[int] = []
+    gaps: list[float] = []
+    beyond = 0
+    by_lift = 0
+    raw_same: list[float] = []
+    for qid in qids:
+        if qid not in ref:
+            continue
+        top = set(fresh[qid])
+        raw_top = {cid for cid, _ in scored[qid][:TOP]}
+        raw_same.append(len(raw_top & set(ref[qid][:TOP])) / TOP)
+        order = {cid: (i + 1, score)
+                 for i, (cid, score) in enumerate(scored[qid])}
+        tenth = scored[qid][TOP - 1][1] if len(scored[qid]) >= TOP else None
+        for cid in ref[qid][:TOP]:
+            if cid in top:
+                continue
+            if cid in order:
+                place, score = order[cid]
+                places.append(place)
+                if place <= TOP:
+                    by_lift += 1
+                if tenth is not None:
+                    gaps.append(tenth - score)
+            else:
+                beyond += 1
+    total = len(places) + beyond
+    if not total:
+        say("разложение расхождения не требуется: выдачи совпали позиция в позицию")
+        return {"выпавших позиций": 0}
+    near = sum(1 for pl in places if pl <= 2 * TOP)
+    out = {
+        "выпавших позиций этапа B из первой десятки": total,
+        "позиций всего": TOP * len([q for q in qids if q in ref]),
+        "совпадение первой десятки без подъема к родителю":
+            round(100 * float(np.mean(raw_same)), 1),
+        "выпали из-за подъема, а не ранжирования": by_lift,
+        "нашлись в свежей выдаче": len(places),
+        "глубже 200 или отсутствуют": beyond,
+        "место в свежей выдаче, медиана": float(statistics.median(places)) if places else None,
+        "место в свежей выдаче, максимум": max(places) if places else None,
+        f"в первых {2 * TOP}": near,
+        "отрыв от десятого места, медиана": round(statistics.median(gaps), 5) if gaps else None,
+        "отрыв от десятого места, максимум": round(max(gaps), 5) if gaps else None,
+    }
+    say(f"разложение расхождения: выпало {total} позиций этапа B из "
+        f"{out['позиций всего']}, из них {by_lift} стоят в свежей выдаче "
+        f"фрагментов внутри первой десятки и выпали при подъеме к родителю, "
+        f"а не при ранжировании")
+    say(f"{'':<11} то же сравнение без подъема к родителю: совпадение первой "
+        f"десятки {out['совпадение первой десятки без подъема к родителю']}%")
+    say(f"{'':<11} за глубиной {DEEP} или вовсе нет {beyond}; "
+        f"место в свежей выдаче медиана {out['место в свежей выдаче, медиана']:.0f}, "
+        f"максимум {out['место в свежей выдаче, максимум']}, "
+        f"в первых {2 * TOP} {near} из {total}")
+    if gaps:
+        say(f"{'':<11} отрыв оценки от десятого места: медиана "
+            f"{statistics.median(gaps):.5f}, максимум {max(gaps):.5f}")
+    return out
+
+
 def load_query_vectors(emb_root: str, model: str, qids: list[str]) -> np.ndarray:
     """Векторы запросов в порядке `qids`.
 
@@ -168,19 +260,19 @@ def load_query_vectors(emb_root: str, model: str, qids: list[str]) -> np.ndarray
 
 
 def dense_deep_run(index: DenseIndex, qvec: np.ndarray, qids: list[str],
-                   batch: int) -> dict[str, list[str]]:
-    """Выдача плотного поиска на глубину DEEP, пачками запросов.
+                   batch: int) -> dict[str, list[tuple[str, float]]]:
+    """Выдача плотного поиска на глубину DEEP с оценками, пачками запросов.
 
     Пачками, потому что матрица оценок это запросы на фрагменты: у мелкой
     нарезки 991 на 134 844 чисел это полгигабайта за один раз, и на маке
     с восемью гигабайтами памяти это лишний риск вместо экономии секунды.
     """
-    out: dict[str, list[str]] = {}
+    out: dict[str, list[tuple[str, float]]] = {}
     for start in range(0, len(qids), batch):
         part = qids[start:start + batch]
         found = index.search_vectors(qvec[start:start + batch], k=DEEP)
         for qid, hits in zip(part, found):
-            out[qid] = [cid for cid, _ in hits]
+            out[qid] = list(hits)
     return out
 
 
@@ -273,6 +365,7 @@ def main() -> None:
 
     runs: dict[str, dict[str, list[str]]] = {}
     shallow: dict[str, dict[str, list[str]]] = {}
+    base_scored: dict[str, list[tuple[str, float]]] = {}
     report: dict[str, dict] = {}
 
     for name, path in branches.items():
@@ -280,10 +373,13 @@ def main() -> None:
         ids, texts, meta = [], [], {}
         outside = 0
         heads: list[float] = []
+        chars: list[int] = []
+        self_parent = 0
         covered: list[float] = []
         solid = checked = 0
         for rec in read_chunks(path):
             ids.append(rec["chunk_id"])
+            chars.append(len(rec["text"]))
             if not args.dense:
                 # Плотной ступени тексты не нужны вовсе, а мелкая нарезка это
                 # 354 МБ строк: держать их рядом с матрицей векторов значит
@@ -303,6 +399,12 @@ def main() -> None:
             # и сравнение уровней мерило бы ошибку сопоставления.
             parent = parents.best_parent(rec["act_id"], rec["char_start"],
                                          rec["char_end"])
+            # У базовой ветви подъем обязан быть тождественным, иначе сверка с
+            # сохраненной выдачей этапа B мерила бы не только поиск: базовые
+            # фрагменты идут с перекрытием, и фрагмент, целиком накрытый
+            # соседом, отдает ничью соседу, который в акте стоит раньше.
+            if parent is not None and parent.chunk_id == rec["chunk_id"]:
+                self_parent += 1
             if parent is not None and rec["char_end"] > rec["char_start"]:
                 overlap = (min(rec["char_end"], parent.end)
                            - max(rec["char_start"], parent.start))
@@ -338,19 +440,33 @@ def main() -> None:
             + (f", актов вне базовой нарезки: {outside}" if outside else ""))
         say(f"{'':<11} символов фрагмента под шапкой: медиана "
             f"{100 * head_share:.0f}% (фрагментов с шапкой {len(heads)} из {len(ids)})")
+        # Длина в символах нужна там, где длину в токенах измерить нечем:
+        # токенизатор энкодера живет на машине с картой. Предел входа 512
+        # токенов, и обрезка хвоста растет с длиной текста.
+        say(f"{'':<11} символов во фрагменте: медиана "
+            f"{statistics.median(chars):.0f}, максимум {max(chars)}")
         if checked:
             say(f"{'':<11} текст лежит в своем диапазоне непрерывно у {solid} "
                 f"из {checked} проверенных фрагментов")
         poor = sum(1 for c in covered if c < 0.5)
+        if name == "base":
+            say(f"{'':<11} поднимается к себе же {self_parent} фрагментов из "
+                f"{len(ids)}, к соседу {len(ids) - self_parent}")
         say(f"{'':<11} родитель покрывает фрагмент: медиана "
             f"{100 * statistics.median(covered):.0f}%, "
             f"меньше половины у {poor} фрагментов из {len(covered)}")
 
         if args.dense:
-            deep_run = dense_deep_run(index, qvec, qids, args.query_batch)
+            scored = dense_deep_run(index, qvec, qids, args.query_batch)
         else:
-            deep_run = {qid: [c for c, _ in index.search(queries[qid], DEEP)]
-                        for qid in qids}
+            scored = {qid: list(index.search(queries[qid], DEEP)) for qid in qids}
+        # Оценки нужны только базовой ветви и только для разложения ее
+        # расхождения с сохраненной выдачей этапа B: у остальных ветвей это
+        # лишние 200 чисел на запрос без применения.
+        if name == "base":
+            base_scored = scored
+        deep_run = {q: [c for c, _ in h] for q, h in scored.items()}
+        del scored
         runs[name] = {q: parents.lift(h, meta, TOP) for q, h in deep_run.items()}
         shallow[name] = {q: parents.lift(h[:SHALLOW], meta, TOP)
                          for q, h in deep_run.items()}
@@ -366,10 +482,13 @@ def main() -> None:
             f"выдач короче {TOP} на этой глубине: {short}")
         report[name] = {
             "фрагментов": len(ids),
+            "символов во фрагменте, медиана": float(statistics.median(chars)),
+            "символов во фрагменте, максимум": max(chars),
             "доля символов под шапкой, медиана": round(head_share, 4),
             "фрагментов с шапкой": len(heads),
             "покрытие родителем, медиана": round(statistics.median(covered), 4),
             "покрытие меньше половины": poor,
+            "поднимается к себе же": self_parent,
             "границы проверены": checked,
             "границы непрерывны": solid,
             "индекс МБ": round(size_mb, 1),
@@ -392,6 +511,8 @@ def main() -> None:
         report[f"сверка base с base__{stage}"] = round(100 * float(np.mean(same)), 1)
         say(f"сверка ветви base с data/runs/base__{stage}.jsonl: совпадение первой "
             f"десятки {100 * float(np.mean(same)):.1f}% на {len(same)} запросах")
+        report[f"разложение расхождения с base__{stage}"] = divergence(
+            ref, runs["base"], base_scored, qids, say)
     elif "base" in runs:
         say(f"сверка ветви base невозможна: нет data/runs/base__{stage}.jsonl")
 
@@ -461,13 +582,15 @@ def main() -> None:
         say(f"    {name:<16} {differ} из {len(qids)}")
     say()
     say()
-    (a_cand, a_base), (b_cand, b_base) = INTERACTION
-    interaction = []
-    if all(n in runs for n in (a_cand, a_base, b_cand, b_base)):
-        say("взаимодействие размера и шапки: насколько снятие шапки при 256 "
-            "дороже, чем при 512")
+    diff_of_diffs = []
+    for title, (a_cand, a_base), (b_cand, b_base) in DIFF_OF_DIFFS:
+        if not all(n in runs for n in (a_cand, a_base, b_cand, b_base)):
+            continue
+        say(title)
         for part_name, part in parts.items():
-            row = {"подвыборка": part_name, "запросов": len(part)}
+            row = {"что читается": title, "подвыборка": part_name,
+                   "запросов": len(part),
+                   "пары": [f"{a_cand}-{a_base}", f"{b_cand}-{b_base}"]}
             out = []
             for m in METRICS:
                 diff, p = M.paired_diff_ci(
@@ -478,7 +601,7 @@ def main() -> None:
                 row[m] = {"diff": round(diff.mean, 4), "lo": round(diff.lo, 4),
                           "hi": round(diff.hi, 4), "p": round(p, 4)}
             say(f"    {part_name:<14} ({len(part):>3}) " + "   ".join(out))
-            interaction.append(row)
+            diff_of_diffs.append(row)
         say()
     say("* интервал не накрывает ноль — разницу можно считать установленной")
 
@@ -493,7 +616,7 @@ def main() -> None:
                    "родителей в выдаче": TOP,
                    "ветви": report, "уровни": levels,
                    "прибавка": diffs, "разошлось при глубине 50": depth_rows,
-                   "взаимодействие размера и шапки": interaction},
+                   "разности разностей": diff_of_diffs},
                   f, ensure_ascii=False, indent=2)
     say()
     say(f"файлы: {os.path.relpath(report_path, ROOT)}, "
