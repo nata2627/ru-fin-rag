@@ -14,8 +14,15 @@
 судья сменился, пул надо пройти целиком. А на пересечении видно, насколько
 новый судья согласен с прежним.
 
-Приоритет: ядро из пяти связок, по которым проект делает выводы, размечается
-первым. Если прогон придётся прервать, прерван он будет на второстепенном.
+Приоритет: первой размечается первая десятка пяти связок, по которым проект
+делает выводы, потому что на ней стоит опубликованная метрика. Потом хвост
+этих же связок до глубины 50, потом то, что нашли только второстепенные
+связки. Если прогон придётся прервать, прерван он будет на последнем.
+
+Глубина 50, а не 10. Десятки хватает, чтобы посчитать NDCG@10, и не хватает,
+чтобы узнать его настоящее значение: фрагмент, стоящий у одной связки
+одиннадцатым, у другой стоит третьим, и неразмеченным он занижает обеих.
+Пятьдесят это вся длина сохранённых выдач, дальше брать неоткуда.
 
 Порядок строк перемешан, и какая конфигурация нашла кандидата, в задании не
 написано: иначе оценка подстроится под знакомый метод.
@@ -73,7 +80,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="base")
     ap.add_argument("--subset", default="живые")
-    ap.add_argument("--depth", type=int, default=10)
+    ap.add_argument("--depth", type=int, default=50,
+                    help="глубина выдачи, с которой берутся кандидаты. "
+                         "50 это вся сохранённая выдача")
+    ap.add_argument("--metric-depth", type=int, default=10,
+                    help="глубина, на которой считается опубликованная "
+                         "метрика: по ней назначается первый приоритет")
     ap.add_argument("--chunks", default="base")
     ap.add_argument("--out", default=os.path.join(QDIR, "pool_live.tsv"))
     args = ap.parse_args()
@@ -122,23 +134,24 @@ def main() -> None:
             return "эталон"
         return "-"
 
-    # Пара попадает в задание один раз, с лучшим приоритетом: 1 — её нашла
-    # связка ядра, 2 — только второстепенная.
+    # Пара попадает в задание один раз, с лучшим приоритетом: 1 — связка ядра
+    # поставила её в первую десятку, то есть пара определяет опубликованное
+    # число; 2 — связка ядра нашла её глубже десятки; 3 — её нашли только
+    # второстепенные связки.
     priority: dict[tuple[str, str], int] = {}
     found_by: dict[tuple[str, str], int] = collections.Counter()
+    best_rank: dict[tuple[str, str], int] = {}
     for qid in qids:
         for cfg, run in runs.items():
-            for cid in run.get(qid, [])[:args.depth]:
+            for место, cid in enumerate(run.get(qid, [])[:args.depth], 1):
                 pair = (qid, cid)
-                p = 1 if cfg in CORE else 2
+                if cfg in CORE:
+                    p = 1 if место <= args.metric_depth else 2
+                else:
+                    p = 3
                 priority[pair] = min(priority.get(pair, 9), p)
+                best_rank[pair] = min(best_rank.get(pair, 10 ** 6), место)
                 found_by[pair] += 1
-
-    # Выборка человека входит в задание целиком: по ней считается согласие
-    # нового судьи с человеком на той же выборке, что и у прежнего.
-    human = read_pairs(os.path.join(QDIR, "human_sample.tsv"), "query_id", "chunk_id")
-    for pair in human:
-        priority[pair] = 0
 
     chunks = {}
     with open(os.path.join(CHUNKDIR, f"{args.chunks}.jsonl"), encoding="utf-8") as f:
@@ -159,6 +172,7 @@ def main() -> None:
             continue
         rows.append({"query_id": qid, "chunk_id": cid, "prioritet": p,
                      "istochnik": source((qid, cid)),
+                     "luchshee_mesto": best_rank.get((qid, cid), 0),
                      "naydeno_svyazok": found_by.get((qid, cid), 0),
                      "vopros": queries[qid].replace("\t", " ").replace("\n", " "),
                      "fragment": c["text"].replace("\t", " ").replace("\n", " ")})
@@ -182,16 +196,37 @@ def main() -> None:
     say()
     say(f"пар в задании: {len(rows)}")
     by_p = collections.Counter(r["prioritet"] for r in rows)
+    имена = {1: f"ядро, первые {args.metric_depth}", 2: "ядро, хвост",
+             3: "остальные связки"}
     say("по приоритету: " + ", ".join(
-        f"{k} ({'выборка человека' if k == 0 else 'ядро' if k == 1 else 'остальные связки'}) "
-        f"{v}" for k, v in sorted(by_p.items())))
+        f"{k} ({имена.get(k, '?')}) {v}" for k, v in sorted(by_p.items())))
     by_src = collections.Counter(r["istochnik"] for r in rows)
     say("разметка прежде: " + ", ".join(f"{k} {v}" for k, v in by_src.most_common()))
     say(f"новых пар (никем не размечены): {by_src.get('-', 0)} из {len(rows)}")
-    per_q = collections.Counter(r["query_id"] for r in rows if r["prioritet"] != 0)
+    per_q = collections.Counter(r["query_id"] for r in rows)
     if per_q:
         say(f"пар на запрос: в среднем {sum(per_q.values()) / len(per_q):.1f}, "
             f"минимум {min(per_q.values())}, максимум {max(per_q.values())}")
+
+    # Охват до и после, то есть сколько позиций десятки размечено. Это число
+    # говорит о надёжности метрики больше, чем сама метрика, и считается без
+    # всякого судьи.
+    say()
+    say(f"охват: пар на глубине {args.metric_depth} и на глубине {args.depth}, "
+        f"и сколько из них размечено сегодня")
+    say(f"{'связка':<22}{'десятка':>9}{'размечено':>11}{'глубина ' + str(args.depth):>13}"
+        f"{'размечено':>11}")
+    размечено = {p for p, _ in ((k, v) for k, v in priority.items())
+                 if source(p) != "-"}
+    for cfg in CORE:
+        run = runs[cfg]
+        мелко = {(q, c) for q in qids for c in run.get(q, [])[:args.metric_depth]}
+        глубоко = {(q, c) for q in qids for c in run.get(q, [])[:args.depth]}
+        say(f"{cfg:<22}{len(мелко):>9}{len(мелко & размечено):>11}"
+            f"{len(глубоко):>13}{len(глубоко & размечено):>11}")
+    say(f"неразмеченных позиций первой десятки на запрос у hybrid-rerank: "
+        f"{(len({(q, c) for q in qids for c in runs['hybrid-rerank'].get(q, [])[:args.metric_depth]} - размечено)) / len(qids):.2f} "
+        f"из {args.metric_depth}")
     say(f"файл: {os.path.relpath(args.out, ROOT)}")
 
     # Второй файл для Kaggle: там корпус лежит рядом, тексты фрагментов
@@ -210,6 +245,9 @@ def main() -> None:
             w.writerow({"query_id": r["query_id"], "chunk_id": r["chunk_id"],
                         "prioritet": r["prioritet"],
                         "vopros": r["vopros"] if first else ""})
+    # Лист Kaggle перемешан внутри приоритета, а не целиком, поэтому первые
+    # N строк пробы это случайная выборка из первого приоритета: прогон,
+    # прерванный на пробе, размечает именно то, на чём стоит метрика.
     say(f"то же для Kaggle, без текстов фрагментов: "
         f"{os.path.relpath(light, ROOT)} "
         f"({os.path.getsize(light) / 1048576:.1f} МБ)")
