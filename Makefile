@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -48,8 +48,9 @@ help:
 	@echo "  manual-task  лист актов, по которым писать ручные запросы"
 	@echo "  manual-apply перенести заполненный лист в набор"
 	@echo "  judge        перенести разметку судьи (judge.tsv с Kaggle) в эталоны"
-	@echo "  sample-for-human  выборка 150 пар для ручной проверки судьи"
-	@echo "  kappa        согласие судьи с человеком числом"
+	@echo "  sample-for-human  выборка 150 пар для ручной разметки человеком"
+	@echo "  kappa        приёмка судьи: три числа и пороги"
+	@echo "  act-labels   слабая метка на уровне акта и поиск нужного акта"
 	@echo "  queries      собрать тексты запросов для прогона (эталоны не нужны)"
 	@echo "  pool         лист разметки по объединённым выдачам всех конфигураций"
 	@echo "  pool-live    пул полноты разметки по живым вопросам (задание судье)"
@@ -227,10 +228,15 @@ pool:
 	$(PY) scripts/pool_candidates.py --config $(CHUNKS)
 
 # Полнота разметки живых вопросов (docs/11-polnota-razmetki.md): пул по
-# объединённой первой десятке всех конфигураций, выбор судьи по согласию
-# с человеком, покрытие первой десятки разметкой.
+# объединённым выдачам всех конфигураций до глубины 50, покрытие первой
+# десятки разметкой, задание обоим судьям.
 pool-live:
 	$(PY) scripts/pool_completeness.py --config $(CHUNKS)
+
+# Метка «вопрос про этот акт» из заголовков разделов cbr.ru/explan: охват
+# в два раза шире разметки по фрагментам и ни одной связке не подыгрывает.
+act-labels:
+	$(PY) scripts/act_level_labels.py --chunks $(CHUNKS) --config $(CHUNKS)
 
 judge-candidates:
 	$(PY) scripts/judge_candidates.py
