@@ -67,7 +67,14 @@ docs/ANNOTATION_GUIDE.md и data/queries/rubric.txt. Инструкция одн
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--judge", default=os.path.join(QDIR, "judge_live.tsv"),
-                    help="разметка судьи: по её оценкам идёт стратификация")
+                    help="разметка судьи: по её оценкам идёт стратификация. "
+                         "Оценки нужны только затем, чтобы в выборку попали "
+                         "все три, а не одни нули; в лист они не идут, и "
+                         "метками они не становятся")
+    ap.add_argument("--pool", default="",
+                    help="лист пула: оставить только пары, которые в нём есть. "
+                         "Нужно, когда стратификация идёт по разметке прежнего "
+                         "судьи, а пул с тех пор пересобран")
     ap.add_argument("--queries", default=os.path.join(QDIR, "queries.jsonl"))
     ap.add_argument("--chunks", default="base")
     ap.add_argument("--size", type=int, default=150,
@@ -87,10 +94,38 @@ def main() -> None:
     with open(args.judge, encoding="utf-8", newline="") as f:
         pairs = [r for r in csv.DictReader(f, delimiter="\t")
                  if (r.get("otsenka_0_1_2") or "").strip() in ("0", "1", "2")]
+    if args.pool:
+        with open(args.pool, encoding="utf-8", newline="") as f:
+            в_пуле = {(r["query_id"], r["chunk_id"]): r.get("istochnik", "")
+                      for r in csv.DictReader(f, delimiter="\t")}
+        было = len(pairs)
+        pairs = [r for r in pairs if (r["query_id"], r["chunk_id"]) in в_пуле]
+        print(f"пул {os.path.relpath(args.pool, ROOT)}: из {было} пар разметки "
+              f"в нём есть {len(pairs)}")
+        # Отдельная страта: пары, где пункт назван самим Банком России.
+        #
+        # Без неё выборка состоит из одних вопросов, размеченных пулом, а их
+        # 34 из 142: прежний судья размечал только их. А причина, из-за
+        # которой инструкция и переписана («эталон это общая норма, ответа
+        # в тексте нет», 6 провалов из 20), живёт ровно на вопросах,
+        # размеченных по названным пунктам. Выборка без них проверяла бы
+        # новую инструкцию на том единственном, чего она не меняет.
+        известны = {(r["query_id"], r["chunk_id"]) for r in pairs}
+        по_пунктам = [{"query_id": q, "chunk_id": c, "strata": "пункт"}
+                      for (q, c), истч in sorted(в_пуле.items())
+                      if истч == "пункт" and (q, c) not in известны]
+        for r in pairs:
+            r["strata"] = r["otsenka_0_1_2"]
+        pairs = pairs + по_пунктам
+        print(f"добавлено страт «пункт» (пункт назван Банком России): "
+              f"{len(по_пунктам)}")
+    else:
+        for r in pairs:
+            r["strata"] = r["otsenka_0_1_2"]
     if not pairs:
         raise SystemExit(f"в {os.path.relpath(args.judge, ROOT)} нет ни одной "
                          f"разобранной оценки")
-    выбрано = stratified_sample(pairs, "otsenka_0_1_2", args.size, seed=args.seed)
+    выбрано = stratified_sample(pairs, "strata", args.size, seed=args.seed)
 
     queries = {}
     with open(args.queries, encoding="utf-8") as f:
@@ -147,11 +182,11 @@ def main() -> None:
             f.write("ответ 2 (помогает вместе, да/нет): ___\n")
             f.write("тип (общая/часть/иное): ___\n")
 
-    было = collections.Counter(r["otsenka_0_1_2"] for r in pairs)
-    стало = collections.Counter(r["otsenka_0_1_2"] for r in выбрано)
+    было = collections.Counter(r["strata"] for r in pairs)
+    стало = collections.Counter(r["strata"] for r in выбрано)
     lines = [
-        f"пар в разметке судьи: {len(pairs)}, собранные оценки: {dict(было)}",
-        f"в выборке: {len(rows)}, оценки судьи в ней: {dict(стало)}",
+        f"пар, из которых берётся выборка: {len(pairs)}, по стратам: {dict(было)}",
+        f"в выборке: {len(rows)}, по стратам: {dict(стало)}",
         f"запросов в выборке: {len({r['query_id'] for r in rows})}",
         "оценок судьи в листе нет: колонки ответов пустые",
         "инструкция: docs/ANNOTATION_GUIDE.md, она же в шапке читаемого листа",
