@@ -172,12 +172,25 @@ class DenseIndex:
         if self.index is None:
             import faiss
             self.index = faiss.IndexFlatIP(self.vectors.shape[1])
-            self.index.add(self.vectors)
+            # FAISS хранит только float32, а матрицы с видеокарты приезжают
+            # в float16: без приведения add падает на типе. Своя копия
+            # у индекса всё равно есть, поэтому self.vectors остаётся тем,
+            # что лежит на диске, и размер индекса считается по нему.
+            self.index.add(np.ascontiguousarray(self.vectors, dtype="float32"))
 
     @classmethod
     def from_files(cls, spec: ModelSpec, vectors_path: str, ids_path: str,
-                   backend: str = "faiss") -> "DenseIndex":
+                   backend: str = "faiss", float32: bool = False) -> "DenseIndex":
+        """Поднять индекс из матрицы и списка идентификаторов.
+
+        `float32` нужен бэкенду numpy при замере задержки: матрицы с
+        видеокарты лежат в float16, а `top_k` приводит их к float32 сам
+        и на каждом запросе, то есть копирует четверть гигабайта на каждый
+        поиск. Замер тогда меряет копию, а не поиск.
+        """
         vec = np.load(vectors_path)
+        if float32:
+            vec = np.ascontiguousarray(vec, dtype="float32")
         ids = [l.rstrip("\n") for l in open(ids_path, encoding="utf-8")]
         if len(ids) != vec.shape[0]:
             raise ValueError(f"идентификаторов {len(ids)}, векторов {vec.shape[0]}")
