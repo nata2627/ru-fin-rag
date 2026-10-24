@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag dag-drill dag-report alert drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag dag-drill dag-report alert sample-size drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -59,6 +59,9 @@ dag-report: ## собрать results/dag.md из отчетов прогоно�
 
 alert: ## учебная деградация метрики: алерт обязан сработать и обязан молчать на шуме
 	$(PY) scripts/check_alert.py
+
+sample-size: ## пересчитать правило остановки и размеры выборки для сравнения конфигураций
+	$(PY) scripts/plan_sample_size.py
 
 drain: ## репетиция выгрузки журнала: сервис процессом, выгрузка по сети, файлы в репозитории
 	$(PY) scripts/rehearse_drain.py
