@@ -24,6 +24,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 МЕТРИКИ = ROOT / "data" / "results" / "base.json"
 ЗАДЕРЖКА = ROOT / "data" / "results" / "latency_base_user-bge-m3.json"
 СОСТАВ = ROOT / "data" / "queries" / "podvyborki.json"
+РЕРАНК_КАРТА = ROOT / "data" / "results" / "latency_base_user-bge-m3_rerank.json"
+РЕРАНК_ПРОЦЕССОР = (ROOT / "data" / "results"
+                    / "latency_base_user-bge-m3_rerank_cpu_proba.json")
 
 ФРАГМЕНТОВ = 62594
 # порядок колонок таблицы качества после подписи строки и числа запросов
@@ -149,3 +152,33 @@ def test_zaderzhka_iz_zamera(таблицы):
             лат = отчёт["latency"][ключ]
             assert число(клетки[2 + 2 * i]) == лат["median_ms"], f"{dim} {ключ}"
             assert число(клетки[3 + 2 * i]) == лат["p95_ms"], f"{dim} {ключ} p95"
+
+
+@pytest.mark.data
+def test_zaderzhka_reranka_iz_zamerov():
+    """Числа переранжирования стоят в тексте, а не в таблице, и тоже из файлов.
+
+    Прозу проверять так же важно, как таблицу: оба числа замерены на чужой
+    машине, повторить их на маке нельзя, и разойтись с отчетом им негде только
+    пока их кто-то сверяет.
+    """
+    if not РЕРАНК_КАРТА.exists() or not РЕРАНК_ПРОЦЕССОР.exists():
+        pytest.skip("переранжирование не замерено на внешней машине")
+    текст = ДОК.read_text(encoding="utf-8")
+    карта = json.loads(РЕРАНК_КАРТА.read_text(encoding="utf-8"))
+    процессор = json.loads(РЕРАНК_ПРОЦЕССОР.read_text(encoding="utf-8"))
+    ключ = "hybrid+rerank:user-bge-m3"
+    на_карте = карта["latency"][ключ]
+    на_процессоре = процессор["latency"][ключ]
+    assert карта["index"]["reranker"]["device"] == "cuda"
+    assert процессор["index"]["reranker"]["device"] == "cpu"
+    for значение in (на_карте["median_ms"], на_карте["p95_ms"], на_процессоре["median_ms"]):
+        напечатано = f"{значение}".replace(".", ",")
+        assert напечатано in текст, f"{напечатано} в документе нет"
+    # Оговорка про один запрос обязана стоять рядом с числом: медиана и p95 у
+    # замера на процессоре совпадают по построению, и без оговорки это читается
+    # как устойчивость по запросам.
+    assert на_процессоре["queries"] == 1
+    assert "Запрос при этом **один**" in текст
+    раз = на_процессоре["median_ms"] / на_карте["median_ms"]
+    assert f"в {раз:.1f} раза".replace(".", ",") in текст
