@@ -210,7 +210,12 @@ def main() -> None:
     meta_path = args.meta or os.path.splitext(args.judge)[0] + "_meta.json"
     if os.path.exists(meta_path):
         meta = json.load(open(meta_path, encoding="utf-8"))
-        нет = [k for k in НУЖНЫ_В_МЕТА if not meta.get(k)]
+        # Пустым считается отсутствие значения, а не ложное значение:
+        # температура судьи равна 0.0 по замыслу, и проверка «not
+        # meta.get(k)» объявляла стек незаписанным именно у
+        # детерминированного прогона, то есть у правильного.
+        нет = [k for k in НУЖНЫ_В_МЕТА
+               if meta.get(k) is None or (isinstance(meta.get(k), str) and not meta[k].strip())]
         стек = meta.get("стек вывода") or {}
         say()
         say(f"метаданные прогона: {os.path.relpath(meta_path, ROOT)}")
