@@ -17,7 +17,7 @@ DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -212,6 +212,10 @@ sample-for-human:
 # Лист пробы судьи: ровно те пары, которые размечает человек.
 judge-probe:
 	$(PY) scripts/make_judge_probe.py
+
+# E4: примеры живых вопросов для генератора, без единого вопроса набора.
+fewshot:
+	$(PY) scripts/make_fewshot_examples.py
 
 kappa:
 	$(PY) scripts/kappa.py

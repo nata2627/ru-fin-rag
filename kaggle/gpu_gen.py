@@ -92,6 +92,10 @@ class Style:
     tail: str
     question_mark: bool = True
     max_tokens: int = 96
+    # Показывать ли примеры живых вопросов (E4). Короткому поисковому запросу
+    # они не показываются: живые вопросы это письма в Банк России, и примером
+    # письма запрос из трех слов не объяснишь, а испортить его так можно.
+    fewshot: bool = True
 
 
 STYLES = (
@@ -109,8 +113,46 @@ STYLES = (
 Напиши ОДИН короткий поисковый запрос — так, как его набрали бы в строку
 поиска: три-восемь слов, без глагола, без вопросительного знака, без
 вежливых оборотов. Он должен находить именно этот фрагмент.
-""" + COMMON, question_mark=False, max_tokens=32),
+""" + COMMON, question_mark=False, max_tokens=32, fewshot=False),
 )
+
+
+FEWSHOT = """
+Вот как пишут вопросы те, кто приходит с ними в Банк России. Это чужие
+вопросы, не про этот фрагмент: смотри на манеру, а не на содержание.
+
+{examples}
+Пиши в такой же манере: своими словами, с обстоятельствами дела, как пишет
+живой человек, а не как написано в самом акте.
+"""
+
+
+def load_fewshot(path: str) -> list[str]:
+    """Примеры живых вопросов для подсказки генератора (E4).
+
+    В файле лежат только те живые вопросы, которых нет в наборе запросов
+    (`scripts/make_fewshot_examples.py`). Проверять это здесь нечем: набор
+    на видеокарту не едет целиком, и условие держится тем, что файл собран
+    локально одним скриптом вместе со счетом исключенных.
+    """
+    import json
+
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f if line.strip()]
+    return [row["text"] for row in rows if row.get("text")]
+
+
+def shots_for(examples: list[str], shots: int, seed: int, number: int) -> str:
+    """Какие примеры показать этой подсказке.
+
+    Примеры разные у разных фрагментов: один и тот же набор на всю выборку
+    задал бы генератору один речевой режим, и выборка вышла бы однообразнее
+    живых вопросов, то есть E4 проверял бы сам себя. Выбор детерминирован
+    семенем и номером подсказки, иначе прогон не повторить.
+    """
+    rnd = random.Random(f"{seed}:{number}")
+    picked = rnd.sample(examples, min(shots, len(examples)))
+    return "".join(f"{i}. {text}\n" for i, text in enumerate(picked, start=1))
 
 
 def body_of(chunk: dict) -> str:
@@ -205,10 +247,20 @@ def _chat(tok, задание: str, system: str = SYSTEM) -> str:
             tokenize=False, add_generation_prompt=True)
 
 
-def generate(llm, style: Style, passages: list[str], temperature: float = 0.7) -> list[str]:
+def generate(llm, style: Style, passages: list[str], temperature: float = 0.7,
+             examples: list[str] | None = None, shots: int = 3,
+             seed: int = 13, offset: int = 0) -> list[str]:
     from vllm import SamplingParams
     tok = llm.get_tokenizer()
-    prompts = [_chat(tok, HEAD.format(passage=p) + style.tail) for p in passages]
+    if examples and style.fewshot and shots:
+        prompts = [
+            _chat(tok, HEAD.format(passage=p)
+                  + FEWSHOT.format(examples=shots_for(examples, shots, seed, offset + i))
+                  + style.tail)
+            for i, p in enumerate(passages)
+        ]
+    else:
+        prompts = [_chat(tok, HEAD.format(passage=p) + style.tail) for p in passages]
     params = SamplingParams(temperature=temperature, top_p=0.9,
                             max_tokens=style.max_tokens)
     out = llm.generate(prompts, params, use_tqdm=False)
@@ -252,7 +304,8 @@ def probe_speed(llm, chunks: list[dict], sample: int = 100, seed: int = 13) -> d
 
 def make_queries(llm, chunks: list[dict], out_path: str, target: int,
                  prefix: str = "syn", per_act: int = 12, seed: int = 13,
-                 batch: int = 256, idf_texts: list[str] | None = None) -> dict:
+                 batch: int = 256, idf_texts: list[str] | None = None,
+                 examples: list[str] | None = None, shots: int = 3) -> dict:
     """Сгенерировать и отфильтровать вопросы. Возвращает статистику.
 
     Обратная частота слов считается по всему корпусу, а не по обучающей
@@ -282,7 +335,9 @@ def make_queries(llm, chunks: list[dict], out_path: str, target: int,
         if not batch_chunks:
             break
         style = STYLES[next_style(by_style)]
-        questions = generate(llm, style, [body_of(c)[:4000] for c in batch_chunks])
+        questions = generate(llm, style, [body_of(c)[:4000] for c in batch_chunks],
+                             examples=examples, shots=shots, seed=seed,
+                             offset=pos - len(batch_chunks))
         for ch, q in zip(batch_chunks, questions):
             passage = body_of(ch)
             ok, why = judge_query(q, passage, idf,
@@ -316,7 +371,11 @@ def make_queries(llm, chunks: list[dict], out_path: str, target: int,
     stats = {"accepted": len(out), "rejected": sum(rejected.values()),
              "reject_share": round(sum(rejected.values()) / max(1, attempts), 2),
              "reasons": dict(rejected.most_common()), "by_style": dict(by_style),
-             "acts_touched": len(per_act_count), "seconds": round(time.time() - t0, 1)}
+             "acts_touched": len(per_act_count), "seconds": round(time.time() - t0, 1),
+             # Чем этот прогон отличается от прежнего: с примерами живых
+             # вопросов или без. Иначе две выборки в отчете не различить.
+             "примеров в подсказке": shots if examples else 0,
+             "примеров доступно": len(examples) if examples else 0}
     print(f"\nпринято {stats['accepted']}, отклонено {stats['rejected']} "
           f"({100 * stats['reject_share']:.0f}% попыток)", flush=True)
     print(f"причины отказа: {stats['reasons']}", flush=True)
