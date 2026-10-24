@@ -643,6 +643,115 @@ def checks() -> list[tuple[str, str, str]]:
             f"{ru_spaced(dag['corpus_after']['chunks'], 0)} фрагментов",
         )
     )
+    dag_ci = load("dag-rerun-ci.json")
+    out.append(
+        (
+            "пик памяти контейнера DAG в прогоне CI",
+            "dag-rerun-ci.json",
+            f"{dag_ci['peak_memory_mb']} МБ в прогоне CI",
+        )
+    )
+
+    # Падение шага в середине цепочки: учебная тревога в контейнере.
+    recovery = load("dag-recovery.json")
+    out.append(
+        (
+            "попыток упавшего шага",
+            "dag-recovery.json",
+            f"делает {recovery['attempts']} попытки",
+        )
+    )
+    out.append(
+        (
+            "задач после упавшего шага",
+            "dag-recovery.json",
+            f"{len(recovery['tasks_not_started'])} задачи из {recovery['tasks']} после него "
+            "не идут вовсе",
+        )
+    )
+    out.append(
+        (
+            "файлов прошлого прогона тронуто падением",
+            "dag-recovery.json",
+            f"{len(recovery['files_touched_by_failure'])} файлов прошлого прогона",
+        )
+    )
+
+    # Порог алерта по деградации метрики и учебная деградация, на которой он
+    # проверен. Числа порога идут из замера разброса, числа ступеней из прогона.
+    threshold = load("alert-threshold.json")
+    drill = load("alert-drill.json")
+    out.append(
+        (
+            "порог алерта",
+            "alert-threshold.json",
+            f"больше {ru(threshold['threshold'], 3)} останавливает прогон",
+        )
+    )
+    out.append(
+        (
+            "разброс метрики в истории прогонов",
+            "alert-threshold.json",
+            f"{threshold['history']['repeated_runs']} прогонов из "
+            f"{threshold['history']['runs']} в истории репозитория дали одно и то же значение "
+            f"на {len(threshold['history']['repeated_machines'])} разных",
+        )
+    )
+    out.append(
+        (
+            "прогонов доливки",
+            "alert-threshold.json",
+            f"доливка повторена кодом {threshold['delivery_noise']['runs']} раз",
+        )
+    )
+    out.append(
+        (
+            "наибольший сдвиг доливки",
+            "alert-threshold.json",
+            f"наибольший сдвиг там {ru(threshold['delivery_noise']['ceiling'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "потолок порога",
+            "alert-threshold.json",
+            f"меньше {ru(threshold['cap'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "реальный сдвиг качества от стеммера",
+            "alert-threshold.json",
+            f"на {ru(threshold['real_shift_same_corpus'], 4)}",
+        )
+    )
+    fired = next(rung for rung in drill["rungs"] if rung["alert_fired"])
+    silent = max(
+        (rung for rung in drill["rungs"] if not rung["alert_fired"]), key=lambda r: r["drop"]
+    )
+    out.append(
+        (
+            "ступень, на которой алерт сработал",
+            "alert-drill.json",
+            f"потере {fired['relevant_removed']} фрагментов из {fired['relevant_total']} "
+            f"падение {ru(fired['drop'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "ступень, на которой алерт молчит",
+            "alert-drill.json",
+            f"потере {silent['relevant_removed']} из {silent['relevant_total']} падение "
+            f"{ru(silent['drop'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "сколько ступеней алерт промолчал",
+            "alert-drill.json",
+            f"на {len(drill['silent_steps'])} ступенях из {drill['steps']}",
+        )
+    )
     return out
 
 
@@ -679,7 +788,10 @@ def dashboard_values() -> list[str]:
 
 
 def main() -> int:
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    # Переносы строк убираются: ожидаемая запись длиннее строки README попадала
+    # бы в проверку разорванной, и проверка зависела бы от того, где встал
+    # перенос, а не от числа.
+    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
     missing = []
     for what, source, expected in checks():
         if expected not in readme:
