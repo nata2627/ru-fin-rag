@@ -39,6 +39,9 @@ def rung(share: float, drop: float, fired: bool, text: str | None = None) -> dic
     return {
         "share": share,
         "drop": drop,
+        "drop_exact": drop,
+        "relevant_removed": round(share * 1180),
+        "relevant_total": 1180,
         "exit_code": 1 if fired else 0,
         "alert_fired": fired,
         "queries_scored": 991,
@@ -64,6 +67,29 @@ def test_failed_measurement_is_not_a_threshold(tmp_path):
 def test_ladder_without_a_single_alert_is_a_failure():
     rungs = [rung(0.0, 0.0, False), rung(0.01, 0.0074, False)]
     assert check_alert.problems(rungs, THRESHOLD)
+
+
+def test_empty_ladder_is_a_failure_with_a_message():
+    """Пустая лестница раньше падала трейсбеком, а не своим сообщением."""
+    assert check_alert.problems([], THRESHOLD) == ["лестница пустая: проверять нечего"]
+
+
+def test_ladder_where_every_loss_fires_is_a_failure():
+    """Половина проверки про ложную тревогу держится на молчащей ступени с потерей.
+
+    Ступень без потери этого не показывает: там и падать нечему.
+    """
+    rungs = [rung(0.0, 0.0, False), rung(0.04, 0.0216, True), rung(0.08, 0.0446, True)]
+    problems = check_alert.problems(rungs, THRESHOLD)
+    assert any("не промолчала" in line for line in problems)
+
+
+def test_rounded_drop_on_the_threshold_is_not_a_false_red():
+    """Падение 0,02004 при пороге 0,02: алерт прав, и лестница обязана это принять."""
+    edge = rung(0.04, 0.02, True)
+    edge["drop_exact"] = 0.02004
+    rungs = [rung(0.0, 0.0, False), rung(0.02, 0.0108, False), edge]
+    assert check_alert.problems(rungs, THRESHOLD) == []
 
 
 def test_silent_alert_above_the_threshold_is_a_failure():

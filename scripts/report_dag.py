@@ -40,6 +40,19 @@ def ru(value: float, digits: int = 1) -> str:
     return text.replace(",", " ").replace(".", ",")
 
 
+def load_text(report: dict) -> str:
+    """Загрузка машины на момент замера, минутное среднее на число ядер.
+
+    Время прохода без этого числа обманывает: тот же прогон на занятом маке
+    шел в шесть раз дольше, чем на свободном.
+    """
+    load = report.get("load_average")
+    cores = report.get("cpu_count")
+    if not load or not cores:
+        return "не записана"
+    return f"{ru(load[0])} на {cores} ядер".replace(".", ",")
+
+
 def seconds_text(report: dict, number: int) -> str:
     values = report.get("seconds") or []
     if len(values) <= number:
@@ -54,6 +67,11 @@ def main() -> int:
     update = load("corpus-update.json")
     first = load("corpus-update-first.json")
 
+    # Лимит памяти печатается из отчета прогона, а не литералом: смени его в
+    # скрипте, и литерал в двух текстах соврал бы при зеленой проверке.
+    limit_mb = local.get("memory_limit_mb")
+    limit = f"{limit_mb / 1024:.0f} ГБ".replace(".", ",") if limit_mb else "не записан"
+
     failing = recovery["failing_step"]
     fail_run, fix_run = recovery["runs"]
     lines = [
@@ -64,20 +82,24 @@ def main() -> int:
         "",
         "## Время полного прохода",
         "",
-        "| Прогон | Машина | Первый проход | Повтор | Пик памяти |",
-        "|---|---|---|---|---|",
+        "| Прогон | Машина | Загрузка | Первый проход | Повтор | Пик памяти |",
+        "|---|---|---|---|---|---|",
         f"| контейнер на маке, {date_ru(local['measured_at'])} | {local['machine']} | "
-        f"{seconds_text(local, 0)} | {seconds_text(local, 1)} | {local['peak_memory_mb']} МБ |",
+        f"{load_text(local)} | {seconds_text(local, 0)} | {seconds_text(local, 1)} | "
+        f"{local['peak_memory_mb']} МБ |",
         f"| прогон CI {ci['ci_run']}, {date_ru(ci['measured_at'])} | {ci['machine']} | "
-        f"{seconds_text(ci, 0)} | {seconds_text(ci, 1)} | {ci['peak_memory_mb']} МБ |",
+        f"{load_text(ci)} | {seconds_text(ci, 0)} | {seconds_text(ci, 1)} | "
+        f"{ci['peak_memory_mb']} МБ |",
         "",
-        f"Образ один и тот же, {local['image']}, лимит памяти контейнера 2 ГБ стоит в"
-        " `scripts/run_dag.sh`.",
+        f"Образ один и тот же, {local['image']}, лимит памяти контейнера"
+        f" {limit} стоит в `scripts/run_dag.sh` и записан в отчет прогона.",
         "Повтор короче первого прохода, потому что датчики свежести видят неизменившийся вход и",
         f"пропускают {len(local['skipped_on_repeat'])} задачи из {local['tasks']}:"
         f" {', '.join(local['skipped_on_repeat'])}.",
         "Пик памяти на двух машинах разный, и это свойство замера, а не ошибка: число без",
-        "названной машины здесь не значит ничего. Лимит выбран по большему из двух.",
+        "названной машины здесь не значит ничего. Лимит выбран с запасом к большему из двух.",
+        "Время прохода читается вместе с загрузкой: на занятом маке тот же прогон идет в",
+        "несколько раз дольше, и это свойство машины, а не регламента.",
         f"Время прохода в прогоне CI запишет следующий прогон `dag`: отчет прогона {ci['ci_run']}",
         "снят до того, как замер времени попал в файл, а число из лога прогона сюда не",
         "переносится.",
@@ -114,7 +136,8 @@ def main() -> int:
         "",
         "| Что проверено | Исход |",
         "|---|---|",
-        f"| попыток упавшего шага {failing} | {recovery['attempts']} (одна и две из `retries`) |",
+        f"| попыток упавшего шага {failing} | {recovery['attempts']}"
+        f" (одна и {recovery['attempts'] - 1} из `retries`) |",
         f"| задач после него не пошло |"
         f" {len(recovery['tasks_not_started'])} из {recovery['tasks']}:"
         f" {', '.join(recovery['tasks_not_started'])} |",
@@ -124,8 +147,9 @@ def main() -> int:
         "| отметка шага после падения | "
         + ("осталась" if recovery["stamp_after_failure"] else "снята")
         + ", значит следующий прогон шаг повторит |",
-        f"| отметка живости прогоном, который не дошел до конца |"
-        f" {'записана' if not recovery['heartbeat_after_failure'] else 'не записана'} |",
+        "| отметка живости прогоном, который не дошел до конца | "
+        + ("записана" if recovery["heartbeat_written_after_failure"] else "не записана")
+        + " |",
         f"| словарь индекса до падения и после восстановления |"
         f" {ru(recovery['before']['index_vocab'], 0)} и"
         f" {ru(recovery['after_recovery']['index_vocab'], 0)} |",

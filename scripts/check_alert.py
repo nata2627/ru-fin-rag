@@ -100,6 +100,10 @@ def run_regression(data: Path, out: Path) -> tuple[int, dict, str]:
         "RUFINRAG_DATA_DIR": str(data),
         "RUFINRAG_DISABLE_DENSE": "1",
     }
+    # Отчет прошлой ступени удаляется до запуска. Иначе прогон, упавший до
+    # записи отчета, отдал бы числа прежнего запуска, и лестница вышла бы
+    # зеленой на мертвом алерте: ровно та проверка, которую она и ставит.
+    out.unlink(missing_ok=True)
     done = subprocess.run(
         [sys.executable, "scripts/run_regression.py", "--config", "bm25", "--out", str(out)],
         cwd=ROOT,
@@ -107,10 +111,17 @@ def run_regression(data: Path, out: Path) -> tuple[int, dict, str]:
         capture_output=True,
         text=True,
     )
+    if not out.exists():
+        raise SystemExit(
+            f"прогон регрессии не написал отчет {out.name} (код {done.returncode}): "
+            f"{done.stderr.strip()[-400:]}"
+        )
     return done.returncode, json.loads(out.read_text(encoding="utf-8")), done.stderr.strip()
 
 
 def problems(rungs: list[dict], threshold: float) -> list[str]:
+    if not rungs:
+        return ["лестница пустая: проверять нечего"]
     found = []
     control = rungs[0]
     if control["share"] != 0.0:
@@ -120,7 +131,10 @@ def problems(rungs: list[dict], threshold: float) -> list[str]:
             f"алерт сработал на целом корпусе: падение {control['drop']} при пороге {threshold}"
         )
     for rung in rungs:
-        above = rung["drop"] > threshold
+        # Сравнивается неокругленное падение, тем же числом, по которому алерт
+        # решает сам. На округленном до четвертого знака появлялся ложный
+        # красный в окне шириной 0,00005.
+        above = rung.get("drop_exact", rung["drop"]) > threshold
         if above and not rung["alert_fired"]:
             found.append(
                 f"доля {rung['share']}: падение {rung['drop']} больше порога {threshold}, "
@@ -133,6 +147,17 @@ def problems(rungs: list[dict], threshold: float) -> list[str]:
             )
         if above and rung["exit_code"] == 0:
             found.append(f"доля {rung['share']}: алерт есть, а прогон регрессии зеленый")
+    # Молчащая ступень с настоящей потерей это вторая половина проверки:
+    # алерт обязан не кричать на шуме, и ступень без потери этого не
+    # показывает, потому что там и падения нет.
+    quiet_with_loss = [
+        rung for rung in rungs if not rung["alert_fired"] and rung["relevant_removed"]
+    ]
+    if not quiet_with_loss:
+        found.append(
+            "ни одна ступень с настоящей потерей не промолчала: лестница проверила "
+            "только срабатывание, но не ложную тревогу"
+        )
     fired = [rung for rung in rungs if rung["alert_fired"]]
     if not fired:
         found.append(
@@ -170,7 +195,12 @@ def main() -> int:
     data = args.work / "data"
     data.mkdir(parents=True, exist_ok=True)
     link = data / "benchmark"
-    if not link.exists():
+    # Проверяется сама ссылка, а не то, на что она указывает: после переноса
+    # папки проекта абсолютная ссылка становится битой, `exists()` дает False,
+    # и `symlink_to` падает на существующем файле.
+    if link.is_symlink() and not link.exists():
+        link.unlink()
+    if not link.is_symlink():
         link.symlink_to(ROOT / "data/benchmark")
 
     # Порядок один на всю лестницу: ступени вложены друг в друга, и разница
@@ -195,6 +225,7 @@ def main() -> int:
                 "vocab": index["vocab"],
                 WATCHED: report["metrics"][WATCHED],
                 "drop": report["baseline"]["drop"],
+                "drop_exact": report["alert"]["drop_exact"],
                 "queries_scored": report["queries_scored"],
                 "exit_code": code,
                 "alert_fired": alert["fired"],

@@ -48,6 +48,12 @@ def main() -> int:
     # лексическую регрессию нельзя пересчитать на машине, где векторы отстали
     # от корпуса после ночной докачки: сборка отказывается, хотя проверяемой
     # связке векторы не нужны вовсе.
+    # Порог читается до прогона, а не перед записью отчета. Иначе порченый
+    # файл замера роняет скрипт после 991 посчитанного вопроса, отчет не
+    # пишется вовсе, и issue ночного прогона печатает состояние прошлой ночи
+    # как текущее.
+    tolerance = alert_threshold(ROOT)
+
     config = load_catalog().get(args.config)
     needs_dense = config.first_stage != "bm25" or config.dense_model is not None
     service = SearchService.build(with_dense=needs_dense)
@@ -76,25 +82,39 @@ def main() -> int:
         "metrics": evaluate(run, qrels),
     }
 
-    if args.update_baseline or not args.baseline.exists():
+    if not args.baseline.exists() and not args.update_baseline:
+        # Создать эталон из текущего прогона молча нельзя: пропади файл при
+        # разрешении конфликта или частичном чекауте, и любое падение качества
+        # стало бы новым эталоном навсегда, с нулевым падением и зеленым кодом.
+        print(
+            f"нет эталона {args.baseline.relative_to(ROOT)}. Восстановить из git "
+            f"(`git checkout -- {args.baseline.relative_to(ROOT)}`) или создать "
+            f"заново осознанно, ключом --update-baseline",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.update_baseline:
         # Замененный эталон остается в файле строкой «replaced»: иначе прежнее
         # число живет только в истории git, а в README его приходится писать
         # руками. Переписывается при этом одна строка, не цепочка: хранится тот
         # эталон, который заменили сейчас, со своей датой.
+        # Строка «replaced» описывает историю эталона, а не этот прогон,
+        # поэтому она кладется в файл эталона и не попадает в отчет прогона.
+        fresh = dict(report)
         if args.baseline.exists():
             previous = json.loads(args.baseline.read_text(encoding="utf-8"))
-            report["replaced"] = {
+            fresh["replaced"] = {
                 "measured_at": previous["measured_at"],
                 "config": previous["config"],
                 WATCHED: previous["metrics"][WATCHED],
             }
         args.baseline.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            json.dumps(fresh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         print(f"эталон записан в {args.baseline}")
 
     baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
-    tolerance = alert_threshold(ROOT)
     drop = baseline["metrics"][WATCHED] - report["metrics"][WATCHED]
     report["baseline"] = {
         "measured_at": baseline["measured_at"],
@@ -104,18 +124,34 @@ def main() -> int:
         "tolerance": tolerance,
     }
     report["passed"] = drop <= tolerance
+    # Эталон двигает человек коммитом, и это замысел. Но эталон на другой
+    # версии корпуса сравнивает разные вещи: подними доливка метрику, и
+    # падение размером с прибавку пройдет молча. Поэтому расхождение версий
+    # называется в отчете и в тексте алерта, а не остается в двух полях,
+    # которые никто не сравнивает.
+    report["baseline"]["corpus_matches"] = baseline["corpus_version"] == report["corpus_version"]
     # Текст алерта собирается здесь, а не в прогоне: issue ночного прогона и
     # вывод команды читают одну и ту же строку, и расходиться им негде.
     report["alert"] = {
         "fired": not report["passed"],
         "metric": WATCHED,
         "drop": round(drop, 4),
+        # Неокругленное падение: учебная деградация сравнивает его с порогом
+        # сама, и на округленном числе у нее получался ложный красный в окне
+        # шириной 0,00005.
+        "drop_exact": drop,
         "threshold": tolerance,
         "baseline_at": baseline["measured_at"],
         "queries_scored": report["queries_scored"],
         "text": (
             f"{WATCHED} упал на {drop:.4f} против эталона от {baseline['measured_at']} "
             f"при пороге {tolerance} на {report['queries_scored']} размеченных вопросах"
+            + (
+                ""
+                if report["baseline"]["corpus_matches"]
+                else f". Эталон снят на корпусе {baseline['corpus_version']}, "
+                f"а прогон на {report['corpus_version']}"
+            )
         )
         if not report["passed"]
         else "",
