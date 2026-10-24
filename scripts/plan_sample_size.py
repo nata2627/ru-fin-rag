@@ -55,7 +55,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.benchmark import load_qrels, load_queries  # noqa: E402
 from rufinrag.corpus import read_jsonl  # noqa: E402
-from rufinrag.metrics import DEPTH, per_query  # noqa: E402
+from rufinrag.interleaving import margin as interleaving_margin  # noqa: E402
+from rufinrag.metrics import per_query  # noqa: E402
 
 WATCHED = "NDCG@10"
 SEED = 20261024
@@ -100,63 +101,6 @@ def load_run_file(path: str) -> dict[str, list[str]]:
     return {row["query_id"]: list(row["ranked"]) for row in read_jsonl(ROOT / path)}
 
 
-def merge_team_draft(
-    left: list[str], right: list[str], rng: random.Random, depth: int = DEPTH
-) -> tuple[list[str], list[int]]:
-    """Слияние двух выдач интерливингом команд: список и хозяин каждой позиции.
-
-    Правило из исходной работы: следующую позицию берет та команда, у которой
-    позиций меньше, а при равенстве монета. Поэтому ни одна конфигурация не
-    получает систематического преимущества в начале списка, и предпочтение
-    нельзя будет объяснить тем, кто стоял первым.
-    """
-    merged: list[str] = []
-    owners: list[int] = []
-    taken: set[str] = set()
-    counts = [0, 0]
-    cursors = [0, 0]
-    lists = (left, right)
-    while len(merged) < depth:
-        for side in (0, 1):
-            while cursors[side] < len(lists[side]) and lists[side][cursors[side]] in taken:
-                cursors[side] += 1
-        has = [cursors[side] < len(lists[side]) for side in (0, 1)]
-        if not any(has):
-            break
-        if not (has[0] and has[1]):
-            side = 0 if has[0] else 1
-        elif counts[0] < counts[1]:
-            side = 0
-        elif counts[1] < counts[0]:
-            side = 1
-        else:
-            side = 0 if rng.random() < 0.5 else 1
-        chunk_id = lists[side][cursors[side]]
-        taken.add(chunk_id)
-        merged.append(chunk_id)
-        owners.append(side)
-        counts[side] += 1
-    return merged, owners
-
-
-def interleaving_margin(
-    left: list[str], right: list[str], rel: dict[str, int], rng: random.Random
-) -> int:
-    """Модуль перевеса по одному запросу. Знак не возвращается нарочно.
-
-    За клик принято попадание размеченного релевантного фрагмента в первую
-    десятку слитого списка. Это допущение офлайн интерливинга: предполагается,
-    что пользователь нажал бы ровно на то, что разметка считает релевантным.
-    На живых людях оно не проверено, потому что живых людей у сервиса нет.
-    """
-    merged, owners = merge_team_draft(left, right, rng)
-    credit = [0, 0]
-    for chunk_id, side in zip(merged, owners, strict=True):
-        if rel.get(chunk_id, 0) > 0:
-            credit[side] += 1
-    return abs(credit[0] - credit[1])
-
-
 def informative_share(
     left: dict[str, list[str]],
     right: dict[str, list[str]],
@@ -175,11 +119,13 @@ def informative_share(
         rng = random.Random(SEED + seed)
         hits = 0
         for query_id in ids:
-            margin = interleaving_margin(
+            # Знак здесь отбрасывается нарочно: в этом файле считаются только
+            # знаменатели, а победителя объявляет задача 6.2 после коммита правила.
+            size = abs(interleaving_margin(
                 left.get(query_id, []), right.get(query_id, []), qrels[query_id], rng
-            )
-            margins.append(margin)
-            if margin > 0:
+            ))
+            margins.append(size)
+            if size > 0:
                 hits += 1
         shares.append(hits / len(ids))
     return {

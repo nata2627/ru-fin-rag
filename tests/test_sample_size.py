@@ -27,6 +27,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+sys.path.insert(0, str(ROOT / "src"))
+
+from rufinrag.interleaving import DEPTH, merge_team_draft  # noqa: E402
+
 spec = importlib.util.spec_from_file_location(
     "plan_sample_size", ROOT / "scripts/plan_sample_size.py"
 )
@@ -61,8 +65,8 @@ def test_merged_list_is_a_fair_draft() -> None:
     left = [f"a{i}" for i in range(20)]
     right = [f"b{i}" for i in range(20)]
     for seed in range(50):
-        merged, owners = plan.merge_team_draft(left, right, random.Random(seed))
-        assert len(merged) == plan.DEPTH
+        merged, owners = merge_team_draft(left, right, random.Random(seed))
+        assert len(merged) == DEPTH
         assert len(set(merged)) == len(merged), "один и тот же фрагмент попал в список дважды"
         assert abs(owners.count(0) - owners.count(1)) <= 1, "одна команда набрала позиций больше"
 
@@ -70,29 +74,42 @@ def test_merged_list_is_a_fair_draft() -> None:
 def test_shared_documents_are_not_duplicated() -> None:
     left = ["x", "y", "z"]
     right = ["y", "x", "w"]
-    merged, _ = plan.merge_team_draft(left, right, random.Random(0))
+    merged, _ = merge_team_draft(left, right, random.Random(0))
     assert sorted(merged) == ["w", "x", "y", "z"]
 
 
-def test_margin_carries_no_sign() -> None:
-    """Перевес одинаков при любом порядке конфигураций: знака в нем нет.
+def test_this_file_cannot_name_a_winner() -> None:
+    """Знаменатели 6.1 не зависят от того, какая связка стоит слева.
 
-    Пара здесь нарочно односторонняя: правая выдача держит все размеченное, у
-    левой нет ничего. Знаковая мера дала бы здесь +N и -N, модуль дает N и N.
+    Знак перевеса теперь есть (он нужен задаче 6.2 и живет в
+    `rufinrag.interleaving`), но здесь он обязан быть отброшен: иначе правило
+    остановки писалось бы с подсмотренным ответом. Пара нарочно односторонняя,
+    правая выдача держит все размеченное, у левой нет ничего, и информативная
+    доля обязана выйти одинаковой в обе стороны.
     """
     left = [f"a{i}" for i in range(10)]
     right = [f"good{i}" for i in range(10)]
     rel = {f"good{i}": 2 for i in range(10)}
-    for seed in range(20):
-        forward = plan.interleaving_margin(left, right, rel, random.Random(seed))
-        backward = plan.interleaving_margin(right, left, rel, random.Random(seed))
-        assert forward == backward > 0
+    runs = ({"q": left}, {"q": right})
+    forward = plan.informative_share(runs[0], runs[1], {"q": rel}, ["q"], 5)
+    backward = plan.informative_share(runs[1], runs[0], {"q": rel}, ["q"], 5)
+    assert forward == backward
+    assert forward["mean"] == 1.0, "перевес на односторонней паре обязан быть не нулевым"
 
 
-def test_identical_runs_give_no_information() -> None:
+def test_identical_runs_still_look_informative() -> None:
+    """Две копии одной связки ничьей не дают, и это свойство, а не ошибка.
+
+    Прежде здесь стояло обратное утверждение, и оно проходило на одном зерне из
+    двадцати: общий фрагмент достается той стороне, которая его вытянула, и при
+    редкой разметке перевес выходит не нулевым. Значит информативная доля 0,770
+    из этого файла это не доля запросов с сигналом, и размер этого шума
+    замеряется пустой аркой задачи 6.2 (`results/compare-configs.json`).
+    """
     same = [f"a{i}" for i in range(10)]
     rel = {"a0": 2, "a3": 1}
-    assert plan.interleaving_margin(same, list(same), rel, random.Random(0)) == 0
+    share = plan.informative_share({"q": same}, {"q": list(same)}, {"q": rel}, ["q"], 20)
+    assert 0.0 < share["mean"] < 1.0, share
 
 
 def test_peeking_correction_raises_the_boundary() -> None:
