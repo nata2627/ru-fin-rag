@@ -48,8 +48,12 @@ QUERIES = [
     "data/queries/synthetic_train.jsonl",
     # E4: вторая обучающая выборка, сделанная с примерами живых вопросов.
     # Лежит рядом с прежней, а не поверх неё: сравнивать E4 не с чем, если
-    # прежнюю затереть. Какую брать, решает ключ --train у gpu_prepare.py
+    # прежнюю затереть. Какую брать, решает ключ --train у gpu_prepare.py.
+    # Едут обе: до фильтра учителя и после. В обучение идёт та, что после,
+    # а первая нужна затем, чтобы доля отсеянного считалась по файлам, а не
+    # по памяти о прогоне
     "data/queries/synthetic_train_e4.jsonl",
+    "data/queries/synthetic_train_e4_filtered.jsonl",
     "data/queries/synthetic_dev.jsonl",
     "data/queries/qrels.tsv",
     "data/queries/podvyborki.json",
