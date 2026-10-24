@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag dag-drill dag-report alert sample-size drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -39,6 +39,12 @@ serve: ## поднять сервис локально
 vectors: ## догнать плотные векторы до корпуса после ночной докачки (нужны venv-dense и веса)
 	$(PY) scripts/extend_vectors.py
 
+graph: ## собрать граф ссылок между актами корпуса и напечатать его числа
+	$(PY) scripts/build_graph.py
+
+graph-expansion: ## замерить расширение выдачи по цитированию: настройка на dev, числа на подвыборках
+	$(PY) scripts/measure_graph_expansion.py
+
 warehouse: ## сверить режимы витрины: файлы через chdb против ClickHouse из compose
 	$(PY) scripts/compare_warehouses.py
 
@@ -59,6 +65,15 @@ dag-report: ## собрать results/dag.md из отчетов прогоно�
 
 alert: ## учебная деградация метрики: алерт обязан сработать и обязан молчать на шуме
 	$(PY) scripts/check_alert.py
+
+monitoring: ## мониторинг по журналу запросов: дрейф, доля без хорошего ответа, регрессия
+	$(PY) scripts/check_monitoring.py
+
+monitoring-thresholds: ## пересчитать пороги мониторинга из разброса на эталонном наборе
+	$(PY) scripts/measure_monitoring_thresholds.py
+
+monitoring-drill: ## учебная лестница: алерты мониторинга обязаны сработать и обязаны молчать
+	$(PY) scripts/drill_monitoring.py
 
 sample-size: ## пересчитать правило остановки и размеры выборки для сравнения конфигураций
 	$(PY) scripts/plan_sample_size.py
