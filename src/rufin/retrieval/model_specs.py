@@ -58,6 +58,22 @@ MODELS: dict[str, ModelSpec] = {
     "user-bge-m3": ModelSpec(
         "user-bge-m3", "deepvk/USER-bge-m3", dim=1024,
         note="bge-m3, дообученная на русском; префиксы не используются"),
+    # Та же USER-bge-m3 с обрезанным вектором: отдельных весов нет, есть поле
+    # truncate_dim. Записи нужны для замера размера индекса и задержки поиска
+    # на маке: матрица полной размерности посчитана на карте один раз,
+    # а 512 / 256 / 128 получаются срезом (scripts/matryoshka_index.py).
+    # Что обрезка не ломает качество именно у этой модели, здесь не проверено:
+    # это прогон по набору, а не запись в этом файле. Размер и задержка
+    # от ответа на тот вопрос не зависят.
+    "user-bge-m3-512": ModelSpec(
+        "user-bge-m3-512", "deepvk/USER-bge-m3", dim=512, truncate_dim=512,
+        note="та же модель, вектор обрезан до 512: индекс вдвое меньше"),
+    "user-bge-m3-256": ModelSpec(
+        "user-bge-m3-256", "deepvk/USER-bge-m3", dim=256, truncate_dim=256,
+        note="та же модель, вектор обрезан до 256: индекс вчетверо меньше"),
+    "user-bge-m3-128": ModelSpec(
+        "user-bge-m3-128", "deepvk/USER-bge-m3", dim=128, truncate_dim=128,
+        note="та же модель, вектор обрезан до 128: индекс в восемь раз меньше"),
     "frida": ModelSpec(
         "frida", "ai-forever/FRIDA",
         query_prefix="search_query: ", passage_prefix="search_document: ", dim=1536,
@@ -92,3 +108,15 @@ HEADLINE = ("bge-m3", "e5-large", "qwen3-0.6b", "user-bge-m3", "frida")
 ABLATION = "e5-small"
 # дообученная модель и её урезанные размерности
 TRAINED = ("rufin", "rufin-256", "rufin-128")
+
+
+def truncated_family(name: str) -> tuple[str, ...]:
+    """Урезанные размерности той же модели: те же веса, другое `truncate_dim`.
+
+    Семейство определяется путём к весам, а не списком руками: добавленная
+    размерность иначе молча не попадёт в сборку индексов, а по миллисекундам
+    замера этого не видно.
+    """
+    path = MODELS[name].path
+    return tuple(имя for имя, spec in MODELS.items()
+                 if spec.path == path and spec.truncate_dim)
