@@ -17,6 +17,7 @@ from pathlib import Path
 
 from .config import Catalog, RetrievalConfig, data_dir, load_catalog
 from .corpus import Chunk, Corpus, corpus_path, load_corpus
+from .graph import ActGraph, build_graph, cited_candidates, reserve_merge
 from .retrieval.bm25 import BM25Index
 from .retrieval.dense import DenseIndex, QueryEncoder
 from .retrieval.fusion import rrf
@@ -85,6 +86,7 @@ class SearchService:
     dense: DenseIndex | None = None
     encoder: QueryEncoder | None = None
     rerankers: dict[str, Reranker] = field(default_factory=dict)
+    graph: ActGraph | None = None
     load_seconds: float = 0.0
     degraded: list[str] = field(default_factory=list)
     dense_off: str = ""
@@ -165,6 +167,18 @@ class SearchService:
     def corpus_version(self) -> str:
         return self.corpus.version
 
+    def act_graph(self) -> ActGraph:
+        """Граф ссылок, собранный при первом запросе к связке с расширением.
+
+        Не на старте: сборка это один проход выражением по 62 606 текстам, 15,7 с
+        на маке, а связка по умолчанию графа не просит. Платить этим временем
+        холодный старт сервиса, который на бесплатном тарифе просыпается на
+        каждый запрос после простоя, незачем.
+        """
+        if self.graph is None:
+            self.graph = build_graph(self.corpus)
+        return self.graph
+
     def search(self, query: str, top: int = 10, config: str | None = None) -> SearchResult:
         if not query.strip():
             raise SearchError("пустой запрос")
@@ -179,6 +193,13 @@ class SearchService:
             )
             timings["rerank"] = seconds * 1000
             candidates = reranked
+        if cfg.graph:
+            # Последней ступенью и на готовой выдаче: так же считался замер
+            # (EXPERIMENTS, S20), и режим `reserve` иначе отдал бы соседнему
+            # акту пятидесятое место вместо десятого.
+            t0 = time.monotonic()
+            candidates = self._expand(query, candidates, cfg, top)
+            timings["graph"] = (time.monotonic() - t0) * 1000
         candidates = candidates[:top]
 
         hits = [
@@ -235,6 +256,26 @@ class SearchService:
         fused = rrf([lexical, dense_hits], k=cfg.rrf_k, top=cfg.candidates)
         timings["fusion"] = (time.monotonic() - t0) * 1000
         return fused, "hybrid"
+
+    def _expand(
+        self, query: str, candidates: list[tuple[str, float]], cfg: RetrievalConfig, top: int
+    ) -> list[tuple[str, float]]:
+        spec = cfg.graph
+        if spec is None:
+            raise SearchError(f"связка {cfg.name} без расширения по графу")
+        extra, _ = cited_candidates(
+            query,
+            candidates,
+            self.corpus,
+            self.act_graph(),
+            self.bm25,
+            direction=spec.direction,
+            seeds=spec.seeds,
+            depth=spec.depth if spec.mode == "fusion" else spec.reserve,
+        )
+        if spec.mode == "fusion":
+            return rrf([candidates, extra], k=cfg.rrf_k, top=top, weights=(1.0, spec.weight))
+        return reserve_merge(candidates, extra, spec.reserve, top=top)
 
     def _reranker(self, cfg: RetrievalConfig) -> Reranker:
         spec = cfg.rerank
