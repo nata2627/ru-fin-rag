@@ -40,7 +40,12 @@ def report() -> dict:
 
 
 def test_published_rule_matches_the_code() -> None:
-    rule = report()["rule"]
+    published = report()
+    # Дата правила это дата правила, а не дата последнего пересчета: поедет
+    # она, и файл начнет утверждать, что правило написано позже, чем написано.
+    assert published["written_at"] == plan.RULE_WRITTEN_AT == "2026-10-24"
+    assert published["recomputed_at"] >= published["written_at"]
+    rule = published["rule"]
     assert rule["alpha"] == plan.ALPHA
     assert rule["power"] == plan.POWER
     assert rule["looks"] == plan.LOOKS
