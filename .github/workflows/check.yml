@@ -62,6 +62,43 @@ jobs:
       - name: Build the dashboard on the collected set
         run: python scripts/build_dashboard.py --sample
 
+  # Алерт по деградации метрики проверяется прогоном, а не только тестом: тест
+  # сверяет правила лестницы на готовых числах, а здесь метрика действительно
+  # падает на поврежденном корпусе, и прогон регрессии действительно краснеет.
+  # Работа отдельная, потому что это пять прогонов регрессии по 991 вопросу, и
+  # тестам ждать их незачем.
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Drill the quality alert
+        env:
+          RUFINRAG_DISABLE_DENSE: "1"
+        run: python scripts/check_alert.py
+
+      # Числа ступеней из прогона CI: в репозитории лежит замер с мака, и по
+      # артефакту видно, что на другой машине лестница ведет себя так же.
+      - name: Keep the drill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alert-drill
+          path: results/alert-drill.json
+          retention-days: 14
+
   # Витрина собирается отдельной работой, а не рядом с тестами: dbt тянет свое
   # замыкание зависимостей (results/dbt.json), а тестам оно не нужно ни одной
   # строкой. Так прогон проверки не ждет установки dbt, а сборка витрины не
