@@ -171,6 +171,11 @@ def main() -> int:
     report = {
         "measured_at": time.strftime("%Y-%m-%d"),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
+        # Средняя загрузка машины на момент замера. Без нее время прохода
+        # обманывает: тот же прогон на занятом маке шел 234 с против 37 с на
+        # свободном, и объяснить это число потом нечем.
+        "load_average": [round(value, 2) for value in os.getloadavg()],
+        "cpu_count": os.cpu_count(),
         "image": os.environ.get("AIRFLOW_IMAGE", "не записан"),
         "ci_run": os.environ.get("GITHUB_RUN_ID") or None,
         "dag_id": DAG_ID,
@@ -194,7 +199,12 @@ def main() -> int:
             if value != before["files"].get(name)
         ],
         "stamp_after_failure": after_fail["stamps"][INDEX.name],
-        "heartbeat_after_failure": after_fail["last_heartbeat"] == before["last_heartbeat"],
+        # Поле называет то, что в нем лежит: True значит «отметка живости
+        # записана прогоном, который до конца не дошел», то есть провал.
+        # Прежнее имя значило обратное своему смыслу (AGENTS.md, раздел 2.1).
+        "heartbeat_written_after_failure": (
+            after_fail["last_heartbeat"] != before["last_heartbeat"]
+        ),
         "passed": not found,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
