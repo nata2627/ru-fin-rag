@@ -90,6 +90,8 @@ JUDGES = [
      "data/kaggle_out/ru-fin-judge-14b-repeat/queries/judge_live_repeat_meta.json"),
     ("Qwen2.5-32B-Instruct-AWQ, разбор починен",
      "data/kaggle_out/ru-fin-judge-32b-fix/queries/judge_live_32b_meta.json"),
+    ("Qwen2.5-7B-Instruct-AWQ",
+     "data/kaggle_out/ru-fin-judge-7b/queries/judge_live_7b_meta.json"),
     ("Qwen3-4B-AWQ, прогон 1",
      "data/kaggle_out/local-3070/judge_local_4b_meta.json"),
     ("Qwen3-4B-AWQ, повтор",
@@ -100,6 +102,8 @@ PAIRS = [
     ("14B против 32B", "data/results/judge_vote_14b_32b.json"),
     ("4B против 14B", "data/results/judge_vote_4b_14b.json"),
     ("4B против 32B", "data/results/judge_vote_4b_32b.json"),
+    ("7B против 14B", "data/results/judge_vote_7b_14b.json"),
+    ("7B против 32B", "data/results/judge_vote_7b_32b.json"),
     ("14B против себя (повтор)", "data/results/judge_vote_14b_self.json"),
     ("4B против себя (повтор)", "data/results/judge_vote_4b_self.json"),
 ]

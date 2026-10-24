@@ -5,6 +5,7 @@
 Qwen2.5-14B-Instruct-AWQ, прогон 1     Tesla T4           0.289   0 из 150     44/56/50    38.58     3.97
 Qwen2.5-14B-Instruct-AWQ, повтор       Tesla T4           0.294   0 из 150     47/53/50    37.92     3.91
 Qwen2.5-32B-Instruct-AWQ, разбор починен Tesla T4 x2        0.355   0 из 150     0/140/10    31.40     3.23
+Qwen2.5-7B-Instruct-AWQ                Tesla T4           0.305  83 из 150       0/1/66    36.55     3.77
 Qwen3-4B-AWQ, прогон 1                 NVIDIA GeForce RTX 3070   4.129   2 из 150     3/125/20     2.70     0.28
 Qwen3-4B-AWQ, повтор                   NVIDIA GeForce RTX 3070   3.754   2 из 150     3/125/20     2.97     0.31
 
@@ -12,6 +13,7 @@ Qwen3-4B-AWQ, повтор                   NVIDIA GeForce RTX 3070   3.754   2
    Qwen2.5-14B-Instruct-AWQ, прогон 1     общая норма   7, часть ответа  44, иное   5, всего единиц  56
    Qwen2.5-14B-Instruct-AWQ, повтор       общая норма   6, часть ответа  42, иное   5, всего единиц  53
    Qwen2.5-32B-Instruct-AWQ, разбор починен общая норма  39, часть ответа  77, иное  24, всего единиц 140
+   Qwen2.5-7B-Instruct-AWQ                общая норма   0, часть ответа   1, иное   0, всего единиц   1
    Qwen3-4B-AWQ, прогон 1                 общая норма   7, часть ответа  26, иное  87, всего единиц 125
    Qwen3-4B-AWQ, повтор                   общая норма   7, часть ответа  26, иное  87, всего единиц 125
 
@@ -19,6 +21,8 @@ Qwen3-4B-AWQ, повтор                   NVIDIA GeForce RTX 3070   3.754   2
    14B против 32B               разошлось 87 из 150 (58.0%), на две ступени 1
    4B против 14B                разошлось 81 из 148 (54.7%), на две ступени 0
    4B против 32B                разошлось 23 из 148 (15.5%), на две ступени 0
+   7B против 14B                разошлось 34 из 67 (50.7%), на две ступени 10
+   7B против 32B                разошлось 61 из 67 (91.0%), на две ступени 0
    14B против себя (повтор)     разошлось 5 из 150 (3.3%), на две ступени 0
    4B против себя (повтор)      разошлось 0 из 148 (0.0%), на две ступени 0
 
@@ -26,10 +30,13 @@ Qwen3-4B-AWQ, повтор                   NVIDIA GeForce RTX 3070   3.754   2
    data/kaggle_out/ru-fin-judge-proba-14b/queries/judge_live_meta.json
    data/kaggle_out/ru-fin-judge-14b-repeat/queries/judge_live_repeat_meta.json
    data/kaggle_out/ru-fin-judge-32b-fix/queries/judge_live_32b_meta.json
+   data/kaggle_out/ru-fin-judge-7b/queries/judge_live_7b_meta.json
    data/kaggle_out/local-3070/judge_local_4b_meta.json
    data/kaggle_out/local-3070/judge_local_4b_repeat_meta.json
    data/results/judge_vote_14b_32b.json
    data/results/judge_vote_4b_14b.json
    data/results/judge_vote_4b_32b.json
+   data/results/judge_vote_7b_14b.json
+   data/results/judge_vote_7b_32b.json
    data/results/judge_vote_14b_self.json
    data/results/judge_vote_4b_self.json
