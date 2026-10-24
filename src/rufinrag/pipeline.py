@@ -30,6 +30,7 @@ from pathlib import Path
 CORPUS_FILE = "data/corpus/chunks.jsonl.gz"
 STAMP_DIR = "data/stamps"
 UPDATE_REPORT = "results/corpus-update.json"
+ALERT_THRESHOLD = "results/alert-threshold.json"
 # Отдельный код выхода под отказ источника. 75 это EX_TEMPFAIL из `sysexits.h`:
 # «попробуй позже», ровно тот смысл, который здесь и нужен. Контракт один на
 # три места: сам скрипт докачки, шаг ночного прогона и шаг DAG.
@@ -169,3 +170,19 @@ def source_freshness(
 def live_run() -> bool:
     """Боевой режим: без него шаги наружу не ходят (CLAUDE.md, «Наружу»)."""
     return os.environ.get("RUFINRAG_LIVE", "").strip() == "1"
+
+
+def alert_threshold(root: Path) -> float:
+    """Порог алерта по деградации метрики: число из замера, а не из кода.
+
+    Замер лежит в `results/alert-threshold.json`, его пересчитывает
+    `scripts/measure_alert_threshold.py`. Числом в двух местах порог быть не
+    может: прогон сравнивал бы одно, README обещал бы другое, и разошлись бы
+    они молча. Замер, который не прошел свою же проверку (порог уперся в
+    потолок), алертом пользоваться не дает: тогда мониторинг на этом наборе
+    не имеет смысла, и это ошибка, а не повод взять число по умолчанию.
+    """
+    report = json.loads((root / ALERT_THRESHOLD).read_text(encoding="utf-8"))
+    if not report.get("passed"):
+        raise ValueError(f"{ALERT_THRESHOLD}: замер порога не прошел свою проверку")
+    return float(report["threshold"])

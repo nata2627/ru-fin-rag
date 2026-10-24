@@ -1,0 +1,102 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "metric": "NDCG@10",
+  "config": "bm25",
+  "threshold": 0.02,
+  "threshold_from": "results/alert-threshold.json",
+  "baseline": {
+    "measured_at": "2026-10-23",
+    "NDCG@10": 0.5712
+  },
+  "relevant_chunks": 1180,
+  "seed": 20261024,
+  "steps": 5,
+  "first_fired_share": 0.04,
+  "first_fired_drop": 0.0216,
+  "silent_steps": [
+    0.0,
+    0.01,
+    0.02
+  ],
+  "largest_silent_drop": 0.0108,
+  "rungs": [
+    {
+      "share": 0.0,
+      "relevant_removed": 0,
+      "relevant_total": 1180,
+      "chunks_kept": 62606,
+      "vocab": 49643,
+      "NDCG@10": 0.5712,
+      "drop": 0.0,
+      "queries_scored": 991,
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "stderr": "",
+      "seconds": 35.8
+    },
+    {
+      "share": 0.01,
+      "relevant_removed": 12,
+      "relevant_total": 1180,
+      "chunks_kept": 62594,
+      "vocab": 49639,
+      "NDCG@10": 0.5638,
+      "drop": 0.0074,
+      "queries_scored": 991,
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "stderr": "",
+      "seconds": 35.7
+    },
+    {
+      "share": 0.02,
+      "relevant_removed": 24,
+      "relevant_total": 1180,
+      "chunks_kept": 62582,
+      "vocab": 49638,
+      "NDCG@10": 0.5604,
+      "drop": 0.0108,
+      "queries_scored": 991,
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "stderr": "",
+      "seconds": 34.8
+    },
+    {
+      "share": 0.04,
+      "relevant_removed": 47,
+      "relevant_total": 1180,
+      "chunks_kept": 62559,
+      "vocab": 49636,
+      "NDCG@10": 0.5496,
+      "drop": 0.0216,
+      "queries_scored": 991,
+      "exit_code": 1,
+      "alert_fired": true,
+      "alert_text": "NDCG@10 упал на 0.0216 против эталона от 2026-10-23 при пороге 0.02 на 991 размеченных вопросах",
+      "stderr": "алерт: NDCG@10 упал на 0.0216 против эталона от 2026-10-23 при пороге 0.02 на 991 размеченных вопросах",
+      "seconds": 35.4
+    },
+    {
+      "share": 0.08,
+      "relevant_removed": 94,
+      "relevant_total": 1180,
+      "chunks_kept": 62512,
+      "vocab": 49616,
+      "NDCG@10": 0.5266,
+      "drop": 0.0446,
+      "queries_scored": 991,
+      "exit_code": 1,
+      "alert_fired": true,
+      "alert_text": "NDCG@10 упал на 0.0446 против эталона от 2026-10-23 при пороге 0.02 на 991 размеченных вопросах",
+      "stderr": "алерт: NDCG@10 упал на 0.0446 против эталона от 2026-10-23 при пороге 0.02 на 991 размеченных вопросах",
+      "seconds": 36.0
+    }
+  ],
+  "seconds": 177.6,
+  "passed": true
+}
