@@ -59,6 +59,7 @@ from rufinrag.metrics import DEPTH, per_query  # noqa: E402
 
 WATCHED = "NDCG@10"
 SEED = 20261024
+RULE_WRITTEN_AT = "2026-10-24"
 
 ALPHA = 0.05
 POWER = 0.80
@@ -398,7 +399,11 @@ def main() -> int:
 
     traffic = live_traffic()
     report = {
-        "written_at": "2026-10-24",
+        # Дата правила, а не дата прогона: она обязана остаться прежней при
+        # любом пересчете, иначе файл начнет утверждать, что правило написано
+        # позже, чем оно написано. Когда числа пересчитаны, стоит рядом.
+        "written_at": RULE_WRITTEN_AT,
+        "recomputed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
         "rule": {
             "written_before_data": True,
