@@ -510,7 +510,10 @@ def main() -> None:
     print(f"обучающих фрагментов {len(обучающие)} из {len(chunks)} "
           f"({len(разрешено)} актов)", flush=True)
 
-    train_path = args.train or common.find_file("synthetic_train.jsonl")
+    # Имя без каталога ищется среди входов: раскладка Kaggle заранее не
+    # известна, а выборок стало две (E4 лежит рядом с прежней, не поверх неё).
+    запрошено = args.train or "synthetic_train.jsonl"
+    train_path = запрошено if os.sep in запрошено else common.find_file(запрошено)
     if train_path is None:
         raise SystemExit("не найден synthetic_train.jsonl: подключите датасет "
                          "с набором запросов")
