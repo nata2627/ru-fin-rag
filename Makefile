@@ -19,6 +19,15 @@ venv-dense: ## добавить в окружение плотный поиск 
 venv-dbt: ## добавить в окружение dbt с адаптером ClickHouse (нужен сервер, см. logs-up)
 	$(PIP) install -e '.[dbt]'
 
+venv-tracking: ## добавить в окружение трекинг прогонов MLflow (клиент без сервера, 66 МБ)
+	$(PIP) install -e '.[tracking]'
+
+registry: ## пересобрать реестр версий results/registry.json
+	$(PY) scripts/register_versions.py
+
+track: ## завести прогоны из results/*.json в MLflow (нужен venv-tracking)
+	$(PY) scripts/track_runs.py
+
 check: ## линтер, тесты, числа README, проверка на секреты
 	scripts/check.sh
 
