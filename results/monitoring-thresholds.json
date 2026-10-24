@@ -1,0 +1,244 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "config": "bm25",
+  "corpus_chunks": 62606,
+  "vocab": 49643,
+  "reference": {
+    "queries": 1182,
+    "judged": 991,
+    "judged_with_hit": 781,
+    "live_queries": 325,
+    "live_origin": "вопрос из разъяснений Банка России",
+    "note": "это замороженный набор вопросов, а не живой трафик. Окна шума и окна настоящего сдвига набраны из него"
+  },
+  "live_journal_lines": 0,
+  "rule": {
+    "safety": 2.0,
+    "drift_step": 0.05,
+    "share_step": 0.05,
+    "seed": 20261024,
+    "draws": 200,
+    "windows": [
+      50,
+      100,
+      200
+    ],
+    "text": "порог дрейфа это потолок PSI по 200 окнам из эталона, умноженный на два и округленный вверх до шага 0,05, но не меньше шага; он обязан быть меньше половины медианы PSI окон из живых вопросов против эталона. Порог доли без хорошего ответа это наибольшая доля среди тех же окон шума, округленная вверх до шага 0,05. Размер окна берется наименьшим из 50, 100, 200, при котором правило укладывается в потолок",
+    "written_before": "orchestration/EXPERIMENTS.md, S20"
+  },
+  "features": {
+    "drift": [
+      "tokens",
+      "oov_share",
+      "act_number"
+    ],
+    "token_bin_edges": [
+      10,
+      15,
+      28
+    ],
+    "support_candidates": {
+      "top_score": {
+        "floor": 32.5249,
+        "j": 0.2917,
+        "tpr": 0.7964,
+        "fpr": 0.5048,
+        "good_below_floor": 159,
+        "bad_above_floor": 106,
+        "positives": 781,
+        "negatives": 210
+      },
+      "top_score_per_token": {
+        "floor": 2.8617,
+        "j": 0.2755,
+        "tpr": 0.685,
+        "fpr": 0.4095,
+        "good_below_floor": 246,
+        "bad_above_floor": 86,
+        "positives": 781,
+        "negatives": 210
+      }
+    },
+    "support_chosen": "top_score",
+    "support_floor": 32.5249
+  },
+  "answerless_on_reference": {
+    "answerless": 277,
+    "answered": 1182,
+    "share": 0.2343,
+    "no_hits": 0,
+    "by_origin": {
+      "вопрос из разъяснений Банка России": {
+        "answerless": 12,
+        "answered": 325,
+        "share": 0.0369,
+        "no_hits": 0
+      },
+      "ручной": {
+        "answerless": 10,
+        "answered": 11,
+        "share": 0.9091,
+        "no_hits": 0
+      },
+      "синтетический": {
+        "answerless": 255,
+        "answered": 846,
+        "share": 0.3014,
+        "no_hits": 0
+      }
+    }
+  },
+  "psi_of_live_against_reference": {
+    "psi": 1.6478,
+    "worst_feature": "tokens",
+    "by_feature": {
+      "tokens": 1.6478,
+      "oov_share": 0.1139,
+      "act_number": 1.4068
+    },
+    "window_counts": {
+      "tokens": [
+        5,
+        12,
+        69,
+        239
+      ],
+      "oov_share": [
+        233,
+        92,
+        0,
+        0
+      ],
+      "act_number": [
+        74,
+        251
+      ]
+    },
+    "reference_counts": {
+      "tokens": [
+        339,
+        266,
+        292,
+        285
+      ],
+      "oov_share": [
+        1007,
+        175,
+        0,
+        0
+      ],
+      "act_number": [
+        930,
+        252
+      ]
+    },
+    "window": 325,
+    "reference": 1182
+  },
+  "reference_counts": {
+    "tokens": [
+      339,
+      266,
+      292,
+      285
+    ],
+    "oov_share": [
+      1007,
+      175,
+      0,
+      0
+    ],
+    "act_number": [
+      930,
+      252
+    ]
+  },
+  "ladder": [
+    {
+      "window": 50,
+      "draws": 200,
+      "noise_psi_max": 0.3329,
+      "noise_psi_median": 0.0725,
+      "noise_share_max": 0.38,
+      "noise_share_median": 0.24,
+      "live_window": 50,
+      "live_share_max": 0.12,
+      "live_share_median": 0.04,
+      "real_psi_median": 1.6169,
+      "real_psi_min": 0.9455,
+      "real_psi_by_feature_median": {
+        "tokens": 1.5646,
+        "oov_share": 0.1687,
+        "act_number": 1.3153
+      },
+      "drift_threshold": 0.7,
+      "cap": 0.8085,
+      "share_threshold": 0.4,
+      "fits": true
+    },
+    {
+      "window": 100,
+      "draws": 200,
+      "noise_psi_max": 0.1321,
+      "noise_psi_median": 0.0319,
+      "noise_share_max": 0.34,
+      "noise_share_median": 0.24,
+      "live_window": 100,
+      "live_share_max": 0.08,
+      "live_share_median": 0.04,
+      "real_psi_median": 1.6156,
+      "real_psi_min": 1.1053,
+      "real_psi_by_feature_median": {
+        "tokens": 1.5779,
+        "oov_share": 0.1304,
+        "act_number": 1.3834
+      },
+      "drift_threshold": 0.3,
+      "cap": 0.8078,
+      "share_threshold": 0.35,
+      "fits": true
+    },
+    {
+      "window": 200,
+      "draws": 200,
+      "noise_psi_max": 0.0686,
+      "noise_psi_median": 0.0133,
+      "noise_share_max": 0.3,
+      "noise_share_median": 0.235,
+      "live_window": 200,
+      "live_share_max": 0.055,
+      "live_share_median": 0.035,
+      "real_psi_median": 1.6456,
+      "real_psi_min": 1.3723,
+      "real_psi_by_feature_median": {
+        "tokens": 1.6456,
+        "oov_share": 0.1217,
+        "act_number": 1.4191
+      },
+      "drift_threshold": 0.15,
+      "cap": 0.8228,
+      "share_threshold": 0.3,
+      "fits": true
+    }
+  ],
+  "seconds": 7.0,
+  "passed": true,
+  "rule_applied": {
+    "measured_at": "2026-10-24",
+    "window": 50,
+    "drift_threshold": 0.7,
+    "share_threshold": 0.4,
+    "support_feature": "top_score",
+    "support_floor": 32.5249,
+    "token_bin_edges": [
+      10,
+      15,
+      28
+    ],
+    "noise_psi_max": 0.3329,
+    "real_psi_median": 1.6169,
+    "reference_queries": 1182,
+    "base_share": 0.2343
+  }
+}
