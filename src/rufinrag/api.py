@@ -22,9 +22,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
-from . import __version__, events
+from . import __version__, events, registry
 from .answer import EXCERPTS, GENERATE, AnswerError, AnswerService
-from .config import ConfigError, env, live_mode, load_catalog
+from .config import ConfigError, env, live_mode, load_catalog, project_root
 from .corpus import CorpusError
 from .events import EventLog
 from .search import SearchError, SearchService
@@ -42,6 +42,36 @@ MAX_TOP = 50
 MAX_DRAIN_LINES = 50_000
 
 state: dict[str, object] = {}
+
+
+def _running_versions() -> dict[str, str]:
+    """Версии того, что реально поднялось. Пустой словарь, если не поднялось."""
+    current = state.get("service")
+    if current is None:
+        return {}
+    running = {
+        "service_version": __version__,
+        "corpus_version": current.corpus_version,
+        "config_version": load_catalog().get().version,
+    }
+    answer = state.get("answer")
+    if answer is not None:
+        running["answer_version"] = answer.settings.version
+    return running
+
+
+def _registry_version() -> str:
+    """Версия выпуска для ответа. Расхождение называется прямо в строке.
+
+    Пустая строка не годится: ответ без версии нельзя связать с числами
+    README, и читающий лог не узнает, что сервис отвечал не тем, что
+    зарегистрировано.
+    """
+    entry = state.get("registry")
+    if entry is None:
+        return "нет реестра"
+    version = str(entry.get("version"))
+    return version if not state.get("registry_mismatch") else f"{version}+расхождение"
 
 
 @asynccontextmanager
@@ -70,6 +100,11 @@ async def lifespan(app: FastAPI):
             state["answer"] = AnswerService.build(state["service"])
         except ConfigError as exc:
             state["answer_error"] = str(exc)
+    # Реестр версий читается с диска, а не собирается: собирать его значит
+    # считать отпечаток 448,8 МБ весов на каждом холодном старте, а на
+    # бесплатном тарифе старт идет после каждого простоя (задача 6.3).
+    state["registry"] = registry.load(project_root())
+    state["registry_mismatch"] = registry.compare(state["registry"], _running_versions())
     state["events"] = EventLog.from_env()
     state["started_at"] = time.time()
     state["startup_seconds"] = round(time.monotonic() - t0, 2)
@@ -229,6 +264,15 @@ def health():
         "uptime_seconds": round(time.time() - float(state.get("started_at") or time.time()), 1),
         "configs": sorted(catalog.configs),
         "default_config": catalog.default,
+        "registry": {
+            "version": (state.get("registry") or {}).get("version", "нет реестра"),
+            "built_at": (state.get("registry") or {}).get("built_at"),
+            "matches_running": not state.get("registry_mismatch"),
+            "mismatch": [
+                {"field": m.field, "registered": m.registered, "running": m.running}
+                for m in (state.get("registry_mismatch") or [])
+            ],
+        },
     }
     if current is None:
         body["error"] = state.get("error")
@@ -303,6 +347,7 @@ def search(request: SearchRequest):
         "config": result.config,
         "config_version": result.config_version,
         "corpus_version": result.corpus_version,
+        "registry_version": _registry_version(),
         "timings_ms": result.timings_ms,
         "degraded": result.degraded,
         "results": [
@@ -378,6 +423,7 @@ def answer(request: AnswerRequest):
         "config": result.search.config,
         "config_version": result.search.config_version,
         "corpus_version": result.search.corpus_version,
+        "registry_version": _registry_version(),
         "timings_ms": result.timings_ms,
         "degraded": result.search.degraded,
     }
