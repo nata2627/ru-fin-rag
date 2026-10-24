@@ -23,6 +23,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
 from . import __version__, events
+from .answer import EXCERPTS, GENERATE, AnswerError, AnswerService
 from .config import ConfigError, env, live_mode, load_catalog
 from .corpus import CorpusError
 from .events import EventLog
@@ -58,6 +59,17 @@ async def lifespan(app: FastAPI):
         # перезапускает контейнер по кругу и причина не видна.
         state["service"] = None
         state["error"] = str(exc)
+    # Слой ответа поднимается своей попыткой: опечатка в переменных
+    # генеративного режима не должна гасить поиск, который от него не зависит.
+    # Громкой она при этом остается: причина стоит в `/health` и в отказе
+    # ручки `/answer`.
+    state["answer"] = None
+    state["answer_error"] = None
+    if state["service"] is not None:
+        try:
+            state["answer"] = AnswerService.build(state["service"])
+        except ConfigError as exc:
+            state["answer_error"] = str(exc)
     state["events"] = EventLog.from_env()
     state["started_at"] = time.time()
     state["startup_seconds"] = round(time.monotonic() - t0, 2)
@@ -93,6 +105,24 @@ class SearchRequest(BaseModel):
         return value
 
 
+class AnswerRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
+    top: int = Field(default=10, ge=1, le=MAX_TOP)
+    config: str | None = None
+    # Режим по умолчанию это выдержки: ключа модели у проекта нет и может не
+    # появиться вовсе (PLAN, этап 7), поэтому генерация запрашивается явно.
+    mode: Literal["excerpts", "generate"] = EXCERPTS
+
+    @field_validator("query")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("запрос состоит из пробелов")
+        return value
+
+
 class FeedbackRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -112,7 +142,7 @@ def record(event: dict) -> None:
 @app.exception_handler(RequestValidationError)
 async def log_rejected(request: Request, exc: RequestValidationError):
     body = exc.body if isinstance(exc.body, dict) else {}
-    if request.url.path == "/search":
+    if request.url.path in ("/search", "/answer"):
         query = body.get("query")
         top = body.get("top")
         record(
@@ -169,6 +199,12 @@ code {{ padding: 0.1rem 0.3rem; }}
 <pre>curl -s -X POST /search \\
   -H 'Content-Type: application/json' \\
   -d '{{"query": "порядок формирования резервов по ссудам", "top": 3}}'</pre>
+<p>Ручка <code>/answer</code> отдает то же самое ответом с цитатами: выдержки из найденных
+фрагментов со ссылкой на акт, раздел и пункты. Если опоры в корпусе под вопрос нет, она
+отказывается отвечать и печатает число, по которому так решено.</p>
+<pre>curl -s -X POST /answer \\
+  -H 'Content-Type: application/json' \\
+  -d '{{"query": "порядок формирования резервов по ссудам"}}'</pre>
 <h2>Что важно знать</h2>
 <p>Это бесплатный тариф: 512 МБ памяти, общий процессор, сон после 15 минут без трафика.
 После сна первый запрос ждет пробуждения. Плотная ступень поиска в онлайне выключена, она
@@ -206,6 +242,7 @@ def health():
             "degraded": current.degraded,
         }
     )
+    body["answer"] = _answer_health()
     event_log = state.get("events")
     body["event_log"] = event_log.stats() if event_log is not None else "off"
     if current.dense_off:
@@ -213,6 +250,28 @@ def health():
     if current.degraded:
         body["status"] = "degraded"
     return body
+
+
+def _answer_health() -> dict:
+    """Состояние слоя ответа: порог отказа и доступность генерации.
+
+    Порог стоит в `/health` затем, что по нему читается поведение сервиса:
+    отказ это не ошибка, и человек, который видит отказ, должен иметь
+    возможность увидеть число, по которому он случился.
+    """
+    answer = state.get("answer")
+    if answer is None:
+        return {"status": "off", "error": state.get("answer_error")}
+    return {
+        "status": "ok",
+        "answer_version": answer.settings.version,
+        "support_feature": answer.settings.feature,
+        "support_threshold": answer.settings.threshold,
+        "measured_in": answer.settings.measured_in,
+        "modes": [EXCERPTS, GENERATE] if answer.generation_ready else [EXCERPTS],
+        "generation": answer.generation_model if answer.generation_ready else "off",
+        "generation_off_reason": answer.generation_off,
+    }
 
 
 @app.post("/search")
@@ -261,6 +320,70 @@ def search(request: SearchRequest):
             for hit in result.hits
         ],
     }
+
+
+@app.post("/answer")
+def answer(request: AnswerRequest):
+    """Ответ с цитатами или явный отказ (SPEC, раздел 5).
+
+    Отказ отдается кодом 200 и полем `answered`, а не ошибкой: запрос
+    обслужен, сервис не сломался, и ответ на него это «опоры в корпусе нет»
+    вместе с числом, по которому так решено. Ошибкой отвечают только
+    неготовый сервис, плохой запрос и недоступный режим.
+    """
+    request_id = events.new_request_id()
+    received_at = events.utc_now()
+    service = state.get("answer")
+    if service is None:
+        detail = state.get("answer_error") or f"сервис не готов: {state.get('error')}"
+        record(
+            events.rejected(
+                request_id, received_at, request.query, request.top, 503, str(detail), __version__
+            )
+        )
+        raise HTTPException(status_code=503, detail=detail)
+    try:
+        result = service.answer(
+            request.query, top=request.top, config=request.config, mode=request.mode
+        )
+    except AnswerError as exc:
+        # Режим, которого нет на этом развертывании, это 503: сам запрос
+        # правильный, и повторять его с ключом имеет смысл.
+        status = 503 if request.mode == GENERATE and not service.generation_ready else 400
+        record(
+            events.rejected(
+                request_id, received_at, request.query, request.top, status, str(exc), __version__
+            )
+        )
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    except (ConfigError, SearchError) as exc:
+        record(
+            events.rejected(
+                request_id, received_at, request.query, request.top, 400, str(exc), __version__
+            )
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    record(events.answer_event(request_id, received_at, request.top, result, __version__))
+    body = {
+        "request_id": request_id,
+        "query": result.query,
+        "mode": result.mode,
+        "answered": result.answered,
+        "answer": result.text,
+        "answer_source": result.text_source,
+        "answer_version": result.answer_version,
+        "support": result.support.as_dict(),
+        "citations": [citation.as_dict() for citation in result.citations],
+        "config": result.search.config,
+        "config_version": result.search.config_version,
+        "corpus_version": result.search.corpus_version,
+        "timings_ms": result.timings_ms,
+        "degraded": result.search.degraded,
+    }
+    if not result.answered:
+        body["refusal"] = result.refusal
+    return body
 
 
 # Оценка приходит отдельным событием: она появляется после ответа, и поле
