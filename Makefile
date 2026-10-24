@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve answer-threshold vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -35,6 +35,9 @@ test: ## только тесты
 
 serve: ## поднять сервис локально
 	$(PY) -m uvicorn rufinrag.api:app --app-dir src --host 127.0.0.1 --port 8000
+
+answer-threshold: ## замерить порог отказа слоя ответа, поля цитаты и цену опоры
+	$(PY) scripts/measure_answer.py
 
 vectors: ## догнать плотные векторы до корпуса после ночной докачки (нужны venv-dense и веса)
 	$(PY) scripts/extend_vectors.py
