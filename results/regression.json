@@ -6,7 +6,7 @@
   "chunks": 62606,
   "queries_scored": 991,
   "queries_total": 1182,
-  "seconds": 5.3,
+  "seconds": 7.6,
   "metrics": {
     "Recall@1": 0.368,
     "Recall@5": 0.6491,
@@ -19,7 +19,18 @@
     "corpus_version": "chunks62606-acts1555",
     "NDCG@10": 0.5712,
     "drop": 0.0,
-    "tolerance": 0.01
+    "tolerance": 0.02,
+    "corpus_matches": true
   },
-  "passed": true
+  "passed": true,
+  "alert": {
+    "fired": false,
+    "metric": "NDCG@10",
+    "drop": 0.0,
+    "drop_exact": 0.0,
+    "threshold": 0.02,
+    "baseline_at": "2026-10-23",
+    "queries_scored": 991,
+    "text": ""
+  }
 }

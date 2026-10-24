@@ -1,8 +1,8 @@
 {
   "measured_at": "2026-10-24",
-  "machine": "arm64 Darwin 25.6.0",
+  "machine": "x86_64 Linux 6.17.0-1022-azure",
   "journal": {
-    "dir": "/Users/nataliagordeeva/Desktop/my_jobs/ru-fin-rag/data/events",
+    "dir": "/home/runner/work/ru-fin-rag/ru-fin-rag/data/events",
     "events": 0,
     "queries": 0,
     "answered": 0,
@@ -46,10 +46,10 @@
       "measured": true,
       "metric": "NDCG@10",
       "value": 0.0,
-      "threshold": 0.01,
+      "threshold": 0.02,
       "denominator": 991,
-      "measured_at": "2026-10-23",
-      "report_has_alert_block": false,
+      "measured_at": "2026-10-24",
+      "report_has_alert_block": true,
       "text": ""
     }
   ],
@@ -58,5 +58,5 @@
     "signals_fired": [],
     "text": ""
   },
-  "seconds": 1.0
+  "seconds": 0.4
 }
