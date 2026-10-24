@@ -29,7 +29,7 @@ BM25: что это ровно тот же путь, которым идет с�
 `same_path_as_service`, 991 выдача из 991).
 
 Запуск: python scripts/measure_monitoring_thresholds.py [--draws 200]
-Стоит около 30 с на маке.
+Стоит 7,0 с на маке, не считая запуска интерпретатора.
 """
 
 from __future__ import annotations
