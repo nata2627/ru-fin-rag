@@ -5,6 +5,7 @@
 модель: платных вызовов в тестах нет.
 """
 
+import dataclasses
 import json
 import os
 from pathlib import Path
@@ -22,7 +23,10 @@ pytestmark = pytest.mark.answer
 ROOT = Path(__file__).resolve().parents[1]
 
 IN_CORPUS = "порядок формирования резервов на возможные потери по ссудам"
-OUT_OF_CORPUS = "Сколько минут варить куриные яйца вкрутую?"
+# Недостижимый порог опоры вместо вопроса не по теме: набор таких вопросов
+# решением автора из проекта убран, и путь отказа проверяется механически
+# (пояснение в tests/test_answer.py).
+UNREACHABLE = 1.01
 
 
 @pytest.fixture(scope="module")
@@ -54,6 +58,20 @@ def model(client):
     yield replies
     answer_service.generation = None
     answer_service.completer = None
+
+
+@pytest.fixture
+def no_support(client):
+    """Порог опоры на время одного теста поднят выше достижимого.
+
+    Так проверяется путь отказа у ручки: сервис поднят как в бою, и правка
+    снимается после теста, иначе следующий тест получил бы отказ на все.
+    """
+    answer_service = state["answer"]
+    было = answer_service.settings
+    answer_service.settings = dataclasses.replace(было, threshold=UNREACHABLE)
+    yield
+    answer_service.settings = было
 
 
 def test_health_shows_the_answer_layer_and_its_modes(client):
@@ -88,9 +106,9 @@ def test_excerpts_mode_answers_with_citations(client):
     assert body["support"]["passed"] is True
 
 
-def test_question_outside_the_corpus_gets_a_refusal_not_an_answer(client):
+def test_query_without_support_gets_a_refusal_not_an_answer(client, no_support):
     """Выход задачи 7.1: отказ приходит ответом 200 с числами, а не выдумкой."""
-    response = client.post("/answer", json={"query": OUT_OF_CORPUS})
+    response = client.post("/answer", json={"query": IN_CORPUS})
     assert response.status_code == 200
     body = response.json()
     assert body["answered"] is False
@@ -128,8 +146,10 @@ def test_generated_answer_about_an_act_outside_the_hits_is_refused(client, model
     assert "вне выдачи" in body["refusal"]
 
 
-def test_generate_mode_refuses_without_support_and_does_not_call_the_model(client, model):
-    body = client.post("/answer", json={"query": OUT_OF_CORPUS, "mode": GENERATE}).json()
+def test_generate_mode_refuses_without_support_and_does_not_call_the_model(
+    client, model, no_support
+):
+    body = client.post("/answer", json={"query": IN_CORPUS, "mode": GENERATE}).json()
     assert body["answered"] is False
     # Подставная модель отдала бы последний ответ из списка, а список пуст:
     # обращение к ней уронило бы тест по IndexError.
