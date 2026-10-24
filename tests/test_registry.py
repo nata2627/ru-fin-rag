@@ -139,3 +139,16 @@ def test_tracking_report_counts_every_report():
     # проверяющий ищет папку, которой в репозитории нет.
     assert report["store_in_git"] is False
     assert report["package"] == "mlflow-skinny"
+
+
+def test_nightly_rebuilds_and_commits_the_registry():
+    """Докачка меняет версию корпуса, значит и версию выпуска.
+
+    Не пересобери реестр ночью, и сервис до утра отвечает с пометкой
+    расхождения, а числа README остаются про прошлую сборку. Проверка держит
+    оба шага: пересборку и то, что файл попадает в коммит бота.
+    """
+    nightly = (ROOT / ".github/workflows/nightly.yml").read_text(encoding="utf-8")
+    assert "scripts/register_versions.py" in nightly
+    add = nightly[nightly.index("git add data/corpus") : nightly.index("if git diff --cached")]
+    assert "results/registry.json" in add
