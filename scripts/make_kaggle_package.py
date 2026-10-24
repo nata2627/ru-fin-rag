@@ -46,6 +46,10 @@ QUERIES = [
     # составом и тем же эталоном, что в локальном отчёте: разойдись они —
     # и рецепт подбирался бы по одной цифре, а публиковалась бы другая.
     "data/queries/synthetic_train.jsonl",
+    # E4: вторая обучающая выборка, сделанная с примерами живых вопросов.
+    # Лежит рядом с прежней, а не поверх неё: сравнивать E4 не с чем, если
+    # прежнюю затереть. Какую брать, решает ключ --train у gpu_prepare.py
+    "data/queries/synthetic_train_e4.jsonl",
     "data/queries/synthetic_dev.jsonl",
     "data/queries/qrels.tsv",
     "data/queries/podvyborki.json",
