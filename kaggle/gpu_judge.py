@@ -46,6 +46,10 @@ import gpu_gen as G
 from rufin.annotation import ANSWER_FORMAT, RUBRIC, parse_answers, scale_of
 
 DEFAULT_JUDGE = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+# Сколько неразобранных ответов сохранить дословно. Десяти хватает, чтобы
+# увидеть, чем ответ модели отличается от формата, и не хватит, чтобы
+# превратить метаданные в лог.
+UNPARSED_SAMPLE = 10
 
 # Второй судья, крупнее первого и тоже в четырех битах. Голосуют двое, потому
 # что один судья неотличим от собственной погрешности: пара, в которой двое
@@ -143,6 +147,7 @@ def judge(llm, pairs: list[dict], texts: dict[str, str], out_path: str,
           f"сейчас размечаем {len(pending)}", flush=True)
 
     stats: collections.Counter = collections.Counter()
+    unparsed: list[str] = []
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     first = not os.path.exists(out_path)
     t0 = time.time()
@@ -165,6 +170,12 @@ def judge(llm, pairs: list[dict], texts: dict[str, str], out_path: str,
                 parsed = parse_answers(raw)
                 if parsed is None:
                     stats["ответ не разобран"] += 1
+                    # Образцы неразобранного кладутся в метаданные. Прогон 32B
+                    # 24.10 дал 150 неразобранных из 150, и разобрать причину
+                    # было нечем: в лист идут только разобранные ответы, а
+                    # счётчик говорит сколько, но не что именно сказала модель.
+                    if len(unparsed) < UNPARSED_SAMPLE:
+                        unparsed.append(_SPACE.sub(" ", raw)[:200])
                     continue
                 whole, together, kind = parsed
                 score = scale_of(whole, together)
@@ -194,6 +205,7 @@ def judge(llm, pairs: list[dict], texts: dict[str, str], out_path: str,
               "прогноз на все задание, часов":
                   round(len(pairs) / (graded / spent) / 3600, 2)
                   if graded and spent else 0.0,
+              "образцы неразобранного": unparsed,
               "модель": model, "веса": weights,
               "температура": temperature, "семя": seed,
               "стек вывода": stack()}
