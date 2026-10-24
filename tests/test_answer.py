@@ -5,6 +5,7 @@
 в окружении есть все три переменные (`rufinrag.generation`).
 """
 
+import dataclasses
 import json
 import os
 from pathlib import Path
@@ -44,11 +45,15 @@ pytestmark = pytest.mark.answer
 
 ROOT = Path(__file__).resolve().parents[1]
 MEASUREMENT = ROOT / "results/answer.json"
-PROBE = ROOT / "data/benchmark/out-of-corpus.jsonl"
-
 IN_CORPUS = "порядок формирования резервов на возможные потери по ссудам"
-# Вопрос из набора вне корпуса, группа «вне предметной области».
-OUT_OF_CORPUS = "Сколько минут варить куриные яйца вкрутую?"
+# Порог, которого признак опоры достичь не может: доля покрытой информативности
+# не бывает больше единицы. Так проверяется сам путь отказа.
+#
+# Прежде отказ проверялся вопросом не по теме («сколько варить яйца»). Набор
+# таких вопросов решением автора из проекта убран, поэтому проверка стала
+# механической: она держит путь отказа, но больше не показывает, отказывает ли
+# сервис вопросу из чужой области. Это ограничение названо в README.
+UNREACHABLE = 1.01
 
 
 @pytest.fixture(scope="module")
@@ -66,9 +71,15 @@ def measurement():
     return json.loads(MEASUREMENT.read_text(encoding="utf-8"))
 
 
-def probe_queries(group: str | None = None) -> list[str]:
-    rows = [json.loads(line) for line in PROBE.read_text(encoding="utf-8").splitlines() if line]
-    return [row["text"] for row in rows if group is None or row["group"] == group]
+def without_support(service: AnswerService) -> AnswerService:
+    """Тот же сервис с недостижимым порогом опоры: любой запрос дает отказ."""
+    return AnswerService(
+        search=service.search,
+        settings=dataclasses.replace(service.settings, threshold=UNREACHABLE),
+        generation=service.generation,
+        generation_off=service.generation_off,
+        completer=service.completer,
+    )
 
 
 def stub(reply: str, calls: list[str] | None = None):
@@ -113,9 +124,9 @@ def test_support_feature_is_the_one_the_monitor_counts():
     assert set(SUPPORT_FEATURES) == {*MONITOR_FEATURES, IDF_COVERAGE}
 
 
-def test_question_outside_the_corpus_is_refused_without_citations(service):
-    """Выход задачи 7.1: вопрос вне корпуса дает отказ, а не выдумку."""
-    answer = service.answer(OUT_OF_CORPUS, top=10)
+def test_query_without_support_is_refused_without_citations(service):
+    """Выход задачи 7.1: без опоры сервис отказывает, а не выдумывает."""
+    answer = without_support(service).answer(IN_CORPUS, top=10)
     assert answer.answered is False
     assert answer.citations == ()
     assert answer.text == ""
@@ -125,14 +136,16 @@ def test_question_outside_the_corpus_is_refused_without_citations(service):
     assert answer.support.passed is False
 
 
-def test_refusals_on_the_probe_set_match_the_measurement(service, measurement):
-    """Доля отказов вне корпуса та же, что напечатана в замере."""
-    refused = sum(1 for text in probe_queries() if not service.answer(text, top=10).answered)
-    measured = (
-        measurement["chosen"]["out_of_corpus_choose"]["refused"]
-        + measurement["chosen"]["out_of_corpus_verify"]["refused"]
-    )
-    assert refused == measured, f"сервис отказал {refused} раз, в замере {measured}"
+def test_measurement_no_longer_claims_what_it_cannot_show(measurement):
+    """В замере не осталось чисел по убранному набору вопросов вне корпуса.
+
+    Числа, посчитанные на том, чего в репозитории нет, пересчитать нельзя, и
+    держать их в отчете значит публиковать непроверяемое.
+    """
+    assert "out_of_corpus_queries" not in measurement
+    for поле in ("out_of_corpus_choose", "out_of_corpus_verify", "by_group"):
+        assert поле not in measurement["chosen"]
+    assert not (ROOT / "data/benchmark/out-of-corpus.jsonl").exists()
 
 
 def test_in_corpus_question_is_answered_with_citations(service):
@@ -264,10 +277,12 @@ def test_generated_answer_keeps_only_the_cited_excerpts(service):
 
 
 def test_generation_is_not_called_at_all_when_there_is_no_support(service):
-    """Отказ случается до модели: платный вызов на вопрос вне корпуса не нужен."""
+    """Отказ случается до модели: платный вызов без опоры не нужен."""
     calls: list[str] = []
-    reply = json.dumps({"answer": "Варить девять минут.", "used": [1]})
-    answer = with_model(service, stub(reply, calls)).answer(OUT_OF_CORPUS, mode=GENERATE)
+    reply = json.dumps({"answer": "Ответ, которого не просили.", "used": [1]})
+    answer = with_model(without_support(service), stub(reply, calls)).answer(
+        IN_CORPUS, mode=GENERATE
+    )
     assert answer.answered is False
     assert calls == []
     assert answer.mode == GENERATE
@@ -322,13 +337,14 @@ def test_unknown_mode_is_an_error(service):
 
 def test_journal_line_carries_the_refusal_and_no_quotes(service):
     """В журнал едут числа и идентификаторы, а куски актов остаются в корпусе."""
-    answer = service.answer(OUT_OF_CORPUS, top=5)
+    без_опоры = without_support(service)
+    answer = без_опоры.answer(IN_CORPUS, top=5)
     event = events.answer_event(
         events.new_request_id(), events.utc_now(), 5, answer, service_version="0.1.0"
     )
     assert event["answer_outcome"] == "refusal"
     assert event["mode"] == EXCERPTS
-    assert event["support"]["threshold"] == service.settings.threshold
+    assert event["support"]["threshold"] == без_опоры.settings.threshold
     assert event["reason"] == answer.refusal
     assert set(event) <= {
         *events.QUERY_FIELDS,

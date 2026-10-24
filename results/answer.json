@@ -7,7 +7,7 @@
   "rule": {
     "budget_false_refusals": 0.01,
     "budget_queries": 9,
-    "text": "порог это 1-процентный квантиль признака опоры по размеченным запросам эталонного набора, округленный вниз до двух значащих цифр; выбор признака по половине «выбор» набора вопросов вне корпуса, число для отчета по половине «проверка»",
+    "text": "порог это 1-процентный квантиль признака опоры по размеченным запросам эталонного набора, округленный вниз до двух значащих цифр. Признак закреплен за idf_coverage выбором от 24.10.2026 (S21), набор вопросов вне корпуса, на котором шел выбор, из проекта убран решением автора",
     "written_before": "orchestration/EXPERIMENTS.md, S21"
   },
   "benchmark_queries": 1182,
@@ -19,7 +19,6 @@
     "count": 1
   },
   "live_unlabeled_queries": 183,
-  "out_of_corpus_queries": 40,
   "support_feature": "idf_coverage",
   "support_threshold": 0.24,
   "candidates": {
@@ -63,16 +62,6 @@
         "of": 991,
         "share": 0.0061
       },
-      "out_of_corpus_choose": {
-        "refused": 10,
-        "of": 20,
-        "share": 0.5
-      },
-      "out_of_corpus_verify": {
-        "refused": 10,
-        "of": 20,
-        "share": 0.5
-      },
       "live_unlabeled": {
         "refused": 0,
         "of": 183,
@@ -87,18 +76,6 @@
         "refused": 0,
         "of": 1,
         "share": 0.0
-      },
-      "by_group": {
-        "вне предметной области": {
-          "refused": 16,
-          "of": 20,
-          "share": 0.8
-        },
-        "рядом с предметной областью": {
-          "refused": 4,
-          "of": 20,
-          "share": 0.2
-        }
       },
       "value_quantiles": {
         "0.01": 16.5599,
@@ -147,16 +124,6 @@
         "of": 991,
         "share": 0.0081
       },
-      "out_of_corpus_choose": {
-        "refused": 1,
-        "of": 20,
-        "share": 0.05
-      },
-      "out_of_corpus_verify": {
-        "refused": 0,
-        "of": 20,
-        "share": 0.0
-      },
       "live_unlabeled": {
         "refused": 3,
         "of": 183,
@@ -171,18 +138,6 @@
         "refused": 0,
         "of": 1,
         "share": 0.0
-      },
-      "by_group": {
-        "вне предметной области": {
-          "refused": 1,
-          "of": 20,
-          "share": 0.05
-        },
-        "рядом с предметной областью": {
-          "refused": 0,
-          "of": 20,
-          "share": 0.0
-        }
       },
       "value_quantiles": {
         "0.01": 1.3828,
@@ -231,16 +186,6 @@
         "of": 991,
         "share": 0.0091
       },
-      "out_of_corpus_choose": {
-        "refused": 6,
-        "of": 20,
-        "share": 0.3
-      },
-      "out_of_corpus_verify": {
-        "refused": 3,
-        "of": 20,
-        "share": 0.15
-      },
       "live_unlabeled": {
         "refused": 9,
         "of": 183,
@@ -255,18 +200,6 @@
         "refused": 0,
         "of": 1,
         "share": 0.0
-      },
-      "by_group": {
-        "вне предметной области": {
-          "refused": 9,
-          "of": 20,
-          "share": 0.45
-        },
-        "рядом с предметной областью": {
-          "refused": 0,
-          "of": 20,
-          "share": 0.0
-        }
       },
       "value_quantiles": {
         "0.01": 0.2466,
@@ -283,16 +216,6 @@
       "refused": 9,
       "of": 991,
       "share": 0.0091
-    },
-    "out_of_corpus_verify": {
-      "refused": 3,
-      "of": 20,
-      "share": 0.15
-    },
-    "out_of_corpus_choose": {
-      "refused": 6,
-      "of": 20,
-      "share": 0.3
     },
     "live_unlabeled": {
       "refused": 9,
@@ -323,18 +246,6 @@
       "синтетика": {
         "refused": 0,
         "of": 150,
-        "share": 0.0
-      }
-    },
-    "by_group": {
-      "вне предметной области": {
-        "refused": 9,
-        "of": 20,
-        "share": 0.45
-      },
-      "рядом с предметной областью": {
-        "refused": 0,
-        "of": 20,
         "share": 0.0
       }
     },
@@ -398,8 +309,8 @@
   },
   "support_cost_ms": {
     "queries": 1182,
-    "median": 21.386,
-    "p95": 68.991
+    "median": 5.646,
+    "p95": 10.448
   },
   "sample": null
 }

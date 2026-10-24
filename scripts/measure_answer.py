@@ -49,11 +49,11 @@ from rufinrag.retrieval.text import stem, token_spans  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
 BENCHMARK = ROOT / "data/benchmark"
-PROBE_FILE = BENCHMARK / "out-of-corpus.jsonl"
 OUT_FILE = ROOT / "results/answer.json"
 
 # Бюджет ложных отказов и глубина, по которой берется лучший кандидат. Оба
 # числа объявлены в S21 до замера и здесь только применяются.
+CHOSEN_FEATURE = "idf_coverage"
 BUDGET = 0.01
 DEPTH = 10
 # Предел связи признака с длиной запроса, односторонний. Беда только у
@@ -226,7 +226,6 @@ def main() -> int:
     queries = load_queries()
     qrels = load_qrels()
     labeled = [qid for qid in queries if any(grade > 0 for grade in qrels.get(qid, {}).values())]
-    probe = list(read_jsonl(PROBE_FILE))
     order = list(queries)
     if args.sample:
         labeled = labeled[: args.sample]
@@ -240,13 +239,8 @@ def main() -> int:
         row["query_id"] = qid
         row["podvyborka"] = queries[qid]["podvyborka"]
         rows[qid] = row
-    probe_rows = []
-    for item in probe:
-        row = features_of(service, item["text"])
-        row.update({"query_id": item["query_id"], "group": item["group"], "half": item["half"]})
-        probe_rows.append(row)
     seconds = time.monotonic() - t0
-    print(f"признаки посчитаны: {len(rows) + len(probe_rows)} запросов за {seconds:.1f} с")
+    print(f"признаки посчитаны: {len(rows)} запросов за {seconds:.1f} с")
 
     labeled_set = set(labeled)
     labeled_rows = [rows[qid] for qid in labeled]
@@ -260,8 +254,6 @@ def main() -> int:
     # взяты из замороженного набора, а не составлены под этот замер.
     manual_rows = [row for row in rows.values() if row["podvyborka"] == "ручные"]
     short_rows = [row for row in rows.values() if row["tokens"] <= SHORT_TOKENS]
-    choose = [row for row in probe_rows if row["half"] == "выбор"]
-    verify = [row for row in probe_rows if row["half"] == "проверка"]
 
     # Бины длины запроса для разбора отказов: квартили по числу токенов на всем
     # наборе. Нужны затем, что порог, выведенный на длинных вопросах, может
@@ -296,45 +288,37 @@ def main() -> int:
                 for low, high in token_bins
             ],
             "false_refusals_labeled": refusals(feature, threshold, labeled_rows),
-            "out_of_corpus_choose": refusals(feature, threshold, choose),
-            "out_of_corpus_verify": refusals(feature, threshold, verify),
             "live_unlabeled": refusals(feature, threshold, live_rows),
             "manual_queries": refusals(feature, threshold, manual_rows),
             "short_queries": refusals(feature, threshold, short_rows),
-            "by_group": {
-                name: refusals(
-                    feature, threshold, [row for row in probe_rows if row["group"] == name]
-                )
-                for name in sorted({row["group"] for row in probe_rows})
-            },
             "value_quantiles": {
                 str(q): round(quantile_floor(values, q), 4) for q in (0.01, 0.05, 0.25, 0.5)
             },
         }
 
-    # Выбор признака по правилу S21 с поправкой от 24.10.2026, записанной в S21
-    # вместе с причиной: признак, связанный с длиной запроса, из выбора
-    # выбывает. Порог выведен на вопросах набора, а они длинные, и такой
-    # признак отказывает короткому вопросу живого человека, которого в наборе
-    # почти нет. Дальше правило прежнее: выше доля отказов на половине «выбор»,
-    # при равенстве признак монитора, затем меньше ложных отказов на 991.
-    def key(name: str):
-        item = candidates[name]
-        return (
-            not item["grows_with_length"],
-            item["out_of_corpus_choose"]["share"] or 0.0,
-            name in MONITOR_FEATURES,
-            -item["false_refusals_labeled"]["refused"],
+    # Признак не выбирается здесь заново, он закреплен. Выбор был сделан 24.10
+    # по правилу S21 на наборе вопросов вне корпуса, и этот набор решением
+    # автора из проекта убран (40 вопросов, в том числе бытовых, в портфолио по
+    # нормативке ЦБ им места нет). Переписать правило выбора под то, что
+    # осталось, значило бы подобрать его после данных, поэтому здесь стоит
+    # закрепленный исход с указанием, где он записан, а не новый отбор.
+    # Признак, связанный с длиной запроса, из выбора выбывал: порог выведен на
+    # вопросах набора, а они длинные, и такой признак отказывал бы короткому
+    # вопросу живого человека.
+    winner = CHOSEN_FEATURE
+    if winner not in candidates:
+        raise SystemExit(f"закрепленного признака {winner} нет среди посчитанных")
+    if candidates[winner]["grows_with_length"]:
+        raise SystemExit(
+            f"закрепленный признак {winner} вырос с длиной запроса: правило S21 его "
+            "исключает, и выбор надо пересматривать явно, а не молча"
         )
-
-    winner = max(SUPPORT_FEATURES, key=key)
     threshold = candidates[winner]["threshold"]
 
     by_subsample: dict[str, dict] = {}
     for name in sorted({row["podvyborka"] for row in labeled_rows}):
         part = [row for row in labeled_rows if row["podvyborka"] == name]
         by_subsample[name] = refusals(winner, threshold, part)
-    by_group = candidates[winner]["by_group"]
 
     costs = [row["ms"] for row in rows.values()]
     report = {
@@ -348,9 +332,9 @@ def main() -> int:
             "budget_queries": math.floor(BUDGET * len(labeled_rows)),
             "text": (
                 "порог это 1-процентный квантиль признака опоры по размеченным запросам "
-                "эталонного набора, округленный вниз до двух значащих цифр; выбор признака "
-                "по половине «выбор» набора вопросов вне корпуса, число для отчета по "
-                "половине «проверка»"
+                "эталонного набора, округленный вниз до двух значащих цифр. Признак "
+                "закреплен за idf_coverage выбором от 24.10.2026 (S21), набор вопросов вне "
+                "корпуса, на котором шел выбор, из проекта убран решением автора"
             ),
             "written_before": "orchestration/EXPERIMENTS.md, S21",
         },
@@ -363,7 +347,6 @@ def main() -> int:
             "count": len(short_rows),
         },
         "live_unlabeled_queries": len(live_rows),
-        "out_of_corpus_queries": len(probe_rows),
         "support_feature": winner,
         "support_threshold": threshold,
         "candidates": candidates,
@@ -371,11 +354,8 @@ def main() -> int:
             "feature": winner,
             "threshold": threshold,
             "false_refusals_labeled": candidates[winner]["false_refusals_labeled"],
-            "out_of_corpus_verify": candidates[winner]["out_of_corpus_verify"],
-            "out_of_corpus_choose": candidates[winner]["out_of_corpus_choose"],
             "live_unlabeled": candidates[winner]["live_unlabeled"],
             "by_subsample": by_subsample,
-            "by_group": by_group,
             "manual_queries": candidates[winner]["manual_queries"],
             "short_queries": candidates[winner]["short_queries"],
             "length_dependence": candidates[winner]["length_dependence"],
@@ -396,7 +376,6 @@ def main() -> int:
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"признак {winner}, порог {threshold}")
     print(f"ложных отказов {candidates[winner]['false_refusals_labeled']}")
-    print(f"вне корпуса, половина проверки {candidates[winner]['out_of_corpus_verify']}")
     print(f"записано {out}")
     return 0
 

@@ -801,21 +801,10 @@ def checks() -> list[tuple[str, str, str]]:
         (
             "ложные отказы на размеченных",
             "answer.json",
-            f"{chosen['false_refusals_labeled']} из {answer['labeled_queries']}",
+            f"{chosen['false_refusals_labeled']['refused']} из "
+            f"{chosen['false_refusals_labeled']['of']}",
         )
     )
-    for label, key in (
-        ("вне предметной области", "вне предметной области"),
-        ("соседние отрасли права", "рядом с предметной областью"),
-    ):
-        group = chosen["by_group"][key]
-        out.append(
-            (
-                f"отказы, {label}",
-                "answer.json",
-                f"{group['refused']} из {group['of']}",
-            )
-        )
     out.append(
         (
             "отказы на живых без разметки",
