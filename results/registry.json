@@ -1,0 +1,46 @@
+{
+  "built_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "seconds": 5.3,
+  "service_version": "0.1.0",
+  "catalog_version": 1,
+  "default_config": "hybrid",
+  "config_versions": {
+    "bm25": "bm25+bm25+cand50",
+    "bm25-rerank": "bm25-rerank+bm25+cand50+rerank50",
+    "dense": "dense+dense+cand50+rufin",
+    "hybrid": "hybrid+hybrid+cand50+rufin",
+    "hybrid-graph": "hybrid-graph+hybrid+cand50+rufin+graphreserveforward3",
+    "hybrid-rerank": "hybrid-rerank+hybrid+cand50+rufin+rerank50"
+  },
+  "answer_version": "idf_coverage>=0.24+depth10+quote400",
+  "corpus_version": "chunks62606-acts1555",
+  "index": {
+    "chunks": 62606,
+    "vocab": 49643,
+    "measured_at": "2026-10-23"
+  },
+  "artifacts": {
+    "data/index/bm25.npz": {
+      "digest": "ac2b10865a5a",
+      "mb": 10.9
+    },
+    "data/index/texts.blocks": {
+      "digest": "515bf364ca5b",
+      "mb": 21.6
+    },
+    "data/vectors/rufin-384.npy": {
+      "digest": "5d4ad2c2da5e",
+      "mb": 45.9
+    },
+    "data/models/rufin/config.json": {
+      "digest": "797b077d71f7",
+      "mb": 0.0
+    },
+    "data/models/rufin/model.safetensors": {
+      "digest": "547fde74c1b6",
+      "mb": 448.8
+    }
+  },
+  "version": "e55cd0eb8670"
+}

@@ -42,6 +42,19 @@ def ru_spaced(value: float, digits: int = 1) -> str:
     return text.replace(",", " ").replace(".", ",")
 
 
+def ru_plural(count: int, one: str, few: str, many: str) -> str:
+    """«41 прогон», «2 прогона», «5 прогонов»: число идет в русский текст.
+
+    Нужно потому, что проверка требует ровно той строки, что стоит в README, и
+    согласование по числу иначе пришлось бы писать в тексте руками, то есть
+    ломать его при каждом новом прогоне.
+    """
+    last_two, last = count % 100, count % 10
+    if 11 <= last_two <= 14 or last == 0 or last >= 5:
+        return f"{count} {many}"
+    return f"{count} {one}" if last == 1 else f"{count} {few}"
+
+
 def load(name: str) -> dict:
     return json.loads((RESULTS / name).read_text(encoding="utf-8"))
 
@@ -999,6 +1012,51 @@ def checks() -> list[tuple[str, str, str]]:
             "сколько ступеней алерт промолчал",
             "alert-drill.json",
             f"на {len(drill['silent_steps'])} ступенях из {drill['steps']}",
+        )
+    )
+
+    # Реестр версий и трекинг прогонов (задача 6.3). Длина версии выпуска
+    # проверяется тоже: укоротится отпечаток, и README начнет обещать не то.
+    tracking = load("tracking.json")
+    registered = load("registry.json")
+    out.append(
+        (
+            "прогонов в трекере",
+            "tracking.json",
+            f"{ru_plural(tracking['runs_total'], 'прогон', 'прогона', 'прогонов')} "
+            f"из {ru_plural(tracking['reports_total'], 'отчета', 'отчетов', 'отчетов')}",
+        )
+    )
+    out.append(
+        (
+            "файлов, которые не прогон",
+            "tracking.json",
+            "прогоном не считаются "
+            + ru_plural(len(tracking["reports_not_a_run"]), "файл", "файла", "файлов"),
+        )
+    )
+    out.append(("хранилище трекера", "tracking.json", f"{ru(tracking['store_mb'], 1)} МБ"))
+    out.append(("пакет трекинга", "tracking.json", tracking["package"]))
+    out.append(
+        (
+            "артефактов в реестре",
+            "registry.json",
+            "отпечаток "
+            + ru_plural(len(registered["artifacts"]), "артефакта", "артефактов", "артефактов"),
+        )
+    )
+    out.append(
+        (
+            "связок в реестре",
+            "registry.json",
+            f"каждой из {len(registered['config_versions'])} связок",
+        )
+    )
+    out.append(
+        (
+            "длина версии выпуска",
+            "registry.json",
+            f"{len(str(registered['version']))} знаков отпечатка",
         )
     )
     return out
