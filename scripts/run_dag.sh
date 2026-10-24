@@ -68,6 +68,13 @@ if [ ! -x "$PY" ]; then
   "$VENV/bin/pip" install --quiet .
 fi
 
+# Прогон CI клонирует репозиторий, и отметок шагов в клоне нет: первый прогон
+# обязан сделать работу. Повторная репетиция на той же машине начинается с
+# отметками прошлой, и тогда первый прогон пропускает все шаги, а проверка
+# повторного прогона сверяет не то, что собиралась. Поэтому репетиция стартует
+# оттуда же, откуда стартует CI.
+rm -f data/stamps/*.json
+
 echo "== корпус до прогонов"
 "$PY" scripts/check_dag_rerun.py --stage before --state "$HOME_DIR/corpus-before.json"
 
@@ -109,7 +116,8 @@ fi
 echo "== повторный прогон не плодит дубли"
 "$PY" scripts/check_dag_rerun.py --stage after \
   --state "$HOME_DIR/corpus-before.json" \
-  --states "$HOME_DIR/states-1.json" "$HOME_DIR/states-2.json"
+  --states "$HOME_DIR/states-1.json" "$HOME_DIR/states-2.json" \
+  --seconds "${SECONDS_LIST[@]}"
 
 if [ "${RUFINRAG_DAG_DRILL:-no}" = "yes" ]; then
   echo "== учебное падение шага в середине цепочки"
