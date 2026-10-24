@@ -1,10 +1,15 @@
 {
-  "measured_at": "2026-10-23",
+  "measured_at": "2026-10-24",
   "machine": "aarch64 Linux 7.0.12-linuxkit",
   "image": "apache/airflow:2.10.5-python3.11",
+  "ci_run": null,
   "dag_id": "corpus_refresh",
-  "peak_memory_mb": 711,
+  "peak_memory_mb": 695,
   "tasks": 4,
+  "seconds": [
+    37.0,
+    3.0
+  ],
   "runs": [
     {
       "states_file": "states-1.json",

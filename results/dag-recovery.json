@@ -1,0 +1,87 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "aarch64 Linux 7.0.12-linuxkit",
+  "image": "apache/airflow:2.10.5-python3.11",
+  "ci_run": null,
+  "dag_id": "corpus_refresh",
+  "failing_step": "build_index",
+  "failing_script": "scripts/build_index.py",
+  "attempts": 3,
+  "tasks": 4,
+  "tasks_not_started": [
+    "record_heartbeat",
+    "run_regression"
+  ],
+  "runs": [
+    {
+      "states_file": "states-3.json",
+      "tasks": {
+        "fetch_acts": "skipped",
+        "build_index": "failed",
+        "run_regression": "upstream_failed",
+        "record_heartbeat": "upstream_failed"
+      }
+    },
+    {
+      "states_file": "states-4.json",
+      "tasks": {
+        "fetch_acts": "skipped",
+        "build_index": "success",
+        "run_regression": "success",
+        "record_heartbeat": "success"
+      }
+    }
+  ],
+  "seconds": [
+    37.0,
+    3.0,
+    10.0,
+    37.0
+  ],
+  "before": {
+    "files": {
+      "data/index/bm25.npz": "ac2b10865a5aed00",
+      "data/index/texts.blocks": "515bf364ca5bc5e8",
+      "results/regression.json": "233ede6093522505"
+    },
+    "stamps": {
+      "index": false,
+      "regression": false
+    },
+    "index_vocab": 49643,
+    "index_chunks": 62606,
+    "last_heartbeat": "2026-10-24T08:57:19Z"
+  },
+  "after_failure": {
+    "files": {
+      "data/index/bm25.npz": "ac2b10865a5aed00",
+      "data/index/texts.blocks": "515bf364ca5bc5e8",
+      "results/regression.json": "233ede6093522505"
+    },
+    "stamps": {
+      "index": false,
+      "regression": false
+    },
+    "index_vocab": 49643,
+    "index_chunks": 62606,
+    "last_heartbeat": "2026-10-24T08:57:19Z"
+  },
+  "after_recovery": {
+    "files": {
+      "data/index/bm25.npz": "ac2b10865a5aed00",
+      "data/index/texts.blocks": "515bf364ca5bc5e8",
+      "results/regression.json": "132c2fad0eb5ece9"
+    },
+    "stamps": {
+      "index": true,
+      "regression": true
+    },
+    "index_vocab": 49643,
+    "index_chunks": 62606,
+    "last_heartbeat": "2026-10-24T08:58:14Z"
+  },
+  "files_touched_by_failure": [],
+  "stamp_after_failure": false,
+  "heartbeat_after_failure": true,
+  "passed": true
+}

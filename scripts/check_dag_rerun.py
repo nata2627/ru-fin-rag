@@ -107,6 +107,7 @@ def main() -> int:
     parser.add_argument("--stage", choices=("before", "after"), required=True)
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--states", type=Path, nargs="*", default=[])
+    parser.add_argument("--seconds", type=float, nargs="*", default=[])
     parser.add_argument("--out", type=Path, default=ROOT / "results/dag-rerun.json")
     args = parser.parse_args()
 
@@ -131,6 +132,9 @@ def main() -> int:
         "dag_id": DAG_ID,
         "peak_memory_mb": int(os.environ.get("RUFINRAG_DAG_PEAK_MB", 0)) or None,
         "tasks": len(EXPECTED[0]),
+        # Время прохода снимает вызывающий скрипт: ему видно начало и конец
+        # всего прогона, включая разбор DAG и работу базы, а задачам нет.
+        "seconds": [round(value, 1) for value in args.seconds],
         "runs": runs,
         "skipped_on_repeat": sorted(
             task

@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check lint test fmt serve vectors warehouse mart dashboard dag dag-drill dag-report alert drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -50,6 +50,15 @@ dashboard: ## собрать страницу дашборда по журнал
 
 dag: ## прогнать DAG регламента дважды в контейнере Airflow (нужен поднятый докер)
 	scripts/run_dag.sh
+
+dag-drill: ## то же плюс учебное падение шага в середине цепочки
+	scripts/run_dag.sh --drill
+
+dag-report: ## собрать results/dag.md из отчетов прогонов DAG
+	$(PY) scripts/report_dag.py
+
+alert: ## учебная деградация метрики: алерт обязан сработать и обязан молчать на шуме
+	$(PY) scripts/check_alert.py
 
 drain: ## репетиция выгрузки журнала: сервис процессом, выгрузка по сети, файлы в репозитории
 	$(PY) scripts/rehearse_drain.py
