@@ -6,9 +6,11 @@
 останавливает прогон. Эталон создается первым запуском и дальше меняется руками,
 коммитом, а не прогоном: иначе метрика тихо сползает по шагу за ночь.
 
-Порог 0,010 NDCG@10 взят не с потолка: на 991 вопросе это примерно половина
-ширины бутстрэп-интервала части А, то есть сдвиг, который уже нельзя объяснить
-шумом выборки. Обоснование числом идет в задаче 5.3, здесь порог рабочий.
+Порог падения не стоит в коде: он читается из `results/alert-threshold.json`,
+где лежит замер разброса метрики от прогона к прогону и от доливки корпуса
+(`scripts/measure_alert_threshold.py`). Пробитый порог это алерт: прогон
+краснеет, текст алерта с числом и знаменателем уходит в отчет и в issue
+ночного прогона.
 
 Запуск: python scripts/run_regression.py [--config bm25] [--update-baseline]
 """
@@ -28,9 +30,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from rufinrag.benchmark import load_qrels, load_queries  # noqa: E402
 from rufinrag.config import load_catalog  # noqa: E402
 from rufinrag.metrics import DEPTH, evaluate, queries_scored  # noqa: E402
+from rufinrag.pipeline import alert_threshold  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
-TOLERANCE = 0.010
 WATCHED = "NDCG@10"
 
 
@@ -92,26 +94,42 @@ def main() -> int:
         print(f"эталон записан в {args.baseline}")
 
     baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+    tolerance = alert_threshold(ROOT)
     drop = baseline["metrics"][WATCHED] - report["metrics"][WATCHED]
     report["baseline"] = {
         "measured_at": baseline["measured_at"],
         "corpus_version": baseline["corpus_version"],
         WATCHED: baseline["metrics"][WATCHED],
         "drop": round(drop, 4),
-        "tolerance": TOLERANCE,
+        "tolerance": tolerance,
     }
-    report["passed"] = drop <= TOLERANCE
+    report["passed"] = drop <= tolerance
+    # Текст алерта собирается здесь, а не в прогоне: issue ночного прогона и
+    # вывод команды читают одну и ту же строку, и расходиться им негде.
+    report["alert"] = {
+        "fired": not report["passed"],
+        "metric": WATCHED,
+        "drop": round(drop, 4),
+        "threshold": tolerance,
+        "baseline_at": baseline["measured_at"],
+        "queries_scored": report["queries_scored"],
+        "text": (
+            f"{WATCHED} упал на {drop:.4f} против эталона от {baseline['measured_at']} "
+            f"при пороге {tolerance} на {report['queries_scored']} размеченных вопросах"
+        )
+        if not report["passed"]
+        else "",
+    }
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print(json.dumps(report["metrics"], ensure_ascii=False))
     if not report["passed"]:
-        print(
-            f"регрессия: {WATCHED} упал на {drop:.4f} против эталона от "
-            f"{baseline['measured_at']} при пороге {TOLERANCE}",
-            file=sys.stderr,
-        )
+        print(f"алерт: {report['alert']['text']}", file=sys.stderr)
         return 1
-    print(f"регрессия не найдена: {WATCHED} {report['metrics'][WATCHED]}, падение {drop:.4f}")
+    print(
+        f"регрессия не найдена: {WATCHED} {report['metrics'][WATCHED]}, падение {drop:.4f} "
+        f"при пороге {tolerance}"
+    )
     return 0
 
 
