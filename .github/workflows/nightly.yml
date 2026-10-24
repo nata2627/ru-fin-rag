@@ -109,6 +109,13 @@ jobs:
         id: monitoring
         run: python scripts/check_monitoring.py
 
+      # Отчет регламента зависит от чисел докачки, а их перезаписывает этот же
+      # прогон. Значит он обязан пересобираться здесь, иначе зафиксированный
+      # файл расходится с замером к утру, и проверка чисел краснеет на ровном
+      # месте.
+      - name: Rebuild the regulation report
+        run: python scripts/report_dag.py
+
       - name: Verify published numbers
         run: python scripts/verify_numbers.py
 
@@ -125,7 +132,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
             results/corpus-update.json results/regression.json results/regulation.json \
-            results/monitoring.json data/events results/events.json
+            results/monitoring.json results/dag.md data/events results/events.json
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
