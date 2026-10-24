@@ -1,0 +1,460 @@
+{
+  "written_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "rule": {
+    "written_before_data": true,
+    "text": "Уровень значимости 0,05 двусторонний, мощность 0,80. Офлайн обязаны увидеть сдвиг 0,020 NDCG@10, это порог алерта из S16. Онлайн обязаны увидеть долю выигранных запросов 0,55 против 0,50, сдвиг объявлен в своих единицах, потому что пересчета NDCG@10 в долю выигранных запросов в проекте нет. Взглядов не больше четырнадцати, по одному в сутки ночным прогоном, взгляд на выборке меньше тридцати информативных запросов пропускается. Поправка на подглядывание это постоянная граница Покока вместо 1,96, подобранная моделированием под те же 0,05 на все взгляды вместе. Замер прекращается на первом взгляде за границей либо на четырнадцатом взгляде, и тогда результат это «различия не установлено» плюс интервал, а конфигурация сервиса не меняется. Трафика не хватило, если на четырнадцатом взгляде информативных запросов меньше, чем нужно для доли 0,60 против 0,50: тогда онлайн замер объявляется не проведенным и заменяется офлайн интерливингом на замороженном наборе, где за клик принято попадание размеченного релевантного фрагмента в первую десятку слитого списка.",
+    "alpha": 0.05,
+    "power": 0.8,
+    "looks": 14,
+    "min_queries_per_look": 30,
+    "offline_target_effect": 0.02,
+    "offline_grid": [
+      0.005,
+      0.01,
+      0.02,
+      0.04
+    ],
+    "online_target_excess": 0.05,
+    "online_grid": [
+      0.02,
+      0.05,
+      0.1
+    ],
+    "seed": 20261024,
+    "winner_not_computed_here": "в интерливинге берется только модуль перевеса, знак нигде не сохраняется: победителя объявляет задача 6.2 после коммита этого правила",
+    "also_written_in": "orchestration/EXPERIMENTS.md, S19"
+  },
+  "inputs": {
+    "metric": "NDCG@10",
+    "benchmark": {
+      "queries_scored": 991,
+      "queries_total": 1182,
+      "live": 142,
+      "synthetic": 846,
+      "manual": 3,
+      "level_bm25": 0.5712,
+      "source": "results/regression-baseline.json"
+    },
+    "noise_ceiling": 0.003745,
+    "noise_runs": 40,
+    "alert_threshold": 0.02,
+    "smallest_real_shift": 0.0836,
+    "noise_source": "results/alert-threshold.json",
+    "live_traffic": {
+      "source": "data/events, results/events.json",
+      "files_on_disk": 0,
+      "lines_on_disk": 0,
+      "query_events_reported": 0,
+      "days_reported": 0,
+      "drains": 0,
+      "rehearsal_queries": 25,
+      "rehearsal_note": "репетиция выгрузки на локальном процессе, results/events-rehearsal.json, трафиком не является",
+      "synthetic_load_requests": 7296,
+      "synthetic_load_note": "запросы нагрузочного замера подавал locust, results/load.json, трафиком не является"
+    }
+  },
+  "offline": {
+    "test": "парный перестановочный тест на всем наборе, один раз, подглядывания нет",
+    "mde_formula": "(z(1-α/2) + z(мощность)) * sd(разности) / sqrt(n)",
+    "pairs": [
+      {
+        "pair": "bm25 / hybrid",
+        "online_servable": true,
+        "candidate_for_6_2": true,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.2287,
+            "zero_diff_queries": 539,
+            "mde_at_this_n": 0.0204,
+            "n_for_effect": {
+              "0.005": 16423,
+              "0.010": 4106,
+              "0.020": 1027,
+              "0.040": 257
+            },
+            "interleaving": {
+              "mean": 0.77,
+              "min": 0.7629,
+              "max": 0.776,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.072
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.1824,
+            "zero_diff_queries": 53,
+            "mde_at_this_n": 0.0429,
+            "n_for_effect": {
+              "0.005": 10443,
+              "0.010": 2611,
+              "0.020": 653,
+              "0.040": 164
+            },
+            "interleaving": {
+              "mean": 0.4863,
+              "min": 0.4648,
+              "max": 0.5282,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.531
+            }
+          }
+        }
+      },
+      {
+        "pair": "bm25 / dense",
+        "online_servable": true,
+        "candidate_for_6_2": false,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.3578,
+            "zero_diff_queries": 405,
+            "mde_at_this_n": 0.0318,
+            "n_for_effect": {
+              "0.005": 40202,
+              "0.010": 10051,
+              "0.020": 2513,
+              "0.040": 629
+            },
+            "interleaving": {
+              "mean": 0.7755,
+              "min": 0.7659,
+              "max": 0.781,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.087
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.2733,
+            "zero_diff_queries": 47,
+            "mde_at_this_n": 0.0643,
+            "n_for_effect": {
+              "0.005": 23456,
+              "0.010": 5864,
+              "0.020": 1466,
+              "0.040": 367
+            },
+            "interleaving": {
+              "mean": 0.5106,
+              "min": 0.4789,
+              "max": 0.5352,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.735
+            }
+          }
+        }
+      },
+      {
+        "pair": "hybrid / dense",
+        "online_servable": true,
+        "candidate_for_6_2": false,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.2495,
+            "zero_diff_queries": 487,
+            "mde_at_this_n": 0.0222,
+            "n_for_effect": {
+              "0.005": 19546,
+              "0.010": 4887,
+              "0.020": 1222,
+              "0.040": 306
+            },
+            "interleaving": {
+              "mean": 0.7631,
+              "min": 0.7558,
+              "max": 0.7699,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.071
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.1805,
+            "zero_diff_queries": 59,
+            "mde_at_this_n": 0.0424,
+            "n_for_effect": {
+              "0.005": 10233,
+              "0.010": 2559,
+              "0.020": 640,
+              "0.040": 160
+            },
+            "interleaving": {
+              "mean": 0.4599,
+              "min": 0.4296,
+              "max": 0.493,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.576
+            }
+          }
+        }
+      },
+      {
+        "pair": "bm25 / bm25-rerank",
+        "online_servable": false,
+        "candidate_for_6_2": false,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.3155,
+            "zero_diff_queries": 450,
+            "mde_at_this_n": 0.0281,
+            "n_for_effect": {
+              "0.005": 31247,
+              "0.010": 7812,
+              "0.020": 1953,
+              "0.040": 489
+            },
+            "interleaving": {
+              "mean": 0.8017,
+              "min": 0.7962,
+              "max": 0.8093,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.066
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.2144,
+            "zero_diff_queries": 39,
+            "mde_at_this_n": 0.0504,
+            "n_for_effect": {
+              "0.005": 14434,
+              "0.010": 3609,
+              "0.020": 903,
+              "0.040": 226
+            },
+            "interleaving": {
+              "mean": 0.4919,
+              "min": 0.4648,
+              "max": 0.5282,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.512
+            }
+          }
+        }
+      },
+      {
+        "pair": "hybrid / hybrid-rerank",
+        "online_servable": false,
+        "candidate_for_6_2": false,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.3043,
+            "zero_diff_queries": 456,
+            "mde_at_this_n": 0.0271,
+            "n_for_effect": {
+              "0.005": 29066,
+              "0.010": 7267,
+              "0.020": 1817,
+              "0.040": 455
+            },
+            "interleaving": {
+              "mean": 0.8352,
+              "min": 0.8264,
+              "max": 0.8416,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.057
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.2089,
+            "zero_diff_queries": 48,
+            "mde_at_this_n": 0.0491,
+            "n_for_effect": {
+              "0.005": 13702,
+              "0.010": 3426,
+              "0.020": 857,
+              "0.040": 215
+            },
+            "interleaving": {
+              "mean": 0.5137,
+              "min": 0.4859,
+              "max": 0.5493,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.432
+            }
+          }
+        }
+      },
+      {
+        "pair": "bm25-rerank / hybrid-rerank",
+        "online_servable": false,
+        "candidate_for_6_2": false,
+        "subsamples": {
+          "все": {
+            "queries": 991,
+            "sd_of_paired_diff": 0.1451,
+            "zero_diff_queries": 872,
+            "mde_at_this_n": 0.0129,
+            "n_for_effect": {
+              "0.005": 6613,
+              "0.010": 1654,
+              "0.020": 414,
+              "0.040": 104
+            },
+            "interleaving": {
+              "mean": 0.8371,
+              "min": 0.8264,
+              "max": 0.8446,
+              "seeds": 20,
+              "queries": 991,
+              "mean_margin_when_informative": 1.053
+            }
+          },
+          "живые": {
+            "queries": 142,
+            "sd_of_paired_diff": 0.082,
+            "zero_diff_queries": 95,
+            "mde_at_this_n": 0.0193,
+            "n_for_effect": {
+              "0.005": 2111,
+              "0.010": 528,
+              "0.020": 132,
+              "0.040": 33
+            },
+            "interleaving": {
+              "mean": 0.4778,
+              "min": 0.4225,
+              "max": 0.5141,
+              "seeds": 20,
+              "queries": 142,
+              "mean_margin_when_informative": 1.404
+            }
+          }
+        }
+      }
+    ]
+  },
+  "online": {
+    "design": "интерливинг команд, знаковый тест на долю выигранных запросов, последовательный с постоянной границей Покока",
+    "plans": [
+      {
+        "excess": 0.02,
+        "win_rate": 0.52,
+        "fixed_sample_n": 4904,
+        "n_max": 6562,
+        "inflation": 1.338,
+        "boundary_z": 2.587,
+        "boundary_z_without_correction": 1.96,
+        "looks_used": 14,
+        "looks_skipped_as_small": 0,
+        "look_sizes": [
+          469,
+          937,
+          1406,
+          1875,
+          2344,
+          2812,
+          3281,
+          3750,
+          4218,
+          4687,
+          5156,
+          5625,
+          6093,
+          6562
+        ],
+        "power_simulated": 0.8095,
+        "expected_n_under_effect": 3883.0,
+        "false_positive_simulated": 0.0517,
+        "simulations": 20000
+      },
+      {
+        "excess": 0.05,
+        "win_rate": 0.55,
+        "fixed_sample_n": 783,
+        "n_max": 1039,
+        "inflation": 1.327,
+        "boundary_z": 2.612,
+        "boundary_z_without_correction": 1.96,
+        "looks_used": 14,
+        "looks_skipped_as_small": 0,
+        "look_sizes": [
+          74,
+          148,
+          223,
+          297,
+          371,
+          445,
+          520,
+          594,
+          668,
+          742,
+          816,
+          891,
+          965,
+          1039
+        ],
+        "power_simulated": 0.8035,
+        "expected_n_under_effect": 621.1,
+        "false_positive_simulated": 0.0481,
+        "simulations": 20000
+      },
+      {
+        "excess": 0.1,
+        "win_rate": 0.6,
+        "fixed_sample_n": 194,
+        "n_max": 248,
+        "inflation": 1.278,
+        "boundary_z": 2.54,
+        "boundary_z_without_correction": 1.96,
+        "looks_used": 13,
+        "looks_skipped_as_small": 1,
+        "look_sizes": [
+          18,
+          35,
+          53,
+          71,
+          89,
+          106,
+          124,
+          142,
+          159,
+          177,
+          195,
+          213,
+          230,
+          248
+        ],
+        "power_simulated": 0.8049,
+        "expected_n_under_effect": 153.4,
+        "false_positive_simulated": 0.0491,
+        "simulations": 20000
+      }
+    ],
+    "candidate_pair": "bm25 / hybrid",
+    "candidate_informative_share": 0.77,
+    "queries_needed_at_target": 1350,
+    "days_needed": {
+      "1": 1350.0,
+      "5": 270.0,
+      "10": 135.0,
+      "50": 27.0
+    },
+    "queries_per_day_needed": 97,
+    "fallback_trigger_informative_queries": 248
+  },
+  "decision": {
+    "online_possible": false,
+    "reason": "живого трафика в репозитории 0 строк за 0 суток, выгрузок 0",
+    "replacement": "офлайн сравнение тем же интерливингом на замороженном наборе, клики заменены разметкой, подвыборки «все 991» и «живые 142» печатаются отдельно и не усредняются"
+  },
+  "seconds": 2.6
+}
