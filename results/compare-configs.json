@@ -1,0 +1,621 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "pair": "bm25 / hybrid",
+  "rule_from": "results/sample-size.json",
+  "rule_written_at": "2026-10-24",
+  "online_test": "не проводился: живого трафика 0 строк за 0 суток",
+  "click_model": "за клик принято попадание размеченного релевантного фрагмента в первую десятку слитого списка",
+  "limits": [
+    "взгляды офлайн это перетасовка одного набора, а не четырнадцать суток независимого трафика",
+    "предпочтение пользователя смоделировано разметкой, а не наблюдено",
+    "подвыборки не усредняются, у каждой свой знаменатель",
+    "интерливинг команд на одинаковых выдачах ничьей не дает: общий фрагмент достается той стороне, которая его вытянула, поэтому часть информативных запросов это шум отбора, и его размер замерен пустой аркой"
+  ],
+  "все": {
+    "queries": 991,
+    "ndcg": {
+      "left": 0.5711,
+      "right": 0.6126,
+      "diff_right_minus_left": 0.0414,
+      "ci": [
+        0.0272,
+        0.0555
+      ],
+      "p_permutation": 0.0,
+      "target_effect": 0.02,
+      "above_target": true
+    },
+    "interleaving": {
+      "seeds": 20,
+      "informative_mean": 763.0,
+      "informative_min": 756,
+      "informative_max": 769,
+      "wins_right_mean": 435.6,
+      "wins_left_mean": 327.4,
+      "ties_mean": 228.0,
+      "win_share_mean": 0.5708,
+      "win_share_min": 0.537,
+      "win_share_max": 0.6081
+    },
+    "fixed_look": {
+      "seed_used": "медианное зерно по доле, чтобы не брать ни лучшее, ни худшее",
+      "informative": 768,
+      "wins_right": 438,
+      "win_share": 0.5703,
+      "ci_wilson": [
+        0.535,
+        0.6049
+      ],
+      "statistic": 3.8971,
+      "boundary_single_look": 1.96,
+      "significant": true
+    },
+    "sequential": {
+      "runs": 20,
+      "stopped_runs": 19,
+      "boundary_mean": 2.6199,
+      "stopped_at_look_min": 1,
+      "stopped_at_look_max": 14,
+      "informative_at_stop_mean": 304.9,
+      "looks_skipped_mean": 0,
+      "example": {
+        "order_seed": 20261024,
+        "looks_planned": 14,
+        "looks_skipped": 0,
+        "boundary": 2.5987,
+        "stopped_at_look": 10,
+        "informative_at_stop": 551,
+        "statistic_at_stop": 2.6839,
+        "table": [
+          {
+            "look": 1,
+            "queries_seen": 71,
+            "informative": 55,
+            "wins_right": 32,
+            "statistic": 1.2136,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 2,
+            "queries_seen": 142,
+            "informative": 113,
+            "wins_right": 67,
+            "statistic": 1.9755,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 3,
+            "queries_seen": 212,
+            "informative": 160,
+            "wins_right": 93,
+            "statistic": 2.0555,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 4,
+            "queries_seen": 283,
+            "informative": 216,
+            "wins_right": 125,
+            "statistic": 2.3134,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 5,
+            "queries_seen": 354,
+            "informative": 272,
+            "wins_right": 156,
+            "statistic": 2.4254,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 6,
+            "queries_seen": 425,
+            "informative": 332,
+            "wins_right": 186,
+            "statistic": 2.1953,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 7,
+            "queries_seen": 496,
+            "informative": 385,
+            "wins_right": 208,
+            "statistic": 1.5799,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 8,
+            "queries_seen": 566,
+            "informative": 447,
+            "wins_right": 246,
+            "statistic": 2.1284,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 9,
+            "queries_seen": 637,
+            "informative": 495,
+            "wins_right": 274,
+            "statistic": 2.3822,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 10,
+            "queries_seen": 708,
+            "informative": 551,
+            "wins_right": 307,
+            "statistic": 2.6839,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 11,
+            "queries_seen": 779,
+            "informative": 606,
+            "wins_right": 335,
+            "statistic": 2.5998,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 12,
+            "queries_seen": 849,
+            "informative": 658,
+            "wins_right": 363,
+            "statistic": 2.6509,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 13,
+            "queries_seen": 920,
+            "informative": 710,
+            "wins_right": 392,
+            "statistic": 2.7772,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 14,
+            "queries_seen": 991,
+            "informative": 761,
+            "wins_right": 420,
+            "statistic": 2.8637,
+            "skipped": false,
+            "crossed": true
+          }
+        ]
+      }
+    }
+  },
+  "живые": {
+    "queries": 142,
+    "ndcg": {
+      "left": 0.3504,
+      "right": 0.3416,
+      "diff_right_minus_left": -0.0087,
+      "ci": [
+        -0.0386,
+        0.0209
+      ],
+      "p_permutation": 0.5683,
+      "target_effect": 0.02,
+      "above_target": false
+    },
+    "interleaving": {
+      "seeds": 20,
+      "informative_mean": 69.0,
+      "informative_min": 66,
+      "informative_max": 75,
+      "wins_right_mean": 32.4,
+      "wins_left_mean": 36.7,
+      "ties_mean": 73.0,
+      "win_share_mean": 0.4683,
+      "win_share_min": 0.4058,
+      "win_share_max": 0.52
+    },
+    "fixed_look": {
+      "seed_used": "медианное зерно по доле, чтобы не брать ни лучшее, ни худшее",
+      "informative": 70,
+      "wins_right": 32,
+      "win_share": 0.4571,
+      "ci_wilson": [
+        0.3457,
+        0.573
+      ],
+      "statistic": -0.7171,
+      "boundary_single_look": 1.96,
+      "significant": false
+    },
+    "sequential": {
+      "runs": 20,
+      "stopped_runs": 2,
+      "boundary_mean": 2.4026,
+      "stopped_at_look_min": 8,
+      "stopped_at_look_max": 8,
+      "informative_at_stop_mean": 38.5,
+      "looks_skipped_mean": 5.5,
+      "example": {
+        "order_seed": 20261024,
+        "looks_planned": 14,
+        "looks_skipped": 5,
+        "boundary": 2.3591,
+        "stopped_at_look": null,
+        "informative_at_stop": null,
+        "statistic_at_stop": null,
+        "table": [
+          {
+            "look": 1,
+            "queries_seen": 10,
+            "informative": 7,
+            "wins_right": 4,
+            "statistic": 0.378,
+            "skipped": true,
+            "crossed": false
+          },
+          {
+            "look": 2,
+            "queries_seen": 20,
+            "informative": 11,
+            "wins_right": 5,
+            "statistic": -0.3015,
+            "skipped": true,
+            "crossed": false
+          },
+          {
+            "look": 3,
+            "queries_seen": 30,
+            "informative": 14,
+            "wins_right": 5,
+            "statistic": -1.069,
+            "skipped": true,
+            "crossed": false
+          },
+          {
+            "look": 4,
+            "queries_seen": 41,
+            "informative": 20,
+            "wins_right": 8,
+            "statistic": -0.8944,
+            "skipped": true,
+            "crossed": false
+          },
+          {
+            "look": 5,
+            "queries_seen": 51,
+            "informative": 29,
+            "wins_right": 14,
+            "statistic": -0.1857,
+            "skipped": true,
+            "crossed": false
+          },
+          {
+            "look": 6,
+            "queries_seen": 61,
+            "informative": 32,
+            "wins_right": 15,
+            "statistic": -0.3536,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 7,
+            "queries_seen": 71,
+            "informative": 37,
+            "wins_right": 17,
+            "statistic": -0.4932,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 8,
+            "queries_seen": 81,
+            "informative": 41,
+            "wins_right": 18,
+            "statistic": -0.7809,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 9,
+            "queries_seen": 91,
+            "informative": 46,
+            "wins_right": 21,
+            "statistic": -0.5898,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 10,
+            "queries_seen": 101,
+            "informative": 52,
+            "wins_right": 24,
+            "statistic": -0.5547,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 11,
+            "queries_seen": 112,
+            "informative": 57,
+            "wins_right": 26,
+            "statistic": -0.6623,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 12,
+            "queries_seen": 122,
+            "informative": 60,
+            "wins_right": 28,
+            "statistic": -0.5164,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 13,
+            "queries_seen": 132,
+            "informative": 62,
+            "wins_right": 29,
+            "statistic": -0.508,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 14,
+            "queries_seen": 142,
+            "informative": 67,
+            "wins_right": 30,
+            "statistic": -0.8552,
+            "skipped": false,
+            "crossed": false
+          }
+        ]
+      }
+    }
+  },
+  "синтетика": {
+    "queries": 846,
+    "ndcg": {
+      "left": 0.6099,
+      "right": 0.6597,
+      "diff_right_minus_left": 0.0499,
+      "ci": [
+        0.0341,
+        0.0659
+      ],
+      "p_permutation": 0.0,
+      "target_effect": 0.02,
+      "above_target": true
+    },
+    "interleaving": {
+      "seeds": 20,
+      "informative_mean": 693.4,
+      "informative_min": 689,
+      "informative_max": 698,
+      "wins_right_mean": 397.9,
+      "wins_left_mean": 295.5,
+      "ties_mean": 152.6,
+      "win_share_mean": 0.5738,
+      "win_share_min": 0.5476,
+      "win_share_max": 0.6176
+    },
+    "fixed_look": {
+      "seed_used": "медианное зерно по доле, чтобы не брать ни лучшее, ни худшее",
+      "informative": 690,
+      "wins_right": 395,
+      "win_share": 0.5725,
+      "ci_wilson": [
+        0.5352,
+        0.6089
+      ],
+      "statistic": 3.8069,
+      "boundary_single_look": 1.96,
+      "significant": true
+    },
+    "sequential": {
+      "runs": 20,
+      "stopped_runs": 20,
+      "boundary_mean": 2.6146,
+      "stopped_at_look_min": 2,
+      "stopped_at_look_max": 13,
+      "informative_at_stop_mean": 358.2,
+      "looks_skipped_mean": 0,
+      "example": {
+        "order_seed": 20261024,
+        "looks_planned": 14,
+        "looks_skipped": 0,
+        "boundary": 2.6264,
+        "stopped_at_look": 5,
+        "informative_at_stop": 256,
+        "statistic_at_stop": 3.125,
+        "table": [
+          {
+            "look": 1,
+            "queries_seen": 60,
+            "informative": 46,
+            "wins_right": 26,
+            "statistic": 0.8847,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 2,
+            "queries_seen": 121,
+            "informative": 98,
+            "wins_right": 54,
+            "statistic": 1.0102,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 3,
+            "queries_seen": 181,
+            "informative": 152,
+            "wins_right": 86,
+            "statistic": 1.6222,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 4,
+            "queries_seen": 242,
+            "informative": 199,
+            "wins_right": 116,
+            "statistic": 2.3393,
+            "skipped": false,
+            "crossed": false
+          },
+          {
+            "look": 5,
+            "queries_seen": 302,
+            "informative": 256,
+            "wins_right": 153,
+            "statistic": 3.125,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 6,
+            "queries_seen": 363,
+            "informative": 307,
+            "wins_right": 178,
+            "statistic": 2.7966,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 7,
+            "queries_seen": 423,
+            "informative": 350,
+            "wins_right": 206,
+            "statistic": 3.314,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 8,
+            "queries_seen": 483,
+            "informative": 404,
+            "wins_right": 233,
+            "statistic": 3.0846,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 9,
+            "queries_seen": 544,
+            "informative": 453,
+            "wins_right": 260,
+            "statistic": 3.1479,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 10,
+            "queries_seen": 604,
+            "informative": 506,
+            "wins_right": 293,
+            "statistic": 3.5564,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 11,
+            "queries_seen": 665,
+            "informative": 554,
+            "wins_right": 329,
+            "statistic": 4.4185,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 12,
+            "queries_seen": 725,
+            "informative": 602,
+            "wins_right": 357,
+            "statistic": 4.5648,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 13,
+            "queries_seen": 786,
+            "informative": 648,
+            "wins_right": 384,
+            "statistic": 4.714,
+            "skipped": false,
+            "crossed": true
+          },
+          {
+            "look": 14,
+            "queries_seen": 846,
+            "informative": 693,
+            "wins_right": 408,
+            "statistic": 4.6724,
+            "skipped": false,
+            "crossed": true
+          }
+        ]
+      }
+    }
+  },
+  "null_arm": {
+    "pair": "bm25 / bm25",
+    "queries": 991,
+    "informative_mean": 727.1,
+    "informative_share": 0.7338,
+    "win_share_mean": 0.5093,
+    "win_share_min": 0.4786,
+    "win_share_max": 0.5356,
+    "win_share_median_draw": 0.5151,
+    "informative_median_draw": 730,
+    "win_share_ci_wilson": [
+      0.4788,
+      0.5511
+    ],
+    "covers_half": true,
+    "stopped_runs": 0,
+    "runs": 20,
+    "alpha": 0.05
+  },
+  "decision": {
+    "per_subsample": [
+      {
+        "subsample": "все",
+        "queries": 991,
+        "established": true,
+        "winner": "hybrid",
+        "text": "подвыборка «все», 991 вопрос: сдвиг NDCG@10 +0.0414 [0.0272; 0.0555], перестановочный тест p=0.0, объявленный порог 0.02 взят. Интерливинг: доля выигранных 0.5703 [0.535; 0.6049] на 768 информативных запросах из 991, знаковый тест 3.8971 против 1,96. Правило остановки сработало бы на 19 порядках из 20 при границе 2.6199. Вывод: выигрывает hybrid"
+      },
+      {
+        "subsample": "живые",
+        "queries": 142,
+        "established": false,
+        "winner": null,
+        "text": "подвыборка «живые», 142 вопроса: сдвиг NDCG@10 -0.0087 [-0.0386; 0.0209], перестановочный тест p=0.5683, объявленный порог 0.02 не взят. Интерливинг: доля выигранных 0.4571 [0.3457; 0.573] на 70 информативных запросах из 142, знаковый тест -0.7171 против 1,96. Правило остановки сработало бы на 2 порядках из 20 при границе 2.4026. Вывод: различия не установлено"
+      },
+      {
+        "subsample": "синтетика",
+        "queries": 846,
+        "established": true,
+        "winner": "hybrid",
+        "text": "подвыборка «синтетика», 846 вопросов: сдвиг NDCG@10 +0.0499 [0.0341; 0.0659], перестановочный тест p=0.0, объявленный порог 0.02 взят. Интерливинг: доля выигранных 0.5725 [0.5352; 0.6089] на 690 информативных запросах из 846, знаковый тест 3.8069 против 1,96. Правило остановки сработало бы на 20 порядках из 20 при границе 2.6146. Вывод: выигрывает hybrid"
+      }
+    ],
+    "served_config": "hybrid",
+    "change_served_config": false,
+    "why": "на живых вопросах различия не установлено (142 вопроса), а на всем наборе выигрывает hybrid, который и стоит в сервисе: менять нечего"
+  },
+  "seconds": 4.5
+}
