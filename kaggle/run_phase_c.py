@@ -93,6 +93,13 @@ def main() -> None:
     ap.add_argument("--probe", type=int, default=100,
                     help="0 — не мерить скорость")
     ap.add_argument("--train", type=int, default=0, help="сколько обучающих вопросов")
+    ap.add_argument("--fewshot", default="",
+                    help="файл с примерами живых вопросов (E4): генератор "
+                         "обучающей выборки видит их как образец манеры. "
+                         "Собирается локально `make fewshot`, в нем нет ни "
+                         "одного вопроса набора запросов")
+    ap.add_argument("--shots", type=int, default=3,
+                    help="сколько примеров показывать в одной подсказке")
     ap.add_argument("--dev", type=int, default=0)
     ap.add_argument("--test", type=int, default=0)
     ap.add_argument("--teacher-filter", action="store_true",
@@ -234,6 +241,20 @@ def main() -> None:
         llm = None
 
     # ---- 1. обучающая выборка ----
+    # Примеры живых вопросов показываются только здесь. dev и тест остаются
+    # прежними нарочно: их генерирует другая модель, и по ним сравниваются
+    # рецепты. Поменяй их вместе с обучающей выборкой, и E4 нельзя было бы
+    # сравнить ни с одним прежним числом.
+    examples = None
+    if args.fewshot:
+        путь = common.find_file(args.fewshot)
+        if путь is None:
+            raise SystemExit(f"не найден {args.fewshot}: соберите его локально "
+                             f"(`make fewshot`) и перезалейте датасет запросов")
+        examples = G.load_fewshot(путь)
+        print(f"примеры живых вопросов: {путь}, {len(examples)} шт., "
+              f"в подсказке {args.shots}", flush=True)
+
     train_path = os.path.join(qdir, "synthetic_train.jsonl")
     if args.train and not os.path.exists(train_path):
         if llm is None:
@@ -241,7 +262,8 @@ def main() -> None:
                              args.max_model_len)
         report["train"] = G.make_queries(
             llm, chunks_of_groups(chunks, split, [S.TRAIN]), train_path,
-            target=args.train, prefix="tr", idf_texts=all_texts, batch=args.batch)
+            target=args.train, prefix="tr", idf_texts=all_texts, batch=args.batch,
+            examples=examples, shots=args.shots)
         report["train"]["модель"] = args.train_model
         save()
     if llm is not None:
