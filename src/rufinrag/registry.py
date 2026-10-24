@@ -32,7 +32,16 @@ DIGEST_CHARS = 12
 # Поля о самой сборке записи, а не о выпуске: дата сборки и машина не меняют
 # того, что отвечает на запросы, и в отпечаток не идут. Иначе версия выпуска
 # менялась бы от пересборки реестра на другой машине.
-NOT_IN_VERSION = {"version", "built_at", "machine", "seconds"}
+#
+# Отпечатки артефактов в версию тоже не идут, и это не упрощение. Индекс,
+# векторы и веса в git не едут (448,8 МБ весов и 45,9 МБ векторов), значит
+# ночной прогон их не видит, а бесплатный тариф поднимается без плотной части
+# вовсе. Считай версию по отпечаткам, и она менялась бы от машины к машине,
+# то есть сервис не смог бы проверить свою. Индекс при этом детерминирован от
+# корпуса, поэтому версию корпуса и числа индекса для выпуска достаточно, а
+# отпечатки лежат рядом справкой и переносятся из прежней записи там, где
+# файла на машине нет.
+NOT_IN_VERSION = {"version", "built_at", "machine", "seconds", "artifacts"}
 # Артефакты, версия которых не выводится из кода: их приходится считать с диска.
 ARTIFACT_FILES = (
     "data/index/bm25.npz",
@@ -58,25 +67,35 @@ def file_digest(path: Path, blocks: int = 1 << 20) -> str:
     return sha.hexdigest()[:DIGEST_CHARS]
 
 
-def artifacts(root: Path) -> dict[str, dict[str, object]]:
+def artifacts(root: Path, previous: dict | None = None) -> dict[str, dict[str, object] | None]:
     """Отпечаток и размер каждого артефакта, которого нет в коде.
 
-    Файла может не быть: базовая установка идет без плотной части, и это
-    штатный режим, а не поломка. Тогда в реестре стоит `null`, и видно, что
-    артефакт не участвовал, вместо тихого пропуска строки.
+    Файла может не быть: базовая установка идет без плотной части, а в git не
+    едут ни индекс, ни векторы, ни веса. Тогда запись переносится из прежнего
+    реестра с пометкой `from_previous`, и видно, что отпечаток снят не здесь.
+    Так ночная пересборка не теряет отпечаток весов, который посчитать ей
+    нечем. Прежней записи нет совсем, стоит `null`, то есть «не замерено», а
+    не тихо пропущенная строка.
     """
-    out: dict[str, dict[str, object]] = {}
+    было = (previous or {}).get("artifacts") or {}
+    out: dict[str, dict[str, object] | None] = {}
     for name in ARTIFACT_FILES:
         path = root / name
-        out[name] = (
-            {"digest": file_digest(path), "mb": round(path.stat().st_size / 1048576, 1)}
-            if path.exists()
-            else None
-        )
+        if path.exists():
+            out[name] = {
+                "digest": file_digest(path),
+                "mb": round(path.stat().st_size / 1048576, 1),
+            }
+        elif было.get(name):
+            out[name] = {**было[name], "from_previous": True}
+        else:
+            out[name] = None
     return out
 
 
-def build(root: Path, corpus_version: str | None = None) -> dict[str, object]:
+def build(
+    root: Path, corpus_version: str | None = None, previous: dict | None = None
+) -> dict[str, object]:
     """Запись реестра из того, что лежит в репозитории.
 
     `corpus_version` передается, если корпус уже поднят: считать его заново
@@ -101,7 +120,7 @@ def build(root: Path, corpus_version: str | None = None) -> dict[str, object]:
             "vocab": index.get("vocab"),
             "measured_at": index.get("measured_at"),
         },
-        "artifacts": artifacts(root),
+        "artifacts": artifacts(root, previous),
     }
     entry["version"] = version_of(entry)
     return entry

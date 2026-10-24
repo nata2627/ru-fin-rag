@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.corpus import load_corpus  # noqa: E402
-from rufinrag.registry import build  # noqa: E402
+from rufinrag.registry import build, load  # noqa: E402
 
 
 def main() -> int:
@@ -33,7 +33,9 @@ def main() -> int:
 
     started = time.monotonic()
     corpus = load_corpus()
-    entry = build(ROOT, corpus_version=corpus.version)
+    # Прежняя запись нужна не для сравнения, а чтобы не потерять отпечатки
+    # артефактов, которых на этой машине нет (ночной прогон без весов).
+    entry = build(ROOT, corpus_version=corpus.version, previous=load(ROOT))
     entry = {
         "built_at": time.strftime("%Y-%m-%d"),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
@@ -44,8 +46,15 @@ def main() -> int:
     args.out.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     missing = [name for name, value in entry["artifacts"].items() if value is None]
+    inherited = [
+        name for name, value in entry["artifacts"].items()
+        if value and value.get("from_previous")
+    ]
     print(f"реестр {entry['version']}: корпус {entry['corpus_version']}, "
           f"связка по умолчанию {entry['default_config']}, ответ {entry['answer_version']}")
+    if inherited:
+        print(f"отпечатки перенесены из прежней записи: {len(inherited)} из "
+              f"{len(entry['artifacts'])} ({', '.join(inherited)})")
     if missing:
         print(f"артефактов нет на диске: {len(missing)} из {len(entry['artifacts'])} "
               f"({', '.join(missing)})")

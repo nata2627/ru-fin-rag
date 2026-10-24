@@ -18,7 +18,7 @@
   "digest_chars": 12,
   "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки (в том числе русские буквы) в подчеркивание",
   "metric_name_collisions": 0,
-  "registry_version": "e55cd0eb8670",
+  "registry_version": "45c3556eb6ca",
   "logged": [],
-  "seconds": 0.4
+  "seconds": 0.5
 }
