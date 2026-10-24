@@ -95,6 +95,20 @@ jobs:
           RUFINRAG_EVENTS_TOKEN: ${{ secrets.RUFINRAG_EVENTS_TOKEN }}
         run: python scripts/drain_events.py
 
+      # Мониторинг трех сигналов одним шагом: дрейф распределения запросов и
+      # доля запросов без хорошего ответа считаются по журналу, а деградацию на
+      # эталонном наборе шаг берет готовой из results/regression.json, чтобы
+      # число в issue и число в отчете не разошлись.
+      #
+      # Шаг не роняет прогон нарочно. Дрейф запросов и доля без ответа это не
+      # поломка регламента, а свойство трафика: алерт уходит тем же путем, что
+      # отказ cbr.ru, то есть issue при зеленом прогоне. Красный main обнулил бы
+      # часы приемки автономности. Поломка самого мониторинга (нет замера
+      # порогов, битый журнал) красит прогон, и это другой случай.
+      - name: Monitor query drift and the answerless share
+        id: monitoring
+        run: python scripts/check_monitoring.py
+
       - name: Verify published numbers
         run: python scripts/verify_numbers.py
 
@@ -111,7 +125,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
             results/corpus-update.json results/regression.json results/regulation.json \
-            data/events results/events.json
+            results/monitoring.json data/events results/events.json
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
@@ -129,19 +143,31 @@ jobs:
             git push
           fi
 
-      # Срабатывает и на поломке, и на отказе cbr.ru. Второй случай прогон не
-      # роняет, но и молчать о нем нельзя: issue это единственный канал, в
-      # котором отказ источника виден без чтения логов.
-      - name: Open an issue when the run breaks or cbr.ru refuses
-        if: failure() || cancelled() || steps.corpus.outputs.status == 'source_unavailable'
+      # Срабатывает на поломке, на отказе cbr.ru и на алерте мониторинга. Два
+      # последних случая прогон не роняют, но и молчать о них нельзя: issue это
+      # единственный канал, в котором они видны без чтения логов.
+      #
+      # Второго issue от нового алерта не появляется: открытый issue с той же
+      # меткой ищется до всего остального, и, если он есть, текст уходит
+      # комментарием в него. Метка одна на все три случая нарочно, иначе две
+      # метки дали бы два issue про одну ночь.
+      - name: Open an issue when the run breaks, cbr.ru refuses or monitoring alerts
+        if: >-
+          failure() || cancelled()
+          || steps.corpus.outputs.status == 'source_unavailable'
+          || steps.monitoring.outputs.alert == 'fired'
         uses: actions/github-script@v7
         env:
           SOURCE_STATUS: ${{ steps.corpus.outputs.status }}
+          MONITORING_ALERT: ${{ steps.monitoring.outputs.alert }}
+          JOB_STATUS: ${{ job.status }}
         with:
           script: |
             const fs = require('fs')
             const marker = 'nightly-broken'
             const refused = process.env.SOURCE_STATUS === 'source_unavailable'
+            const alerted = process.env.MONITORING_ALERT === 'fired'
+            const broken = process.env.JOB_STATUS !== 'success'
             const open = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
               state: 'open', labels: marker,
@@ -157,7 +183,29 @@ jobs:
               }
             }
             const regression = read('results/regression.json')
-            const body = refused ? [
+            const monitoring = read('results/monitoring.json')
+            // Деградация на эталонном наборе печатается отдельной строкой ниже,
+            // поэтому здесь остаются сигналы про трафик: иначе одно и то же
+            // число стояло бы в issue дважды. Тексты собирает
+            // scripts/check_monitoring.py, здесь они только печатаются, и
+            // знаменатель в них уже есть.
+            const traffic = (monitoring.signals || []).filter(
+              (signal) => signal.fired && signal.name !== 'benchmark_regression')
+            const window = monitoring.window || {}
+            const journal = monitoring.journal || {}
+            const monitoringLines = alerted ? [
+              '',
+              'Алерт мониторинга:',
+              ...(traffic.length
+                ? traffic.map((signal) => `- ${signal.text}`)
+                : [`- ${monitoring.alert?.text || 'текст алерта не записан'}`]),
+              `Окно: ${window.collected ?? '?'} из ${window.needed ?? '?'} нужных запросов;`
+                + ` всего в журнале ${journal.queries ?? '?'} запросов, суток`
+                + ` ${journal.days ?? '?'}.`,
+              'Пороги измерены, разбор в results/monitoring-thresholds.json и',
+              'results/monitoring-drill.json, состояние в results/monitoring.json.',
+            ] : []
+            const refusedBody = [
               'cbr.ru не отдал перечень «Вестника», и докачка новых актов отложена до следующего',
               'прогона. Прогон на этом не остановился: корпус на диске цел, индекс пересобран,',
               'регрессия посчитана, отметка живости записана, `main` остался зеленым.',
@@ -172,7 +220,8 @@ jobs:
               'растет несколько суток, значит cbr.ru перестал пускать бесплатные раннеры GitHub,',
               'и докачку придется запускать с другой машины. Это ограничение автономности, и его',
               'надо назвать в README, а не лечить обходом чужой защиты.',
-            ].join('\n') : [
+            ]
+            const brokenBody = [
               'Ночной прогон упал. Сервис от этого не останавливается: он отвечает на том корпусе,',
               'который уже лежит в репозитории, а regression.json остался от прошлого прогона.',
               '',
@@ -198,7 +247,33 @@ jobs:
               'открывает issue с пометкой, что докачка отложена.',
               '',
               'Прогон можно запустить руками: вкладка Actions, workflow nightly, кнопка Run workflow.',
+            ]
+            const alertBody = [
+              'Ночной прогон прошел зеленым, а мониторинг поднял алерт. Сервис отвечает, корпус',
+              'цел, регламент идет дальше: это сигнал про трафик, а не поломка.',
+              '',
+              `Лог: ${url}`,
+              '',
+              'Что с этим делать:',
+              '1. Дрейф распределения запросов: посмотреть, какой признак сдвинулся (поле',
+              '   `worst_feature` в results/monitoring.json) и сами запросы в data/events. Порог',
+              '   выведен из разброса на замороженном наборе вопросов, живого трафика в нем нет,',
+              '   и первая версия алерта на живых запросах может оказаться слишком строгой.',
+              '2. Доля запросов без хорошего ответа: признак опоры это оценка лучшего кандидата',
+              '   поиска, и он слабый. Его ошибки в обе стороны со знаменателями лежат в',
+              '   results/monitoring-thresholds.json, поле support_candidates.',
+              '',
+              'Прогон можно запустить руками: вкладка Actions, workflow nightly, кнопка Run workflow.',
+            ]
+            const body = [
+              ...(broken ? brokenBody : refused ? refusedBody : alertBody),
+              ...monitoringLines,
             ].join('\n')
+            const title = broken
+              ? 'Ночной прогон упал'
+              : refused
+                ? 'Ночной прогон зеленый, cbr.ru не отдал перечень'
+                : 'Ночной прогон зеленый, сработал алерт мониторинга'
             if (open.data.length) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo,
@@ -207,7 +282,7 @@ jobs:
             } else {
               await github.rest.issues.create({
                 owner: context.repo.owner, repo: context.repo.repo,
-                title: 'Ночной прогон упал', labels: [marker], body,
+                title, labels: [marker], body,
               })
             }
 
