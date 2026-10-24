@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .answer import Answer
 from .config import data_dir, env
 from .retrieval.text import tokenize
 from .search import SearchResult
@@ -51,6 +52,18 @@ ANSWERED_FIELDS = (
     "hits",
     "results",
     "degraded",
+)
+# Поля, которые добавляет запрос в слой ответа. Витрина их не читает и читать
+# не должна: она собрана по полям поиска, а неизвестные поля движок пропускает
+# (`input_format_skip_unknown_fields`, warehouse.py). Поэтому формат строки
+# поиска здесь не меняется, и модели dbt остаются как есть.
+ANSWER_FIELDS = (
+    "endpoint",
+    "mode",
+    "answer_outcome",
+    "answer_version",
+    "support",
+    "citations",
 )
 FEEDBACK_FIELDS = ("schema", "kind", "request_id", "received_at", "rating")
 
@@ -112,6 +125,45 @@ def answered(
         ],
         "degraded": result.degraded,
     }
+
+
+def answer_event(
+    request_id: str, received_at: str, top: int, answer: Answer, service_version: str
+) -> dict:
+    """Событие запроса в слой ответа: строка поиска плюс отказ или ответ.
+
+    Отказ по отсутствию опоры это штатный ответ, а не ошибка запроса, поэтому
+    `outcome` остается `ok` и строка попадает в витрину тем же путем, что
+    обычная выдача. Отказал сервис или ответил, стоит отдельным полем: иначе
+    доля отказов и доля ошибок складывались бы в одно число.
+
+    Текста выдержек в строке нет. В журнал едут идентификаторы фрагментов и
+    номера пунктов, по которым выдержку можно собрать заново из корпуса, а
+    журнал уезжает в репозиторий (DECISIONS, решение 12), и дублировать в него
+    куски актов незачем.
+    """
+    event = answered(request_id, received_at, top, answer.search, service_version)
+    event.update(
+        {
+            "endpoint": "answer",
+            "mode": answer.mode,
+            "answer_outcome": "answer" if answer.answered else "refusal",
+            "answer_version": answer.answer_version,
+            "support": answer.support.as_dict(),
+            "citations": [
+                {
+                    "chunk_id": citation.chunk_id,
+                    "act_id": citation.act_id,
+                    "clauses": list(citation.clauses),
+                }
+                for citation in answer.citations
+            ],
+            "timings_ms": answer.timings_ms,
+        }
+    )
+    if not answer.answered:
+        event["reason"] = answer.refusal[:500]
+    return event
 
 
 def rejected(
