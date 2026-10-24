@@ -1,18 +1,14 @@
 {
-  "checked_at": "2026-10-23T16:04:57",
+  "checked_at": "2026-10-24T07:19:42",
   "status": "ok",
   "index_acts": 6081,
   "wanted_acts": 1659,
   "known_acts": 1555,
-  "skipped_before": 97,
-  "new_acts_in_index": 2,
+  "skipped_before": 99,
+  "new_acts_in_index": 0,
   "new_acts_added": 0,
   "new_chunks": 0,
   "issues_downloaded": 0,
-  "dropped": {
-    "выпуск не найден на cbr.ru": 2
-  },
-  "skipped_total": 99,
-  "acts": [],
-  "seconds": 40.7
+  "dropped": {},
+  "seconds": 28.8
 }
