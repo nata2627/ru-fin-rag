@@ -17,8 +17,14 @@ echo "== ruff"
 "$PY" -m ruff check src tests dags
 "$PY" -m ruff format --check src tests dags
 
+# Отдельным шагом, потому что это выход задач 7.1 и 7.2: сервис обязан
+# отвечать в обоих режимах, а на вопрос вне корпуса отказывать. Общий прогон
+# ниже идет без этих тестов, чтобы они не считались дважды.
+echo "== ответ: выдержки, генерация подставной моделью, отказ вне корпуса"
+"$PY" -m pytest -m answer
+
 echo "== pytest"
-"$PY" -m pytest
+"$PY" -m pytest -m "not answer"
 
 echo "== числа публичных текстов"
 "$PY" scripts/verify_numbers.py
