@@ -149,3 +149,38 @@ def test_формат_ответа_судьи_не_попал_в_инструк�
     судья строками. Попади формат в инструкцию, человек читал бы указание
     не про себя."""
     assert ANSWER_FORMAT not in RUBRIC
+
+
+def test_otvet_bez_nomerov_razbiraetsya():
+    """Так отвечает Qwen2.5-32B-AWQ: номера строк он не ставит.
+
+    24.10.2026 на этом не разобралось 150 ответов из 150, то есть весь прогон
+    судьи. Нумерация это оформление, а не ответ.
+    """
+    assert parse_answers("нет да тип: часть ответа") == (False, True, "часть")
+    assert parse_answers("нет нет тип: -") == (False, False, "-")
+    assert parse_answers("да - -") == (True, False, "-")
+
+
+def test_poryadok_otvetov_bez_nomerov_znachit():
+    """Первое «да/нет» это первый вопрос, второе второй. Иначе оценка перевернется."""
+    assert parse_answers("да нет тип: -")[0] is True
+    assert parse_answers("нет да тип: иное")[0] is False
+
+
+def test_odin_otvet_bez_nomerov_ne_razbiraetsya():
+    """Половина ответа это не ответ: пара идет в счетчик неразобранного."""
+    assert parse_answers("да") is None
+    assert parse_answers("ответить не могу") is None
+
+
+def test_slova_iz_tipa_ne_schitayutsya_otvetami():
+    """«общая норма» и «часть ответа» стоят после слова тип и в ответы не идут."""
+    assert parse_answers("да - тип: общая норма") == (True, False, "-")
+
+
+def test_nomerovannyy_otvet_odnoy_strokoy_razbiraetsya():
+    """Так ответ лежит в листе после склейки строк, и так его читает пересчет."""
+    assert parse_answers("1: нет 2: да тип: часть ответа") == (False, True, "часть")
+    assert parse_answers("1: нет 2: нет тип: -") == (False, False, "-")
+    assert parse_answers("1: да 2: - тип: -") == (True, False, "-")

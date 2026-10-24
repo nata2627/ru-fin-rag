@@ -130,7 +130,15 @@ ANSWER_FORMAT = """\
 TYPES = ("общая", "часть", "иное")
 
 _YES_NO = re.compile(r"^\s*(?:вопрос\s*)?([12])\s*[:.)]\s*(да|нет|-)", re.I | re.M)
-_TYPE = re.compile(r"^\s*тип\s*[:.)]\s*(общая|часть|иное|-)", re.I | re.M)
+# Пометка типа ищется в любом месте ответа, а не только с начала строки:
+# без нумерации модель пишет ее в той же строке, что и ответы.
+_TYPE = re.compile(r"\bтип\s*[:.)]\s*(общая|часть|иное|-)", re.I)
+# Ответ без нумерации: «нет да тип: часть ответа». Так отвечает
+# `Qwen2.5-32B-Instruct-AWQ`, и на этом 24.10.2026 не разобралось 150 ответов
+# из 150, то есть весь прогон. Нумерация это оформление, а не ответ, и терять
+# из-за нее разметку нельзя. Порядок при этом остается значащим: первое
+# «да/нет» отвечает на первый вопрос, второе на второй.
+_BARE = re.compile(r"(?<![а-яё])(да|нет|-)(?![а-яё])", re.I)
 
 
 def parse_answers(raw: str) -> tuple[bool, bool, str] | None:
@@ -141,11 +149,17 @@ def parse_answers(raw: str) -> tuple[bool, bool, str] | None:
     спрашивается и читается как «нет»: на оценку он все равно не влияет.
     """
     answers = {m.group(1): m.group(2).lower() for m in _YES_NO.finditer(raw)}
-    first = answers.get("1")
+    first, second = answers.get("1"), answers.get("2")
+    if first is None or second is None:
+        # Нумерованный разбор держится за начало строки, а ответ бывает одной
+        # строкой: «1: нет 2: да тип: часть ответа». Тогда номер находится
+        # только у первого ответа, и второй добирается по порядку.
+        по_порядку = _by_order(raw)
+        first = first if first is not None else по_порядку[0]
+        second = second if second is not None else по_порядку[1]
     if first not in ("да", "нет"):
         return None
     whole = first == "да"
-    second = answers.get("2")
     if not whole and second not in ("да", "нет"):
         return None
     together = second == "да"
@@ -154,6 +168,20 @@ def parse_answers(raw: str) -> tuple[bool, bool, str] | None:
     if kind not in TYPES or whole or not together:
         kind = "-"
     return whole, together, kind
+
+
+def _by_order(raw: str) -> tuple[str | None, str | None]:
+    """Ответы по порядку, когда модель не поставила номера.
+
+    Строка типа читается отдельно, иначе «тип: иное» и «общая норма» подмешали
+    бы свои слова в счет ответов. Берутся первые два «да», «нет» или «-» из
+    того, что осталось.
+    """
+    head = re.split(r"\bтип\b", raw, maxsplit=1, flags=re.I)[0]
+    found = [m.group(1).lower() for m in _BARE.finditer(head)]
+    if len(found) < 2:
+        return None, None
+    return found[0], found[1]
 
 
 def scale_of(whole: bool, together: bool) -> int:
