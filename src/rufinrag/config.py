@@ -41,6 +41,31 @@ def project_root(marker: Path = CONFIG_FILE) -> Path:
     )
 
 
+# Направления обхода графа ссылок. Список повторяет `graph.DIRECTIONS`, потому
+# что `config` не импортирует `graph` (тот читает корпус, а корпус читает
+# конфигурацию). Совпадение двух списков держит тест.
+GRAPH_DIRECTIONS = ("forward", "backward", "both")
+GRAPH_MODES = ("fusion", "reserve")
+
+
+@dataclass(frozen=True)
+class GraphSpec:
+    """Расширение выдачи по цитированию: режим, направление, размеры.
+
+    Замер режимов лежит в `results/graph-expansion.json` (EXPERIMENTS, S20):
+    `fusion` проиграл базе 0,1301 NDCG@10 на 991 запросе, `reserve` дал 0,0001
+    [-0,0014; 0,0018], то есть ничего. Параметры здесь, а не в коде, потому что
+    смена связки это правка файла конфигурации (SPEC, раздел 3).
+    """
+
+    mode: str
+    direction: str
+    seeds: int
+    depth: int
+    weight: float
+    reserve: int
+
+
 @dataclass(frozen=True)
 class RerankSpec:
     model: str
@@ -57,6 +82,7 @@ class RetrievalConfig:
     dense_model: str | None
     rrf_k: int
     rerank: RerankSpec | None
+    graph: GraphSpec | None
     note: str
 
     @property
@@ -70,6 +96,8 @@ class RetrievalConfig:
             parts.append(self.dense_model)
         if self.rerank:
             parts.append(f"rerank{self.rerank.depth}")
+        if self.graph:
+            parts.append(f"graph{self.graph.mode}{self.graph.direction}{self.graph.seeds}")
         return "+".join(parts)
 
 
@@ -103,6 +131,7 @@ def load_catalog(path: Path | None = None) -> Catalog:
     configs: dict[str, RetrievalConfig] = {}
     for name, item in raw["configs"].items():
         rerank = item.get("rerank")
+        graph = item.get("graph")
         configs[name] = RetrievalConfig(
             name=name,
             first_stage=_required(item, "first_stage", name),
@@ -117,6 +146,7 @@ def load_catalog(path: Path | None = None) -> Catalog:
             )
             if rerank
             else None,
+            graph=_graph_spec(graph, name) if graph else None,
             note=str(item.get("note", "")).strip(),
         )
 
@@ -137,6 +167,33 @@ def load_catalog(path: Path | None = None) -> Catalog:
         default = override
 
     return Catalog(version=int(raw.get("version", 1)), default=default, configs=configs)
+
+
+def _graph_spec(raw: dict, name: str) -> GraphSpec:
+    where = f"{name}.graph"
+    mode = str(_required(raw, "mode", where))
+    direction = str(_required(raw, "direction", where))
+    if mode not in GRAPH_MODES:
+        raise ConfigError(f"{where}: режим {mode!r}, известны: {', '.join(GRAPH_MODES)}")
+    if direction not in GRAPH_DIRECTIONS:
+        raise ConfigError(
+            f"{where}: направление {direction!r}, известны: {', '.join(GRAPH_DIRECTIONS)}"
+        )
+    spec = GraphSpec(
+        mode=mode,
+        direction=direction,
+        seeds=int(_required(raw, "seeds", where)),
+        depth=int(raw.get("depth", 0)),
+        weight=float(raw.get("weight", 1.0)),
+        reserve=int(raw.get("reserve", 0)),
+    )
+    if spec.seeds < 1:
+        raise ConfigError(f"{where}: seeds {spec.seeds}, нужно не меньше одного")
+    if mode == "fusion" and spec.depth < 1:
+        raise ConfigError(f"{where}: режиму fusion нужна глубина depth больше нуля")
+    if mode == "reserve" and spec.reserve < 1:
+        raise ConfigError(f"{where}: режиму reserve нужно reserve больше нуля")
+    return spec
 
 
 def _required(item: dict, key: str, where: str):

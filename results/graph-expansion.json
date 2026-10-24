@@ -1,0 +1,603 @@
+{
+  "measured_at": "2026-10-24",
+  "corpus_version": "chunks62606-acts1555",
+  "graph": {
+    "edges": 4376,
+    "acts_with_references": 1173,
+    "build_seconds": 15.65
+  },
+  "subsamples": {
+    "linked": 25,
+    "linked_connected": 21,
+    "linked_without_dev": 25,
+    "live": 142,
+    "all": 991,
+    "all_without_dev": 691,
+    "dev": 300
+  },
+  "min_queries_for_a_result": 30,
+  "variants": {
+    "fusion": {
+      "tuning": {
+        "on": "dev",
+        "queries": 300,
+        "grid": {
+          "direction": [
+            "forward",
+            "backward",
+            "both"
+          ],
+          "seeds": [
+            3,
+            5,
+            10
+          ],
+          "depth": [
+            5,
+            10
+          ],
+          "weight": [
+            0.3,
+            0.5,
+            1.0
+          ]
+        },
+        "seconds": 48.7,
+        "points": 54,
+        "best": {
+          "direction": "backward",
+          "seeds": 3,
+          "depth": 5,
+          "weight": 0.3
+        },
+        "top": [
+          {
+            "direction": "backward",
+            "seeds": 3,
+            "depth": 5,
+            "weight": 0.3,
+            "dev_ndcg10": 0.5549,
+            "added_mean": 1.067
+          },
+          {
+            "direction": "backward",
+            "seeds": 3,
+            "depth": 10,
+            "weight": 0.3,
+            "dev_ndcg10": 0.5499,
+            "added_mean": 1.303
+          },
+          {
+            "direction": "backward",
+            "seeds": 5,
+            "depth": 5,
+            "weight": 0.3,
+            "dev_ndcg10": 0.5463,
+            "added_mean": 1.267
+          }
+        ],
+        "worst": {
+          "direction": "both",
+          "seeds": 10,
+          "depth": 10,
+          "weight": 1.0,
+          "dev_ndcg10": 0.3173,
+          "added_mean": 5.833
+        },
+        "points_above_base": 0
+      },
+      "ceiling": {
+        "linked": {
+          "queries": 25,
+          "reachable": 13
+        },
+        "linked_connected": {
+          "queries": 21,
+          "reachable": 12
+        },
+        "linked_without_dev": {
+          "queries": 25,
+          "reachable": 13
+        },
+        "live": {
+          "queries": 142,
+          "reachable": 24
+        },
+        "all": {
+          "queries": 991,
+          "reachable": 40
+        },
+        "all_without_dev": {
+          "queries": 691,
+          "reachable": 32
+        },
+        "dev": {
+          "queries": 300,
+          "reachable": 8
+        }
+      },
+      "levels": {
+        "hybrid": {
+          "base": {
+            "Recall@1": 0.4066,
+            "Recall@5": 0.6776,
+            "Recall@10": 0.7578,
+            "MRR@10": 0.5912,
+            "NDCG@10": 0.6126
+          },
+          "expanded": {
+            "Recall@1": 0.2289,
+            "Recall@5": 0.5816,
+            "Recall@10": 0.7403,
+            "MRR@10": 0.4129,
+            "NDCG@10": 0.4825
+          },
+          "added_into_top10_mean": 1.382
+        },
+        "bm25": {
+          "base": {
+            "Recall@1": 0.368,
+            "Recall@5": 0.6481,
+            "Recall@10": 0.7203,
+            "MRR@10": 0.552,
+            "NDCG@10": 0.5711
+          },
+          "expanded": {
+            "Recall@1": 0.1971,
+            "Recall@5": 0.4789,
+            "Recall@10": 0.7033,
+            "MRR@10": 0.3608,
+            "NDCG@10": 0.4335
+          },
+          "added_into_top10_mean": 1.532
+        }
+      },
+      "difference_ndcg10": {
+        "hybrid": {
+          "linked": {
+            "mean": -0.1443,
+            "lo": -0.2114,
+            "hi": -0.0813,
+            "p": 0.0,
+            "queries": 25,
+            "base": 0.4714,
+            "expanded": 0.3271,
+            "won": 1,
+            "lost": 19
+          },
+          "linked_connected": {
+            "mean": -0.1543,
+            "lo": -0.2303,
+            "hi": -0.0824,
+            "p": 0.0004,
+            "queries": 21,
+            "base": 0.484,
+            "expanded": 0.3296,
+            "won": 1,
+            "lost": 16
+          },
+          "linked_without_dev": {
+            "mean": -0.1443,
+            "lo": -0.2114,
+            "hi": -0.0813,
+            "p": 0.0,
+            "queries": 25,
+            "base": 0.4714,
+            "expanded": 0.3271,
+            "won": 1,
+            "lost": 19
+          },
+          "live": {
+            "mean": -0.1255,
+            "lo": -0.1569,
+            "hi": -0.0948,
+            "p": 0.0,
+            "queries": 142,
+            "base": 0.3416,
+            "expanded": 0.2162,
+            "won": 7,
+            "lost": 78
+          },
+          "all": {
+            "mean": -0.1301,
+            "lo": -0.1438,
+            "hi": -0.1166,
+            "p": 0.0,
+            "queries": 991,
+            "base": 0.6126,
+            "expanded": 0.4825,
+            "won": 16,
+            "lost": 399
+          },
+          "all_without_dev": {
+            "mean": -0.1414,
+            "lo": -0.1581,
+            "hi": -0.1251,
+            "p": 0.0,
+            "queries": 691,
+            "base": 0.5924,
+            "expanded": 0.451,
+            "won": 11,
+            "lost": 304
+          },
+          "dev": {
+            "mean": -0.104,
+            "lo": -0.128,
+            "hi": -0.0809,
+            "p": 0.0,
+            "queries": 300,
+            "base": 0.6589,
+            "expanded": 0.5549,
+            "won": 5,
+            "lost": 95
+          }
+        },
+        "bm25": {
+          "linked": {
+            "mean": -0.1118,
+            "lo": -0.1677,
+            "hi": -0.0593,
+            "p": 0.0001,
+            "queries": 25,
+            "base": 0.4296,
+            "expanded": 0.3178,
+            "won": 2,
+            "lost": 16
+          },
+          "linked_connected": {
+            "mean": -0.1151,
+            "lo": -0.1804,
+            "hi": -0.0565,
+            "p": 0.0006,
+            "queries": 21,
+            "base": 0.4405,
+            "expanded": 0.3254,
+            "won": 2,
+            "lost": 13
+          },
+          "linked_without_dev": {
+            "mean": -0.1118,
+            "lo": -0.1677,
+            "hi": -0.0593,
+            "p": 0.0001,
+            "queries": 25,
+            "base": 0.4296,
+            "expanded": 0.3178,
+            "won": 2,
+            "lost": 16
+          },
+          "live": {
+            "mean": -0.1517,
+            "lo": -0.1833,
+            "hi": -0.12,
+            "p": 0.0,
+            "queries": 142,
+            "base": 0.3504,
+            "expanded": 0.1987,
+            "won": 7,
+            "lost": 80
+          },
+          "all": {
+            "mean": -0.1377,
+            "lo": -0.1523,
+            "hi": -0.123,
+            "p": 0.0,
+            "queries": 991,
+            "base": 0.5711,
+            "expanded": 0.4335,
+            "won": 28,
+            "lost": 418
+          },
+          "all_without_dev": {
+            "mean": -0.1442,
+            "lo": -0.1623,
+            "hi": -0.1264,
+            "p": 0.0,
+            "queries": 691,
+            "base": 0.545,
+            "expanded": 0.4008,
+            "won": 21,
+            "lost": 310
+          },
+          "dev": {
+            "mean": -0.1226,
+            "lo": -0.1497,
+            "hi": -0.0964,
+            "p": 0.0,
+            "queries": 300,
+            "base": 0.6313,
+            "expanded": 0.5087,
+            "won": 7,
+            "lost": 108
+          }
+        }
+      }
+    },
+    "reserve": {
+      "tuning": {
+        "on": "dev",
+        "queries": 300,
+        "grid": {
+          "direction": [
+            "forward",
+            "backward",
+            "both"
+          ],
+          "seeds": [
+            3,
+            5
+          ],
+          "reserve": [
+            1,
+            2,
+            3
+          ]
+        },
+        "seconds": 23.4,
+        "points": 18,
+        "best": {
+          "direction": "forward",
+          "seeds": 3,
+          "reserve": 1
+        },
+        "top": [
+          {
+            "direction": "forward",
+            "seeds": 3,
+            "reserve": 1,
+            "dev_ndcg10": 0.6599,
+            "added_mean": 0.757
+          },
+          {
+            "direction": "both",
+            "seeds": 3,
+            "reserve": 1,
+            "dev_ndcg10": 0.6599,
+            "added_mean": 0.693
+          },
+          {
+            "direction": "backward",
+            "seeds": 3,
+            "reserve": 1,
+            "dev_ndcg10": 0.6596,
+            "added_mean": 0.717
+          }
+        ],
+        "worst": {
+          "direction": "forward",
+          "seeds": 5,
+          "reserve": 3,
+          "dev_ndcg10": 0.6466,
+          "added_mean": 2.63
+        },
+        "points_above_base": 3
+      },
+      "ceiling": {
+        "linked": {
+          "queries": 25,
+          "reachable": 9
+        },
+        "linked_connected": {
+          "queries": 21,
+          "reachable": 9
+        },
+        "linked_without_dev": {
+          "queries": 25,
+          "reachable": 9
+        },
+        "live": {
+          "queries": 142,
+          "reachable": 41
+        },
+        "all": {
+          "queries": 991,
+          "reachable": 58
+        },
+        "all_without_dev": {
+          "queries": 691,
+          "reachable": 54
+        },
+        "dev": {
+          "queries": 300,
+          "reachable": 4
+        }
+      },
+      "levels": {
+        "hybrid": {
+          "base": {
+            "Recall@1": 0.4066,
+            "Recall@5": 0.6776,
+            "Recall@10": 0.7578,
+            "MRR@10": 0.5912,
+            "NDCG@10": 0.6126
+          },
+          "expanded": {
+            "Recall@1": 0.4066,
+            "Recall@5": 0.6776,
+            "Recall@10": 0.7587,
+            "MRR@10": 0.5914,
+            "NDCG@10": 0.6127
+          },
+          "added_into_top10_mean": 0.729
+        },
+        "bm25": {
+          "base": {
+            "Recall@1": 0.368,
+            "Recall@5": 0.6481,
+            "Recall@10": 0.7203,
+            "MRR@10": 0.552,
+            "NDCG@10": 0.5711
+          },
+          "expanded": {
+            "Recall@1": 0.368,
+            "Recall@5": 0.6481,
+            "Recall@10": 0.7185,
+            "MRR@10": 0.5518,
+            "NDCG@10": 0.5705
+          },
+          "added_into_top10_mean": 0.606
+        }
+      },
+      "difference_ndcg10": {
+        "hybrid": {
+          "linked": {
+            "mean": -0.0108,
+            "lo": -0.0298,
+            "hi": 0.0043,
+            "p": 0.3025,
+            "queries": 25,
+            "base": 0.4714,
+            "expanded": 0.4606,
+            "won": 3,
+            "lost": 5
+          },
+          "linked_connected": {
+            "mean": -0.0107,
+            "lo": -0.0327,
+            "hi": 0.0067,
+            "p": 0.386,
+            "queries": 21,
+            "base": 0.484,
+            "expanded": 0.4732,
+            "won": 3,
+            "lost": 4
+          },
+          "linked_without_dev": {
+            "mean": -0.0108,
+            "lo": -0.0298,
+            "hi": 0.0043,
+            "p": 0.3025,
+            "queries": 25,
+            "base": 0.4714,
+            "expanded": 0.4606,
+            "won": 3,
+            "lost": 5
+          },
+          "live": {
+            "mean": -0.002,
+            "lo": -0.0068,
+            "hi": 0.0025,
+            "p": 0.4228,
+            "queries": 142,
+            "base": 0.3416,
+            "expanded": 0.3397,
+            "won": 6,
+            "lost": 8
+          },
+          "all": {
+            "mean": 0.0001,
+            "lo": -0.0014,
+            "hi": 0.0018,
+            "p": 0.8906,
+            "queries": 991,
+            "base": 0.6126,
+            "expanded": 0.6127,
+            "won": 10,
+            "lost": 12
+          },
+          "all_without_dev": {
+            "mean": -0.0003,
+            "lo": -0.0023,
+            "hi": 0.0019,
+            "p": 0.8135,
+            "queries": 691,
+            "base": 0.5924,
+            "expanded": 0.5922,
+            "won": 9,
+            "lost": 12
+          },
+          "dev": {
+            "mean": 0.001,
+            "lo": 0.0,
+            "hi": 0.0029,
+            "p": 1.0,
+            "queries": 300,
+            "base": 0.6589,
+            "expanded": 0.6599,
+            "won": 1,
+            "lost": 0
+          }
+        },
+        "bm25": {
+          "linked": {
+            "mean": -0.0071,
+            "lo": -0.0141,
+            "hi": -0.0016,
+            "p": 0.1265,
+            "queries": 25,
+            "base": 0.4296,
+            "expanded": 0.4225,
+            "won": 0,
+            "lost": 4
+          },
+          "linked_connected": {
+            "mean": -0.0084,
+            "lo": -0.0166,
+            "hi": -0.0019,
+            "p": 0.1249,
+            "queries": 21,
+            "base": 0.4405,
+            "expanded": 0.4321,
+            "won": 0,
+            "lost": 4
+          },
+          "linked_without_dev": {
+            "mean": -0.0071,
+            "lo": -0.0141,
+            "hi": -0.0016,
+            "p": 0.1265,
+            "queries": 25,
+            "base": 0.4296,
+            "expanded": 0.4225,
+            "won": 0,
+            "lost": 4
+          },
+          "live": {
+            "mean": -0.0022,
+            "lo": -0.0064,
+            "hi": 0.0019,
+            "p": 0.3136,
+            "queries": 142,
+            "base": 0.3504,
+            "expanded": 0.3482,
+            "won": 1,
+            "lost": 6
+          },
+          "all": {
+            "mean": -0.0006,
+            "lo": -0.0018,
+            "hi": 0.0005,
+            "p": 0.3229,
+            "queries": 991,
+            "base": 0.5711,
+            "expanded": 0.5705,
+            "won": 2,
+            "lost": 8
+          },
+          "all_without_dev": {
+            "mean": -0.0005,
+            "lo": -0.0013,
+            "hi": 0.0004,
+            "p": 0.3188,
+            "queries": 691,
+            "base": 0.545,
+            "expanded": 0.5445,
+            "won": 1,
+            "lost": 6
+          },
+          "dev": {
+            "mean": -0.001,
+            "lo": -0.0039,
+            "hi": 0.0019,
+            "p": 1.0,
+            "queries": 300,
+            "base": 0.6313,
+            "expanded": 0.6304,
+            "won": 1,
+            "lost": 2
+          }
+        }
+      }
+    }
+  }
+}
