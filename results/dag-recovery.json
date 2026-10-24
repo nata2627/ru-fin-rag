@@ -1,6 +1,12 @@
 {
   "measured_at": "2026-10-24",
   "machine": "aarch64 Linux 7.0.12-linuxkit",
+  "load_average": [
+    1.38,
+    2.33,
+    2.17
+  ],
+  "cpu_count": 8,
   "image": "apache/airflow:2.10.5-python3.11",
   "ci_run": null,
   "dag_id": "corpus_refresh",
@@ -33,16 +39,16 @@
     }
   ],
   "seconds": [
-    37.0,
-    3.0,
-    10.0,
-    37.0
+    467.0,
+    56.0,
+    60.0,
+    62.0
   ],
   "before": {
     "files": {
       "data/index/bm25.npz": "ac2b10865a5aed00",
       "data/index/texts.blocks": "515bf364ca5bc5e8",
-      "results/regression.json": "233ede6093522505"
+      "results/regression.json": "430c0170209db2bf"
     },
     "stamps": {
       "index": false,
@@ -50,13 +56,13 @@
     },
     "index_vocab": 49643,
     "index_chunks": 62606,
-    "last_heartbeat": "2026-10-24T08:57:19Z"
+    "last_heartbeat": "2026-10-24T13:03:02Z"
   },
   "after_failure": {
     "files": {
       "data/index/bm25.npz": "ac2b10865a5aed00",
       "data/index/texts.blocks": "515bf364ca5bc5e8",
-      "results/regression.json": "233ede6093522505"
+      "results/regression.json": "430c0170209db2bf"
     },
     "stamps": {
       "index": false,
@@ -64,13 +70,13 @@
     },
     "index_vocab": 49643,
     "index_chunks": 62606,
-    "last_heartbeat": "2026-10-24T08:57:19Z"
+    "last_heartbeat": "2026-10-24T13:03:02Z"
   },
   "after_recovery": {
     "files": {
       "data/index/bm25.npz": "ac2b10865a5aed00",
       "data/index/texts.blocks": "515bf364ca5bc5e8",
-      "results/regression.json": "132c2fad0eb5ece9"
+      "results/regression.json": "ec0c42cf7b34f961"
     },
     "stamps": {
       "index": true,
@@ -78,10 +84,10 @@
     },
     "index_vocab": 49643,
     "index_chunks": 62606,
-    "last_heartbeat": "2026-10-24T08:58:14Z"
+    "last_heartbeat": "2026-10-24T13:06:12Z"
   },
   "files_touched_by_failure": [],
   "stamp_after_failure": false,
-  "heartbeat_after_failure": true,
+  "heartbeat_written_after_failure": false,
   "passed": true
 }

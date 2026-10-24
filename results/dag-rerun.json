@@ -1,14 +1,21 @@
 {
   "measured_at": "2026-10-24",
   "machine": "aarch64 Linux 7.0.12-linuxkit",
+  "load_average": [
+    1.78,
+    2.82,
+    2.28
+  ],
+  "cpu_count": 8,
   "image": "apache/airflow:2.10.5-python3.11",
   "ci_run": null,
   "dag_id": "corpus_refresh",
-  "peak_memory_mb": 695,
+  "peak_memory_mb": 577,
+  "memory_limit_mb": 2048,
   "tasks": 4,
   "seconds": [
-    37.0,
-    3.0
+    467.0,
+    56.0
   ],
   "runs": [
     {
