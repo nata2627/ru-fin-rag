@@ -1,0 +1,62 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "journal": {
+    "dir": "/Users/nataliagordeeva/Desktop/my_jobs/ru-fin-rag/data/events",
+    "events": 0,
+    "queries": 0,
+    "answered": 0,
+    "rejected": 0,
+    "unavailable": 0,
+    "feedback": 0,
+    "days": 0,
+    "first_day": null,
+    "last_day": null
+  },
+  "window": {
+    "needed": 50,
+    "collected": 0,
+    "days": 0
+  },
+  "thresholds": {
+    "measured_at": "2026-10-24",
+    "window": 50,
+    "drift_threshold": 0.7,
+    "share_threshold": 0.4,
+    "support_feature": "top_score",
+    "support_floor": 32.5249,
+    "token_bin_edges": [
+      10,
+      15,
+      28
+    ],
+    "noise_psi_max": 0.3329,
+    "real_psi_median": 1.6169,
+    "reference_queries": 1182,
+    "base_share": 0.2343
+  },
+  "vocab": 49643,
+  "reference_queries": 1182,
+  "status": "dormant",
+  "reason": "запросов в журнале 0 из 50 нужных для окна: правило дрейфа и правило доли без хорошего ответа не включены. Пороги выведены из разброса на замороженном наборе, а не из трафика",
+  "signals": [
+    {
+      "name": "benchmark_regression",
+      "fired": false,
+      "measured": true,
+      "metric": "NDCG@10",
+      "value": 0.0,
+      "threshold": 0.01,
+      "denominator": 991,
+      "measured_at": "2026-10-23",
+      "report_has_alert_block": false,
+      "text": ""
+    }
+  ],
+  "alert": {
+    "fired": false,
+    "signals_fired": [],
+    "text": ""
+  },
+  "seconds": 1.2
+}
