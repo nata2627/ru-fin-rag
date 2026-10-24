@@ -1,0 +1,17 @@
+разметка судьи: data/kaggle_out/ru-fin-judge-proba-14b/queries/judge_live.tsv, пар 150
+
+повтор того же судьи: data/kaggle_out/ru-fin-judge-14b-repeat/queries/judge_live_repeat.tsv
+каппа двух прогонов между собой: 0.950 [0.900; 0.990], взвешенная 0.974
+дословно совпало 145 из 150; повтор понизил 4, повысил 1
+
+метаданные прогона: data/kaggle_out/ru-fin-judge-proba-14b/queries/judge_live_meta.json
+   модель Qwen/Qwen2.5-14B-Instruct-AWQ, температура 0.0, семя 20261024
+   vllm 0.32.0, torch 2.13.0+cu130, питон 3.13.15
+   образ gcr.io/kaggle-gpu-images/python@sha256:9a6bcfda6d03b2cd9aa347ee8c1bae62043328ed0f4afe9bda014e4f8bbf9435, карты ['Tesla T4']
+   рубрика sha256 d4ae885bdf483f36
+
+приёмка судьи:
+   согласие двух прогонов   0.950 при пороге 0.70: взято
+   стек вывода записан      1.000 при пороге 1.00: взято
+   согласие с человеком     не считано
+приёмка неполна: пока все три не посчитаны, разметка не применяется
