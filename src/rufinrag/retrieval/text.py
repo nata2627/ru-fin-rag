@@ -61,6 +61,23 @@ STOPWORDS = frozenset(
 )
 
 
+def token_spans(text: str) -> list[tuple[str, int, int]]:
+    """Токены вместе с их границами в исходном тексте.
+
+    Границы нужны выбору выдержки для цитаты (`rufinrag.answer`): он ищет окно
+    текста, в котором стоят слова запроса, и обязан пользоваться той же
+    токенизацией, что индекс. Второго выражения для токена в проекте быть не
+    должно, поэтому разбиение живет здесь, а `split_tokens` это тот же обход
+    без границ.
+    """
+    out: list[tuple[str, int, int]] = []
+    for match in _TOKEN.finditer(text):
+        token = match.group(0).lower().replace("ё", "е")
+        if token not in STOPWORDS:
+            out.append((token, match.start(), match.end()))
+    return out
+
+
 def split_tokens(text: str) -> list[str]:
     """Разбить текст на токены, формы слов не трогая.
 
@@ -71,12 +88,7 @@ def split_tokens(text: str) -> list[str]:
     «109», то есть вопрос про одно письмо шел в индекс с приставкой, общей у
     всех писем, и тремя частыми числами.
     """
-    out = []
-    for raw in _TOKEN.findall(text):
-        token = raw.lower().replace("ё", "е")
-        if token not in STOPWORDS:
-            out.append(token)
-    return out
+    return [token for token, _, _ in token_spans(text)]
 
 
 @lru_cache(maxsize=131072)
