@@ -21,7 +21,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from rufin.retrieval.dense import DenseIndex, Encoder, MeanPoolEncoder  # noqa: E402
+from rufin.retrieval.dense import DenseIndex, Encoder, MeanPoolEncoder, truncate  # noqa: E402
 from rufin.retrieval.model_specs import MODELS  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -81,6 +81,11 @@ def main() -> None:
         if missing:
             raise SystemExit(f"нет векторов для {len(missing)} запросов, первый {missing[0]}")
         qvec = np.stack([qvec_all[place[q["query_id"]]] for q in queries]).astype("float32")
+        # Урезанной размерности матрёшки готовый вектор запроса нужно обрезать
+        # и нормировать так же, как обрезана матрица фрагментов: иначе
+        # размерности не сойдутся вовсе, а сойдись они случайно, поиск шёл бы
+        # в двух разных пространствах.
+        qvec = truncate(qvec, spec.truncate_dim)
         where = "из готовых векторов"
     else:
         making = MeanPoolEncoder if args.weights else Encoder
