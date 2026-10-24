@@ -258,7 +258,12 @@ def main() -> None:
     train_path = os.path.join(qdir, "synthetic_train.jsonl")
     if args.train and not os.path.exists(train_path):
         if llm is None:
-            llm = G.load_llm(args.train_model, args.dtype, quant, args.tensor_parallel,
+            # Веса ищутся во входах, как у судьи: токена у ядра, созданного
+            # командой, нет, а без токена хаб не падает, а молча режет
+            # скорость. Хаб остается запасным путем, и какой сработал,
+            # печатает сам resolve_model.
+            llm = G.load_llm(common.resolve_model(args.train_model, обязательно=False),
+                             args.dtype, quant, args.tensor_parallel,
                              args.max_model_len)
         report["train"] = G.make_queries(
             llm, chunks_of_groups(chunks, split, [S.TRAIN]), train_path,
