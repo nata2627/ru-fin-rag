@@ -1,7 +1,7 @@
 {
   "built_at": "2026-10-24",
   "machine": "arm64 Darwin 25.6.0",
-  "seconds": 5.3,
+  "seconds": 5.5,
   "service_version": "0.1.0",
   "catalog_version": 1,
   "default_config": "hybrid",
@@ -42,5 +42,5 @@
       "mb": 448.8
     }
   },
-  "version": "e55cd0eb8670"
+  "version": "45c3556eb6ca"
 }
