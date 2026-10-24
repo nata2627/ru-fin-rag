@@ -163,7 +163,7 @@ def body_of(chunk: dict) -> str:
 def load_llm(model_path: str, dtype: str = "float16", quantization: str | None = None,
              tensor_parallel: int = 1, max_model_len: int = 4096,
              gpu_memory_utilization: float = 0.90, prefix_caching: bool = False,
-             max_num_seqs: int = 0, seed: int = 0):
+             max_num_seqs: int = 0, seed: int = 0, enforce_eager: bool = False):
     """Поднять vLLM.
 
     Тип данных задаётся явно: на Turing нет bf16, и «auto» у модели,
@@ -197,6 +197,11 @@ def load_llm(model_path: str, dtype: str = "float16", quantization: str | None =
     # и попадает в метаданные прогона.
     if max_num_seqs:
         kwargs["max_num_seqs"] = max_num_seqs
+    # Графы CUDA на карте 8 ГБ съедают около гигабайта, которого там нет: на
+    # RTX 3070 модель в четырех битах вместе с активациями оставляет под кэш
+    # ключей меньше половины гигабайта. На T4 Kaggle это не нужно.
+    if enforce_eager:
+        kwargs["enforce_eager"] = True
     # Семя закрепляется затем, что воспроизводимость разметки это одно из трех
     # чисел ее приемки. При нулевой температуре оно почти ничего не меняет,
     # но «почти» в метаданные не напишешь.
@@ -213,7 +218,7 @@ def _clean(text: str) -> str:
     return text.split("\n")[0].strip(" \"'«»")
 
 
-def _chat(tok, задание: str, system: str = SYSTEM) -> str:
+def _chat(tok, задание: str, system: str = SYSTEM, thinking: bool = False) -> str:
     """Собрать запрос по шаблону модели, пережив отсутствие системной роли.
 
     Наставление передается параметром, а не берется из константы модуля.
@@ -236,15 +241,24 @@ def _chat(tok, задание: str, system: str = SYSTEM) -> str:
     выбросить — значит менять задачу, и вопросы Mistral оказались бы
     несопоставимы с вопросами Qwen.
     """
-    try:
-        return tok.apply_chat_template(
-            [{"role": "system", "content": system},
-             {"role": "user", "content": задание}],
-            tokenize=False, add_generation_prompt=True)
-    except Exception:
-        return tok.apply_chat_template(
-            [{"role": "user", "content": system + "\n\n" + задание}],
-            tokenize=False, add_generation_prompt=True)
+    # Рассуждение вслух выключено. Это не вкус: Qwen3 по умолчанию пишет
+    # <think>, и на карте 8 ГБ разметка шла 0,5 пары/с против 5,6 без него, а
+    # ответ при этом чаще не разбирался вовсе (16 из 150 на пробе 22.10).
+    # Шаблоны, которые про рассуждение не знают, этот ключ не принимают, и
+    # тогда он просто не передается.
+    for kwargs in ({"enable_thinking": thinking}, {}):
+        try:
+            return tok.apply_chat_template(
+                [{"role": "system", "content": system},
+                 {"role": "user", "content": задание}],
+                tokenize=False, add_generation_prompt=True, **kwargs)
+        except TypeError:
+            continue
+        except Exception:
+            break
+    return tok.apply_chat_template(
+        [{"role": "user", "content": system + "\n\n" + задание}],
+        tokenize=False, add_generation_prompt=True)
 
 
 def generate(llm, style: Style, passages: list[str], temperature: float = 0.7,
