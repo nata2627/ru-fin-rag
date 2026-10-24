@@ -23,6 +23,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 IMAGE=${AIRFLOW_IMAGE:-apache/airflow:2.10.5-python3.11}
+# Лимит памяти контейнера объявлен здесь и уезжает в отчет прогона: число в
+# README и в results/dag.md печатается из замера, а не литералом рядом с ним.
+LIMIT_MB=${RUFINRAG_DAG_LIMIT_MB:-2048}
 HOME_DIR=logs/airflow-home
 DRILL=no
 for arg in "$@"; do
@@ -35,7 +38,7 @@ if [ "${1:-}" != "--inside" ]; then
   # чужим идентификатором: иначе контейнер пишет в смонтированный репозиторий
   # от uid 50000, а в прогоне CI дерево принадлежит раннеру.
   docker run --rm \
-    --memory 2g \
+    --memory "${LIMIT_MB}m" \
     --user "$(id -u):0" \
     -e HOME=/tmp \
     -e AIRFLOW_HOME=/repo/$HOME_DIR \
@@ -49,6 +52,7 @@ if [ "${1:-}" != "--inside" ]; then
     -v "$PWD:/repo" \
     -w /repo \
     -e RUFINRAG_DAG_DRILL="$DRILL" \
+    -e RUFINRAG_DAG_LIMIT_MB="$LIMIT_MB" \
     "$IMAGE" bash scripts/run_dag.sh --inside
   echo
   echo "репетиция переписала рабочие файлы прогона: results/index.json,"

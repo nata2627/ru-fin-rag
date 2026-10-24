@@ -125,12 +125,18 @@ def main() -> int:
     report = {
         "measured_at": time.strftime("%Y-%m-%d"),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
+        # Средняя загрузка машины на момент замера. Без нее время прохода
+        # обманывает: тот же прогон на занятом маке шел 234 с против 37 с на
+        # свободном, и объяснить это число потом нечем.
+        "load_average": [round(value, 2) for value in os.getloadavg()],
+        "cpu_count": os.cpu_count(),
         "image": os.environ.get("AIRFLOW_IMAGE", "не записан"),
         # Номер прогона CI, в котором снят замер: по нему открывается лог задач
         # в артефактах. На маке поля нет, и это видно по `machine`.
         "ci_run": os.environ.get("GITHUB_RUN_ID") or None,
         "dag_id": DAG_ID,
         "peak_memory_mb": int(os.environ.get("RUFINRAG_DAG_PEAK_MB", 0)) or None,
+        "memory_limit_mb": int(os.environ.get("RUFINRAG_DAG_LIMIT_MB", 0)) or None,
         "tasks": len(EXPECTED[0]),
         # Время прохода снимает вызывающий скрипт: ему видно начало и конец
         # всего прогона, включая разбор DAG и работу базы, а задачам нет.
