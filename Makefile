@@ -16,12 +16,19 @@ FROM ?= base
 DENSE ?= bge-m3
 REPO ?= nata2627/ru-fin-retrieval
 WEIGHTS ?= data/weights/d-matryoshka
+# Готовые векторы запросов: нужны замеру задержки для моделей, которых нет
+# на этой машине. Считаны там же, где векторы корпуса.
+QVEC ?= data/embeddings/$(CHUNKS)/$(DENSE)/$(DENSE)-1024-queries.npy
+# Чьи веса мерить на шаге «кодирование запроса». Шаг отдельный от поиска.
+ENCODER ?=
 # Листы двух судей для голосования. Имя файла задаёт `--judge-out` прогона
 # на Kaggle, поэтому оно переменная, а не константа скрипта.
 JUDGE_A ?= data/queries/judge_14b.tsv
 JUDGE_B ?= data/queries/judge_32b.tsv
+# Сколько потоков отдать FAISS при замере. Ноль это все ядра машины.
+THREADS ?= 0
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka razbor-provalov lexical-gap
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -72,6 +79,8 @@ help:
 	@echo "  razbor-provalov  двадцать провалов на живых вопросах по правилу S15"
 	@echo "  lexical-gap  лексический разрыв живых вопросов и написанных моделью"
 	@echo "  latency      замеры задержки на этой машине (DENSE=$(DENSE))"
+	@echo "  latency-matryoshka  то же по размерностям матрёшки, по готовым"
+	@echo "               векторам запросов (DENSE=$(DENSE), QVEC=...)"
 	@echo ""
 	@echo "Дообучение (счёт на Kaggle, проверки и отчёт локально):"
 	@echo "  check-train  проверка обучающих данных: утечка, эталоны, негативы"
@@ -303,9 +312,9 @@ dev-metrics:
 recipe:
 	$(PY) scripts/recipe_table.py
 
-# Матрёшка не требует второго прогона модели: 256 и 128 получаются из 384
-# срезом с повторной нормировкой. Нужны, чтобы померить задержку и размер
-# индекса по каждой размерности.
+# Матрёшка не требует второго прогона модели: урезанные размерности получаются
+# из полной срезом с повторной нормировкой. Нужны, чтобы померить задержку
+# и размер индекса по каждой размерности.
 matryoshka:
 	$(PY) scripts/matryoshka_index.py --chunks $(CHUNKS) --from-model $(DENSE)
 
@@ -339,7 +348,18 @@ lexical-gap:
 	$(PY) scripts/lexical_gap.py --chunks $(CHUNKS)
 
 latency:
-	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE)
+	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE) \
+		--threads $(THREADS) $(if $(ENCODER),--encoder $(ENCODER))
+
+# Задержка по размерностям матрёшки одним процессом: индекс BM25 строится
+# один раз, индексы размерностей берутся готовыми (`make matryoshka`).
+# Векторы запросов тоже готовые: весов USER-bge-m3 на этой машине нет,
+# а поиск по индексу от весов не зависит. Кодирование запроса считается
+# отдельным шагом и только если задан ENCODER.
+latency-matryoshka:
+	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE) \
+		--family --query-vectors $(QVEC) --threads $(THREADS) \
+		--only bm25 dense hybrid $(if $(ENCODER),encode --encoder $(ENCODER))
 
 clean-raw:
 	rm -rf data/raw/*
