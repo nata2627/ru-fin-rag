@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -43,6 +44,15 @@ def ru_spaced(value: float, digits: int = 1) -> str:
 
 def load(name: str) -> dict:
     return json.loads((RESULTS / name).read_text(encoding="utf-8"))
+
+
+def diff_text(diff: dict) -> str:
+    """Разница со знаком и интервалом, четыре знака.
+
+    Отдельно от `gain_text`: та печатает прибавку и ставит плюс сама, а здесь
+    разница бывает отрицательной, и «+-0,002» это не запись числа.
+    """
+    return f"{diff['mean']:+.4f} [{diff['lo']:+.4f}; {diff['hi']:+.4f}]".replace(".", ",")
 
 
 def gain_text(diff: dict) -> str:
@@ -701,14 +711,26 @@ def checks() -> list[tuple[str, str, str]]:
         (
             "прогонов доливки",
             "alert-threshold.json",
-            f"доливка повторена кодом {threshold['delivery_noise']['runs']} раз",
+            f"доливка повторена кодом {threshold['delivery_noise']['runs']} раз: "
+            f"{threshold['delivery_noise']['single_act_runs']} прогонов убирают по одному "
+            f"случайному акту без размеченных фрагментов, "
+            f"{threshold['delivery_noise']['group_act_runs']} прогонов убирают по "
+            f"{threshold['delivery_noise']['acts_in_group']} таких актов сразу",
         )
     )
     out.append(
         (
             "наибольший сдвиг доливки",
             "alert-threshold.json",
-            f"наибольший сдвиг там {ru(threshold['delivery_noise']['ceiling'], 4)}",
+            f"Наибольшее по модулю изменение {ru(threshold['delivery_noise']['ceiling'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "наибольшее падение среди прогонов доливки",
+            "alert-threshold.json",
+            f"наибольшее падение среди тех же {threshold['delivery_noise']['runs']} прогонов "
+            f"{ru(threshold['delivery_noise']['max_drop'], 4)}",
         )
     )
     out.append(
@@ -725,10 +747,22 @@ def checks() -> list[tuple[str, str, str]]:
             f"на {ru(threshold['real_shift_same_corpus'], 4)}",
         )
     )
-    fired = next(rung for rung in drill["rungs"] if rung["alert_fired"])
+    # Вырожденная лестница (нет сработавшей ступени или нет молчащей) это
+    # поломка замера, и сказать о ней надо словами: прежде она прилетала в
+    # ночной прогон трейсбеком StopIteration.
+    fired = next((rung for rung in drill["rungs"] if rung["alert_fired"]), None)
     silent = max(
-        (rung for rung in drill["rungs"] if not rung["alert_fired"]), key=lambda r: r["drop"]
+        (rung for rung in drill["rungs"] if not rung["alert_fired"]),
+        key=lambda r: r["drop"],
+        default=None,
     )
+    if fired is None or silent is None:
+        raise SystemExit(
+            "alert-drill.json вырожден: сработавших ступеней "
+            f"{sum(1 for r in drill['rungs'] if r['alert_fired'])}, молчавших "
+            f"{sum(1 for r in drill['rungs'] if not r['alert_fired'])}. "
+            "Пересчитать: make alert"
+        )
     out.append(
         (
             "ступень, на которой алерт сработал",
@@ -741,10 +775,225 @@ def checks() -> list[tuple[str, str, str]]:
         (
             "ступень, на которой алерт молчит",
             "alert-drill.json",
-            f"потере {silent['relevant_removed']} из {silent['relevant_total']} падение "
-            f"{ru(silent['drop'], 4)}",
+            f"потере {silent['relevant_removed']} фрагментов из {silent['relevant_total']} "
+            f"падение {ru(silent['drop'], 4)}",
         )
     )
+    # Слой ответа: порог отказа, его цена и то, чего отказ не ловит.
+    answer = load("answer.json")
+    chosen = answer["chosen"]
+    citations = answer["citations"]
+    out.append(("порог опоры", "answer.json", f"порог {ru(chosen['threshold'])}"))
+    out.append(
+        (
+            "ложные отказы на размеченных",
+            "answer.json",
+            f"{chosen['false_refusals_labeled']} из {answer['labeled_queries']}",
+        )
+    )
+    for label, key in (
+        ("вне предметной области", "вне предметной области"),
+        ("соседние отрасли права", "рядом с предметной областью"),
+    ):
+        group = chosen["by_group"][key]
+        out.append(
+            (
+                f"отказы, {label}",
+                "answer.json",
+                f"{group['refused']} из {group['of']}",
+            )
+        )
+    out.append(
+        (
+            "отказы на живых без разметки",
+            "answer.json",
+            f"{chosen['live_unlabeled']['refused']} из {chosen['live_unlabeled']['of']}",
+        )
+    )
+    out.append(
+        (
+            "цена шага опоры",
+            "answer.json",
+            f"медиана {ru(answer['support_cost_ms']['median'], 1)} мс, "
+            f"p95 {ru(answer['support_cost_ms']['p95'], 1)} мс",
+        )
+    )
+    out.append(
+        (
+            "зависимость отвергнутого признака от длины",
+            "answer.json",
+            f"корреляция {ru(answer['candidates']['top_score']['length_dependence'], 3)}",
+        )
+    )
+    out.append(
+        (
+            "раздел у фрагмента",
+            "answer.json",
+            f"есть у {ru_spaced(citations['with_section'], 0)} фрагментов из "
+            f"{ru_spaced(citations['chunks'], 0)}",
+        )
+    )
+    out.append(
+        (
+            "пункты найдены в тексте фрагмента",
+            "answer.json",
+            f"нашлись у {ru_spaced(citations['with_clauses'], 0)} из "
+            f"{ru_spaced(citations['chunks'], 0)}",
+        )
+    )
+    out.append(
+        (
+            "порядок пунктов внутри акта",
+            "answer.json",
+            f"{ru_spaced(citations['clause_pairs_non_decreasing'], 0)} неубывающих пар из "
+            f"{ru_spaced(citations['clause_pairs_in_act'], 0)}",
+        )
+    )
+
+    # Граф ссылок между актами и расширение выдачи по цитированию. Числа графа
+    # и обе разницы с интервалами: отрицательный результат публикуется так же
+    # подробно, как прибавка.
+    graph = load("graph.json")["stats"]
+    expansion = load("graph-expansion.json")
+    reserve = expansion["variants"]["reserve"]["difference_ndcg10"]["hybrid"]
+    fusion = expansion["variants"]["fusion"]["difference_ndcg10"]["hybrid"]
+    out.append(
+        (
+            "разных ссылок в корпусе",
+            "graph.json",
+            f"нашлось {ru_spaced(graph['references'], 0)} разных ссылок",
+        )
+    )
+    out.append(
+        (
+            "ссылки внутрь корпуса и дуги",
+            "graph.json",
+            f"{ru_spaced(graph['references_inside'], 0)} указывают внутрь корпуса и дают "
+            f"{ru_spaced(graph['edges'], 0)} дуг между актами",
+        )
+    )
+    out.append(
+        (
+            "ссылки за пределы корпуса",
+            "graph.json",
+            f"{ru_spaced(graph['references_outside'], 0)} из "
+            f"{ru_spaced(graph['references'], 0)} указывают за его пределы",
+        )
+    )
+    out.append(
+        (
+            "актов со ссылкой внутрь корпуса",
+            "graph.json",
+            f"есть у {ru_spaced(graph['acts_with_references'], 0)} актов из {graph['acts']}",
+        )
+    )
+    out.append(
+        (
+            "упоминаний номеров актов",
+            "graph.json",
+            f"упоминаний всего {ru_spaced(graph['mentions'], 0)}",
+        )
+    )
+    for label, block in (("резерв места", reserve), ("слияние с весом", fusion)):
+        for where, key in (("все 991", "all"), ("живые", "live"), ("связанные акты", "linked")):
+            out.append(
+                (
+                    f"расширение по графу, {label}, {where}",
+                    "graph-expansion.json",
+                    diff_text(block[key]),
+                )
+            )
+    out.append(
+        (
+            "потолок прибавки по графу",
+            "graph-expansion.json",
+            f"потолок прибавки это "
+            f"{expansion['variants']['reserve']['ceiling']['all']['reachable']} запросов из 991",
+        )
+    )
+
+    # Мониторинг: пороги дрейфа и доли без ответа, их обоснование и учебная
+    # лестница, на которой они проверены.
+    mon = load("monitoring-thresholds.json")
+    drill_mon = load("monitoring-drill.json")
+    rule = mon["rule_applied"]
+    first = mon["ladder"][0]
+    support = mon["features"]["support_candidates"]["top_score"]
+    answerless = mon["answerless_on_reference"]
+    out.append(
+        (
+            "порог дрейфа запросов",
+            "monitoring-thresholds.json",
+            f"{ru(rule['drift_threshold'])} на окне {rule['window']} запросов",
+        )
+    )
+    out.append(
+        (
+            "потолок шума дрейфа",
+            "monitoring-thresholds.json",
+            f"потолок PSI по {first['draws']} окнам из {rule['reference_queries']} "
+            f"замороженных вопросов {ru(first['noise_psi_max'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "порог доли без хорошего ответа",
+            "monitoring-thresholds.json",
+            f"оценка лучшего кандидата ниже {ru(support['floor'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "наибольшая доля без ответа в окнах",
+            "monitoring-thresholds.json",
+            f"наибольшая доля в тех же {first['draws']} окнах {ru(first['noise_share_max'])} "
+            f"при базовой доле {answerless['answerless']} из {answerless['answered']}",
+        )
+    )
+    out.append(
+        (
+            "признак опоры, J Юдена",
+            "monitoring-thresholds.json",
+            f"J Юдена {ru(support['j'], 4)}, он называет безответными "
+            f"{support['good_below_floor']} вопросов из {support['positives']}",
+        )
+    )
+    out.append(
+        (
+            "пропуски признака опоры",
+            "monitoring-thresholds.json",
+            f"пропускает {support['bad_above_floor']} из {support['negatives']} без ответа",
+        )
+    )
+    out.append(
+        (
+            "ступени учебной лестницы мониторинга",
+            "monitoring-drill.json",
+            f"лестницей из {drill_mon['steps']} ступеней",
+        )
+    )
+    out.append(
+        (
+            "дрейф, на котором алерт сработал",
+            "monitoring-drill.json",
+            f"PSI {ru(drill_mon['first_drift_alert'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "дрейф, на котором алерт промолчал",
+            "monitoring-drill.json",
+            f"промолчал на 25 живых из 50 ({ru(drill_mon['largest_silent_drift'], 4)})",
+        )
+    )
+    out.append(
+        (
+            "доля без ответа, на которой алерт промолчал",
+            "monitoring-drill.json",
+            f"промолчал на {ru(drill_mon['largest_silent_share'])}",
+        )
+    )
+
     out.append(
         (
             "сколько ступеней алерт промолчал",
@@ -787,6 +1036,30 @@ def dashboard_values() -> list[str]:
     return problems
 
 
+def dag_report_fresh() -> list[str]:
+    """Пересборка `results/dag.md`: текст обязан совпасть с отчетами прогонов.
+
+    Файл собирается кодом, и в его заголовке так и написано. Без этой проверки
+    утверждение держалось на честном слове: правка руками или разошедшийся с
+    отчетами текст проходили бы зелеными.
+    """
+    path = RESULTS / "dag.md"
+    before = path.read_text(encoding="utf-8")
+    done = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/report_dag.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if done.returncode != 0:
+        return [f"  пересборка dag.md упала: {done.stderr.strip()[-300:]}"]
+    after = path.read_text(encoding="utf-8")
+    if after == before:
+        return []
+    path.write_text(before, encoding="utf-8")
+    return ["  results/dag.md разошелся с отчетами прогонов: пересобрать `make dag-report`"]
+
+
 def main() -> int:
     # Переносы строк убираются: ожидаемая запись длиннее строки README попадала
     # бы в проверку разорванной, и проверка зависела бы от того, где встал
@@ -800,6 +1073,11 @@ def main() -> int:
         print("README расходится с замерами:", file=sys.stderr)
         for what, source, expected in missing:
             print(f"  {what}: в {source} стоит {expected}, в README такого нет", file=sys.stderr)
+        return 1
+    problems = dag_report_fresh()
+    if problems:
+        print("отчет регламента разошелся с замерами:", file=sys.stderr)
+        print("\n".join(problems), file=sys.stderr)
         return 1
     problems = dashboard_values()
     if problems:
