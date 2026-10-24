@@ -13,6 +13,8 @@
 from __future__ import annotations
 
 import argparse
+import collections
+import csv
 import json
 import os
 
@@ -24,6 +26,22 @@ POOL_CORE10 = 4134
 def load(path: str) -> dict:
     with open(os.path.join(ROOT, path), encoding="utf-8") as f:
         return json.load(f)
+
+
+def answers_of(meta_path: str) -> dict:
+    """Какие пары ответов судья вообще ставит.
+
+    Оценка это свертка двух ответов, и по ней не видно, какой из двух
+    вопросов судья перестал различать. Пара «нет, нет» это единственный
+    способ сказать «фрагмент не относится к делу», и если ее нет вовсе,
+    судья не отсекает ничего.
+    """
+    tsv = meta_path.replace("_meta.json", ".tsv")
+    c: collections.Counter = collections.Counter()
+    with open(os.path.join(ROOT, tsv), encoding="utf-8") as f:
+        for r in csv.DictReader(f, delimiter="\t"):
+            c[f"{r['otvet_celikom']}/{r['otvet_vmeste']}"] += 1
+    return dict(c)
 
 
 def card_of(meta: dict) -> str:
@@ -57,6 +75,7 @@ def row(name: str, meta_path: str) -> dict:
         "весь пул 40134, часов": round(POOL_FULL / rate / 3600, 2) if rate else None,
         "ядро первой десятки 4134, часов":
             round(POOL_CORE10 / rate / 3600, 2) if rate else None,
+        "пары ответов": answers_of(meta_path),
         "движок": m["стек вывода"].get("vllm"),
         "отпечаток инструкции": m["стек вывода"].get("рубрика sha256"),
         "файл": meta_path,
@@ -141,6 +160,11 @@ def main() -> None:
         lines.append(f"   {r['судья']:<38} общая норма {r['тип общая норма']:>3}, "
                      f"часть ответа {r['тип часть ответа']:>3}, "
                      f"иное {r['тип иное']:>3}, всего единиц {r['оценка 1']:>3}")
+    lines += ["", "какие пары ответов судья ставит вообще "
+              "(«нет/нет» это единственный способ сказать «не относится»):"]
+    for r in judges:
+        пары = ", ".join(f"{k} {v}" for k, v in sorted(r["пары ответов"].items()))
+        lines.append(f"   {r['судья']:<38} {пары}")
     lines += ["", "несогласия, знаменатель это пары, размеченные обоими:"]
     for p in pairs:
         lines.append(f"   {p['сравнение']:<28} разошлось "
