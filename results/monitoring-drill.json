@@ -1,0 +1,286 @@
+{
+  "measured_at": "2026-10-24",
+  "machine": "arm64 Darwin 25.6.0",
+  "seed": 20261024,
+  "rule": {
+    "measured_at": "2026-10-24",
+    "window": 50,
+    "drift_threshold": 0.7,
+    "share_threshold": 0.4,
+    "support_feature": "top_score",
+    "support_floor": 32.5249,
+    "token_bin_edges": [
+      10,
+      15,
+      28
+    ],
+    "noise_psi_max": 0.3329,
+    "real_psi_median": 1.6169,
+    "reference_queries": 1182,
+    "base_share": 0.2343
+  },
+  "events_source": "замороженные вопросы набора, прогнанные через поиск сервиса и записанные кодом журнала. Это учебные события, не живой трафик",
+  "pool": {
+    "events": 1182,
+    "live_queries": 325,
+    "support_below_floor": 277,
+    "support_above_floor": 905
+  },
+  "steps": 8,
+  "first_drift_alert": 1.1828,
+  "largest_silent_drift": 0.5639,
+  "first_share_alert": 0.5,
+  "largest_silent_share": 0.18,
+  "rungs": [
+    {
+      "name": "эталонная смесь",
+      "kind": "control",
+      "events": 50,
+      "live_in_window": 11,
+      "status": "watching",
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.0578,
+          "threshold": 0.7,
+          "worst_feature": "oov_share"
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": 0.18,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 2.2
+    },
+    {
+      "name": "короткое окно",
+      "kind": "short",
+      "events": 49,
+      "live_in_window": 16,
+      "status": "dormant",
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": null,
+          "threshold": null,
+          "worst_feature": null
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": null,
+          "threshold": null,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 2.7
+    },
+    {
+      "name": "живых вопросов 0 из 50",
+      "kind": "drift",
+      "events": 50,
+      "live_in_window": 21,
+      "status": "watching",
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.5297,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.6
+    },
+    {
+      "name": "живых вопросов 25 из 50",
+      "kind": "drift",
+      "events": 50,
+      "live_in_window": 34,
+      "status": "watching",
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.5639,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": 0.02,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.3
+    },
+    {
+      "name": "живых вопросов 50 из 50",
+      "kind": "drift",
+      "events": 50,
+      "live_in_window": 50,
+      "status": "watching",
+      "exit_code": 1,
+      "alert_fired": true,
+      "alert_text": "дрейф распределения запросов: PSI 1.1828 по признаку tokens при пороге 0.7 на окне 50 запросов из 50 нужных, эталон 1182 замороженных вопросов",
+      "signals": {
+        "query_drift": {
+          "fired": true,
+          "value": 1.1828,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": 0.02,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.3
+    },
+    {
+      "name": "без опоры 0 из 50",
+      "kind": "answerless",
+      "events": 50,
+      "live_in_window": 18,
+      "status": "watching",
+      "exit_code": 0,
+      "alert_fired": false,
+      "alert_text": "",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.1245,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.7
+    },
+    {
+      "name": "без опоры 25 из 50",
+      "kind": "answerless",
+      "events": 50,
+      "live_in_window": 5,
+      "status": "watching",
+      "exit_code": 1,
+      "alert_fired": true,
+      "alert_text": "запросов без хорошего ответа 25 из 50 (0.5) при пороге 0.4: опора лучшего кандидата ниже 32.5249 по признаку top_score",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.4724,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": true,
+          "value": 0.5,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.9
+    },
+    {
+      "name": "без опоры 38 из 50",
+      "kind": "answerless",
+      "events": 50,
+      "live_in_window": 6,
+      "status": "watching",
+      "exit_code": 1,
+      "alert_fired": true,
+      "alert_text": "запросов без хорошего ответа 38 из 50 (0.76) при пороге 0.4: опора лучшего кандидата ниже 32.5249 по признаку top_score",
+      "signals": {
+        "query_drift": {
+          "fired": false,
+          "value": 0.3313,
+          "threshold": 0.7,
+          "worst_feature": "tokens"
+        },
+        "answerless_share": {
+          "fired": true,
+          "value": 0.76,
+          "threshold": 0.4,
+          "worst_feature": null
+        },
+        "benchmark_regression": {
+          "fired": false,
+          "value": 0.0,
+          "threshold": 0.01,
+          "worst_feature": null
+        }
+      },
+      "seconds": 1.7
+    }
+  ],
+  "seconds": 35.3,
+  "passed": true
+}
