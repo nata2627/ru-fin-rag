@@ -852,6 +852,102 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
 
+    # Качество ответа: куда ведет ссылка. Числа обеих связок, потому что порог
+    # отказа выведен на лексической выдаче, а отвечает сервис связкой по
+    # умолчанию, и разницу между ними текст называет прямо.
+    quality = load("answer-quality.json")
+    lexical = quality["configs"]["bm25"]
+    default_config = next(name for name in quality["configs"] if name != "bm25")
+    online = quality["configs"][default_config]
+    for label, key in (
+        ("ссылка на релевантный фрагмент", "ссылка на релевантный фрагмент"),
+        ("ссылка на фрагмент с полным ответом", "ссылка на фрагмент с полным ответом"),
+        ("ссылка на релевантный акт", "ссылка на релевантный акт"),
+        ("первая ссылка релевантна", "первая ссылка релевантна"),
+    ):
+        out.append(
+            (
+                f"{label}, обе связки",
+                "answer-quality.json",
+                f"| {lexical[key]['hit']} из {lexical[key]['of']} "
+                f"| {online[key]['hit']} из {online[key]['of']} |",
+            )
+        )
+    out.append(
+        (
+            "отказы связки по умолчанию",
+            "answer-quality.json",
+            f"{online['refused']} раз из {online['queries']}",
+        )
+    )
+    out.append(
+        (
+            "отказы связки по умолчанию на живых",
+            "answer-quality.json",
+            f"{online['by_subsample']['живые']['refused']} из "
+            f"{online['by_subsample']['живые']['queries']} против "
+            f"{lexical['by_subsample']['живые']['refused']} из "
+            f"{lexical['by_subsample']['живые']['queries']}",
+        )
+    )
+    live = online["by_subsample"]["живые"]["ссылка на релевантный фрагмент"]
+    synthetic = online["by_subsample"]["синтетика"]["ссылка на релевантный фрагмент"]
+    out.append(
+        (
+            "живые против синтетики по ссылке",
+            "answer-quality.json",
+            f"на {ru(synthetic['share'] - live['share'], 3)} ({live['hit']} из {live['of']} "
+            f"против {synthetic['hit']} из {synthetic['of']})",
+        )
+    )
+    strict_gap = (
+        online["ссылка на релевантный фрагмент"]["share"]
+        - lexical["ссылка на релевантный фрагмент"]["share"]
+    )
+    out.append(
+        (
+            "разрыв связок по ссылке",
+            "answer-quality.json",
+            f"мере {ru(strict_gap, 3)}",
+        )
+    )
+    human = quality["human"]
+    out.append(
+        (
+            "эталон щедрее человека",
+            "answer-quality.json",
+            f"{human['эталон выше человека']['hit']} пара из {human['эталон выше человека']['of']}",
+        )
+    )
+    out.append(
+        (
+            "человек щедрее эталона",
+            "answer-quality.json",
+            f"против {human['человек выше эталона']['hit']} из "
+            f"{human['человек выше эталона']['of']} в обратную сторону",
+        )
+    )
+    full = human["полный ответ по эталону"]
+    out.append(
+        (
+            "полный ответ эталона против человека",
+            "answer-quality.json",
+            f"({full['пар']} пар), человек согласился полностью на "
+            f"{full['человек согласился полностью']} и увидел хотя бы часть ответа на "
+            f"{full['человек увидел хотя бы часть']}",
+        )
+    )
+    out.append(
+        (
+            "приемка судьи по ответам",
+            "answer-quality.json",
+            f"согласие с человеком {ru(human['судья']['каппа с человеком'], 3)} при интервале "
+            f"[{ru(human['судья']['интервал'][0], 3)}; {ru(human['судья']['интервал'][1], 3)}] "
+            f"на {human['судья']['пар']} парах и объявленном до прогона пороге "
+            f"{ru(human['судья']['порог'], 2)}",
+        )
+    )
+
     # Граф ссылок между актами и расширение выдачи по цитированию. Числа графа
     # и обе разницы с интервалами: отрицательный результат публикуется так же
     # подробно, как прибавка.
