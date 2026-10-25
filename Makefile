@@ -48,6 +48,9 @@ serve: ## поднять сервис локально
 answer-threshold: ## замерить порог отказа слоя ответа, поля цитаты и цену опоры
 	$(PY) scripts/measure_answer.py
 
+answer-quality: ## замерить долю ответов с корректной ссылкой на источник (шесть минут)
+	$(PY) scripts/measure_answer_quality.py
+
 vectors: ## догнать плотные векторы до корпуса после ночной докачки (нужны venv-dense и веса)
 	$(PY) scripts/extend_vectors.py
 
