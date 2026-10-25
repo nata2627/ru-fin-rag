@@ -1,7 +1,7 @@
 {
-  "built_at": "2026-10-24",
-  "machine": "arm64 Darwin 25.6.0",
-  "seconds": 5.5,
+  "built_at": "2026-10-25",
+  "machine": "x86_64 Linux 6.17.0-1022-azure",
+  "seconds": 7.4,
   "service_version": "0.1.0",
   "catalog_version": 1,
   "default_config": "hybrid",
@@ -18,11 +18,11 @@
   "index": {
     "chunks": 62606,
     "vocab": 49643,
-    "measured_at": "2026-10-23"
+    "measured_at": "2026-10-25"
   },
   "artifacts": {
     "data/index/bm25.npz": {
-      "digest": "ac2b10865a5a",
+      "digest": "a31f293c630f",
       "mb": 10.9
     },
     "data/index/texts.blocks": {
@@ -31,16 +31,19 @@
     },
     "data/vectors/rufin-384.npy": {
       "digest": "5d4ad2c2da5e",
-      "mb": 45.9
+      "mb": 45.9,
+      "from_previous": true
     },
     "data/models/rufin/config.json": {
       "digest": "797b077d71f7",
-      "mb": 0.0
+      "mb": 0.0,
+      "from_previous": true
     },
     "data/models/rufin/model.safetensors": {
       "digest": "547fde74c1b6",
-      "mb": 448.8
+      "mb": 448.8,
+      "from_previous": true
     }
   },
-  "version": "45c3556eb6ca"
+  "version": "c34342ef796c"
 }
