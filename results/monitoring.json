@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-10-24",
+  "measured_at": "2026-10-25",
   "machine": "x86_64 Linux 6.17.0-1022-azure",
   "journal": {
     "dir": "/home/runner/work/ru-fin-rag/ru-fin-rag/data/events",
@@ -48,7 +48,7 @@
       "value": 0.0,
       "threshold": 0.02,
       "denominator": 991,
-      "measured_at": "2026-10-24",
+      "measured_at": "2026-10-25",
       "report_has_alert_block": true,
       "text": ""
     }
@@ -58,5 +58,5 @@
     "signals_fired": [],
     "text": ""
   },
-  "seconds": 0.4
+  "seconds": 0.5
 }
