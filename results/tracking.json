@@ -1,24 +1,81 @@
 {
-  "tracked_at": "2026-10-24",
+  "tracked_at": "2026-10-25",
   "mlflow": "2.19.0",
   "package": "mlflow-skinny",
   "store": "logs/mlruns",
   "store_in_git": false,
   "experiment": "ru-fin-rag",
-  "reports_total": 41,
+  "reports_total": 42,
   "reports_not_a_run": [
     "registry.json",
     "regression-baseline.json",
     "tracking.json"
   ],
-  "runs_logged_now": 0,
-  "runs_skipped_as_known": 41,
-  "runs_total": 41,
+  "runs_logged_now": 8,
+  "runs_skipped_as_known": 34,
+  "runs_total": 49,
   "store_mb": 0.1,
   "digest_chars": 12,
   "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки (в том числе русские буквы) в подчеркивание",
   "metric_name_collisions": 0,
   "registry_version": "45c3556eb6ca",
-  "logged": [],
-  "seconds": 0.5
+  "logged": [
+    {
+      "report": "acceptance.json",
+      "run_id": "b745edb5df0040b6bd93e31cf74232f9",
+      "metrics": 7,
+      "params": 7,
+      "digest": "ab5958a623fd"
+    },
+    {
+      "report": "answer-quality.json",
+      "run_id": "65b6686741d949a8a3e93fca49f4c6fd",
+      "metrics": 223,
+      "params": 16,
+      "digest": "93d6adc35eaa"
+    },
+    {
+      "report": "answer.json",
+      "run_id": "91d8b9a7cf9b4581bd3d2e8de4c57355",
+      "metrics": 115,
+      "params": 12,
+      "digest": "333b69c19dc9"
+    },
+    {
+      "report": "corpus-update.json",
+      "run_id": "f2e5ee5d03314c77a8db70acd16970db",
+      "metrics": 9,
+      "params": 2,
+      "digest": "2f4872e19058"
+    },
+    {
+      "report": "events.json",
+      "run_id": "414db22f4c39468793126318b698b28d",
+      "metrics": 5,
+      "params": 3,
+      "digest": "6b3724756c67"
+    },
+    {
+      "report": "monitoring.json",
+      "run_id": "d719a245a0b84ecfb61eca49d4331a8c",
+      "metrics": 25,
+      "params": 9,
+      "digest": "7e78ed806bf5"
+    },
+    {
+      "report": "regression.json",
+      "run_id": "619b031b5bf9456992234e7358aa157f",
+      "metrics": 19,
+      "params": 9,
+      "digest": "06449eeff726"
+    },
+    {
+      "report": "regulation.json",
+      "run_id": "46c1ab771d3644509e02aa987f94a85e",
+      "metrics": 4,
+      "params": 5,
+      "digest": "a03f9dcbc383"
+    }
+  ],
+  "seconds": 0.9
 }
