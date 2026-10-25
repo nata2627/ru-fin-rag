@@ -69,9 +69,14 @@ def main() -> None:
     print("выгрузка непротиворечива: " +
           ", ".join(f"{k} {v}" for k, v in stats.items()))
 
-    card = os.path.join(ROOT, "docs", "DATASET_CARD.md")
+    # На HuggingFace едет английская карточка: площадка международная, и русский
+    # текст там сокращает круг тех, кто может набором воспользоваться. Русский
+    # оригинал остаётся в репозитории и остаётся источником правды по числам.
+    card = os.path.join(ROOT, "docs", "DATASET_CARD_EN.md")
     if not os.path.exists(card):
-        raise SystemExit("нет docs/DATASET_CARD.md — набор без карточки не публикуется")
+        raise SystemExit("нет docs/DATASET_CARD_EN.md — набор без карточки не публикуется")
+    if not os.path.exists(os.path.join(ROOT, "docs", "DATASET_CARD.md")):
+        raise SystemExit("нет русского оригинала карточки docs/DATASET_CARD.md")
 
     if args.dry_run:
         print("--dry-run: заливка пропущена")
