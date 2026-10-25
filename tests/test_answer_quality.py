@@ -134,6 +134,23 @@ def test_report_holds_together():
         assert block["ссылка на фрагмент с полным ответом"]["hit"] <= strict, name
         assert block["первая ссылка релевантна"]["hit"] <= strict, name
         assert sum(v["queries"] for v in block["by_subsample"].values()) == 991, name
+    cross = report["cross_support"]
+    # Вариант из находки S24 считает опору лексической выдачей, поэтому отказов
+    # у него обязано быть столько же, сколько у лексической связки: разойдись
+    # это, и замер считает опору не тем, чем обещает.
+    assert cross["refused"] == report["configs"]["bm25"]["refused"]
+    assert cross["queries"] == 991
+    assert cross["лишних поисков сервису"] == 0
+    assert cross["опора не попала в цитаты"]["of"] == cross["answered"]
+    # Две поправки к тому же пути ставят опорный фрагмент в цитаты, поэтому
+    # набор цитат у них один и тот же, а отличается только порядок. Разойдись
+    # строгая мера между ними, и замер считает разные наборы, а не порядок.
+    first, last = cross["с опорой в цитатах"], cross["с опорой последней цитатой"]
+    for block in (first, last):
+        assert block["опора не попала в цитаты"]["hit"] == 0
+        assert block["refused"] == cross["refused"]
+    assert first["ссылка на релевантный фрагмент"] == last["ссылка на релевантный фрагмент"]
+    assert first["первая ссылка релевантна"] != last["первая ссылка релевантна"]
     human = report["human"]
     assert human["пар"] == sum(human["таблица"].values())
     assert human["судья"]["приемка"] is False
