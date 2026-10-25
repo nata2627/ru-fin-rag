@@ -51,6 +51,12 @@ answer-threshold: ## замерить порог отказа слоя отве�
 answer-quality: ## замерить долю ответов с корректной ссылкой на источник (шесть минут)
 	$(PY) scripts/measure_answer_quality.py
 
+router: ## замерить роутер против прямого поиска, качество и задержка (десять минут)
+	$(PY) scripts/measure_router.py
+
+venv-router: ## добавить в окружение роутер на инструментах (langgraph, 70 МБ)
+	$(PIP) install -e '.[router]'
+
 vectors: ## догнать плотные векторы до корпуса после ночной докачки (нужны venv-dense и веса)
 	$(PY) scripts/extend_vectors.py
 
