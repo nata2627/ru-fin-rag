@@ -67,10 +67,15 @@ def test_registry_file_matches_the_repository(registered):
         "default_config",
         "config_versions",
         "answer_version",
-        "artifacts",
         "version",
     ):
         assert fresh[field] == registered[field], f"реестр отстал по полю {field}"
+    # Сами отпечатки не сверяются, и это замер, а не лень: `bm25.npz` это zip с
+    # метками времени внутри, поэтому пересборка индекса на том же корпусе дает
+    # другой отпечаток при тех же 62 606 фрагментах и тех же 49 643 словах
+    # словаря. Сверяется то, что от машины не зависит: какие артефакты записаны,
+    # а какие остались незамеренными.
+    assert set(fresh["artifacts"]) == set(registered["artifacts"])
 
 
 def test_health_names_the_registry(client, registered):

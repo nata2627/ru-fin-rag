@@ -42,6 +42,11 @@ DIGEST_CHARS = 12
 # отпечатки лежат рядом справкой и переносятся из прежней записи там, где
 # файла на машине нет.
 NOT_IN_VERSION = {"version", "built_at", "machine", "seconds", "artifacts"}
+# И то же внутри блока об индексе: число фрагментов и размер словаря выведены из
+# корпуса, а дата сборки это свойство сборки. Держи ее в версии, и ночная
+# переиндексация того же корпуса давала бы новую версию выпуска, то есть ровно
+# та зависимость от машины и времени, которую версия обязана не иметь.
+NOT_IN_VERSION_INDEX = {"measured_at"}
 # Артефакты, версия которых не выводится из кода: их приходится считать с диска.
 ARTIFACT_FILES = (
     "data/index/bm25.npz",
@@ -134,6 +139,11 @@ def version_of(entry: dict[str, object]) -> str:
     связки, порога ответа или файла индекса дает другое.
     """
     payload = {key: value for key, value in entry.items() if key not in NOT_IN_VERSION}
+    index = payload.get("index")
+    if isinstance(index, dict):
+        payload["index"] = {
+            key: value for key, value in index.items() if key not in NOT_IN_VERSION_INDEX
+        }
     text = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:DIGEST_CHARS]
 
