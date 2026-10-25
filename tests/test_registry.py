@@ -84,7 +84,17 @@ def test_answer_carries_the_registered_version(client, registered):
     search = client.post("/search", json={"query": "резерв по ссуде", "top": 3}).json()
     assert search["registry_version"] == registered["version"]
     assert search["corpus_version"] == registered["corpus_version"]
-    assert search["config_version"] == registered["config_versions"][registered["default_config"]]
+    expected = registered["config_versions"][registered["default_config"]]
+    # Плотной части на машине может не быть (бесплатный тариф, прогон
+    # проверки), и тогда связка отвечает лексической первой ступенью, помечая
+    # это суффиксом в своей версии. Реестр хранит объявленную версию, поэтому
+    # сверяется ее база, а суффикс обязан стоять ровно тогда, когда деградация
+    # названа в том же ответе: иначе выпуск назовет себя полным, отвечая
+    # половиной связки.
+    if search["degraded"]:
+        assert search["config_version"] == f"{expected}+degraded"
+    else:
+        assert search["config_version"] == expected
 
 
 def test_mismatch_is_named_not_hidden(registered):
