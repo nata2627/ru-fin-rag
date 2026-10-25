@@ -911,6 +911,48 @@ def checks() -> list[tuple[str, str, str]]:
             f"мере {ru(strict_gap, 3)}",
         )
     )
+    cross = quality["cross_support"]
+    pinned = cross["с опорой последней цитатой"]
+    out.append(
+        (
+            "отказы при лексической опоре",
+            "answer-quality.json",
+            f"отказов становится {cross['refused']} из {cross['queries']} и "
+            f"{cross['by_subsample']['живые']['refused']} из "
+            f"{cross['by_subsample']['живые']['queries']} на живых вопросах",
+        )
+    )
+    out.append(
+        (
+            "опора не в цитатах, сейчас и при лексической опоре",
+            "answer-quality.json",
+            f"растет с {online['опора не попала в цитаты']['hit']} из "
+            f"{online['опора не попала в цитаты']['of']} до "
+            f"{cross['опора не попала в цитаты']['hit']} из "
+            f"{cross['опора не попала в цитаты']['of']}",
+        )
+    )
+    out.append(
+        (
+            "поправка с опорой в цитатах",
+            "answer-quality.json",
+            f"полностью ({pinned['опора не попала в цитаты']['hit']} из "
+            f"{pinned['опора не попала в цитаты']['of']})",
+        )
+    )
+    for label, key in (
+        ("ссылка на релевантный фрагмент", "ссылка на релевантный фрагмент"),
+        ("на релевантный акт", "ссылка на релевантный акт"),
+        ("первая ссылка релевантна", "первая ссылка релевантна"),
+    ):
+        out.append(
+            (
+                f"поправка против нынешнего поведения, {label}",
+                "answer-quality.json",
+                f"{pinned[key]['hit']} из {pinned[key]['of']} против "
+                f"{online[key]['hit']} из {online[key]['of']}",
+            )
+        )
     human = quality["human"]
     out.append(
         (
