@@ -46,7 +46,7 @@ jobs:
       - name: Install packages
         run: |
           python -m pip install --upgrade pip
-          pip install -e '.[analytics,dev]'
+          pip install -e '.[analytics,dev,router]'
 
       # Плотная часть требует torch и весов модели запроса: 1,1 ГБ, на прогон
       # проверки это лишние пять минут. Тесты плотной ступени ее пропускают.

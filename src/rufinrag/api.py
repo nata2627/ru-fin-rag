@@ -27,6 +27,7 @@ from .answer import EXCERPTS, GENERATE, AnswerError, AnswerService
 from .config import ConfigError, env, live_mode, load_catalog, project_root
 from .corpus import CorpusError
 from .events import EventLog
+from .router import ROUTES
 from .search import SearchError, SearchService
 
 # Предел длины запроса взят по эталонному набору: самый длинный живой вопрос
@@ -103,6 +104,19 @@ async def lifespan(app: FastAPI):
     # Реестр версий читается с диска, а не собирается: собирать его значит
     # считать отпечаток 448,8 МБ весов на каждом холодном старте, а на
     # бесплатном тарифе старт идет после каждого простоя (задача 6.3).
+    # Роутер на инструментах поднимается только там, где его включили: его
+    # библиотека стоит 66,3 МБ памяти на импорт при 215 МБ пика сервиса и
+    # 512 МБ бесплатного тарифа (задача 8.2, pyproject, группа router).
+    state["router"] = None
+    state["router_off"] = "роутер выключен: RUFINRAG_ROUTER не равен 1"
+    if os.environ.get("RUFINRAG_ROUTER", "") == "1" and state["answer"] is not None:
+        try:
+            from .router import Router
+
+            state["router"] = Router.build(state["answer"])
+            state["router_off"] = ""
+        except ImportError as exc:
+            state["router_off"] = f"нет langgraph, нужна группа router: {exc}"
     state["registry"] = registry.load(project_root())
     state["registry_mismatch"] = registry.compare(state["registry"], _running_versions())
     state["events"] = EventLog.from_env()
@@ -287,6 +301,13 @@ def health():
         }
     )
     body["answer"] = _answer_health()
+    # Состояние роутера видно рядом с состоянием ответа: выключенный роутер это
+    # замысел, а не поломка, и причина выключения печатается строкой.
+    body["router"] = (
+        {"status": "on", "routes": list(ROUTES)}
+        if state.get("router") is not None
+        else {"status": "off", "off_reason": state.get("router_off")}
+    )
     event_log = state.get("events")
     body["event_log"] = event_log.stats() if event_log is not None else "off"
     if current.dense_off:
@@ -429,6 +450,64 @@ def answer(request: AnswerRequest):
     }
     if not result.answered:
         body["refusal"] = result.refusal
+    return body
+
+
+class RouteRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
+    top: int = Field(default=10, ge=1, le=MAX_TOP)
+
+    @field_validator("query")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("пустой запрос")
+        return value
+
+
+@app.post("/route")
+def route(request: RouteRequest) -> dict:
+    """Ответ через роутер на инструментах: маршрут называется в ответе.
+
+    Ручка отдельная, а не флаг у `/answer`: маршрут меняет и выдачу, и состав
+    ответа, и человеку, который сравнивает роутер с прямым поиском (задача
+    8.3), нужны оба поведения рядом, а не одно вместо другого.
+    """
+    router_service = state.get("router")
+    if router_service is None:
+        raise HTTPException(status_code=503, detail=state.get("router_off") or "роутер не поднят")
+    try:
+        run = router_service.run(request.query, top=request.top)
+    except (ConfigError, SearchError, AnswerError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    answer = run.answer
+    body: dict = {
+        "query": run.query,
+        "route": run.route,
+        "reason": run.reason,
+        "trace": list(run.trace),
+        "timings_ms": run.timings_ms,
+        "registry_version": _registry_version(),
+    }
+    if run.clarify is not None:
+        body["clarify"] = run.clarify
+    if answer is not None:
+        body.update(
+            {
+                "answered": answer.answered,
+                "answer": answer.text,
+                "answer_version": answer.answer_version,
+                "support": answer.support.as_dict(),
+                "citations": [citation.as_dict() for citation in answer.citations],
+                "config": answer.search.config,
+                "config_version": answer.search.config_version,
+                "corpus_version": answer.search.corpus_version,
+            }
+        )
+        if not answer.answered:
+            body["refusal"] = answer.refusal
     return body
 
 

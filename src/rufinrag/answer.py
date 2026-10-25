@@ -486,10 +486,22 @@ class AnswerService:
         mode = mode or EXCERPTS
         if mode not in MODES:
             raise AnswerError(f"нет режима ответа {mode!r}, есть {', '.join(MODES)}")
+        result = self.search.search(query, top=top, config=config)
+        return self.answer_from(result, query, mode=mode)
+
+    def answer_from(self, result: SearchResult, query: str, mode: str | None = None) -> Answer:
+        """Ответ по готовой выдаче.
+
+        Нужен роутеру (задача 8.2): он уже сделал поиск, чтобы выбрать маршрут,
+        и второй такой же поиск был бы заплачен пользователем за выбор ветки, а
+        не за ответ.
+        """
+        mode = mode or EXCERPTS
+        if mode not in MODES:
+            raise AnswerError(f"нет режима ответа {mode!r}, есть {', '.join(MODES)}")
         if mode == GENERATE and not self.generation_ready:
             raise AnswerError(f"генеративный режим недоступен: {self.generation_off}")
 
-        result = self.search.search(query, top=top, config=config)
         weights = idf_weights(self.search.bm25, query)
         t0 = time.monotonic()
         support, covered = self._support(result, weights, query)
