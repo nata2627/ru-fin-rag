@@ -127,7 +127,23 @@ class TestOnTheCorpus:
         from rufinrag.search import SearchService
 
         service = SearchService.build(with_dense=False)
-        return Router.build(AnswerService.build(service))
+        # Инструмент графа включен явно: по умолчанию он выключен замером
+        # (ничего не меняет в ответе, стоит второго поиска), но маршрут обязан
+        # работать, и проверяется он здесь.
+        return Router.build(AnswerService.build(service), graph=True)
+
+    def test_graph_tool_is_off_unless_asked(self):
+        from rufinrag.answer import AnswerService
+        from rufinrag.search import SearchService
+
+        plain = Router.build(AnswerService.build(SearchService.build(with_dense=False)))
+        assert plain.graph_config_available is False
+        run = plain.run(
+            "какие требования к отчетности по Положению 590-П о резервах "
+            "на возможные потери по ссудам",
+            top=10,
+        )
+        assert run.route == ACTS
 
     def test_plain_search_answers_with_citations(self, live):
         run = live.run("резерв по ссуде", top=10)
