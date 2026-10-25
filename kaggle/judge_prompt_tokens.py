@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import gpu_gen as G  # noqa: E402
 import gpu_judge as J  # noqa: E402
+
 from rufin.annotation import ANSWER_FORMAT, RUBRIC  # noqa: E402
 
 

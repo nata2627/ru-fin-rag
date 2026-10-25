@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from lexical_gap import share  # noqa: E402
+
 from rufin import metrics as M  # noqa: E402
 from rufin.benchmark import read_qrels  # noqa: E402
 
