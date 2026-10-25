@@ -95,6 +95,11 @@ def citations_quality(
         cited_acts = {c.act_id for c in answer.citations}
         for tally in (counts, bucket):
             tally["answered"] += 1
+            # Опорный фрагмент это тот, по которому сервис решил отвечать. В
+            # цитаты он попадает не всегда: опора ищется по десяти фрагментам, а
+            # цитат пять. Без этого числа нельзя сравнить два пути из находки
+            # S24, потому что у обоих опора и цитаты берутся из разных мест.
+            tally["support_not_cited"] += answer.support.best_chunk_id not in cited
             tally["strict"] += any(chunk in relevant for chunk in cited)
             tally["full"] += any(chunk in full for chunk in cited)
             tally["act"] += bool(cited_acts & acts_relevant[query_id])
@@ -119,11 +124,116 @@ def report_of(tally: Counter[str]) -> dict[str, object]:
         "refused": tally["refused"],
         "answered": answered,
         "citations_per_answer": round(tally["citations"] / answered, 2) if answered else None,
+        "опора не попала в цитаты": share(tally["support_not_cited"], answered),
         "ссылка на релевантный фрагмент": share(tally["strict"], answered),
         "ссылка на фрагмент с полным ответом": share(tally["full"], answered),
         "ссылка на релевантный акт": share(tally["act"], answered),
         "первая ссылка релевантна": share(tally["first"], answered),
     }
+
+
+def cross_support(
+    service: AnswerService,
+    queries: dict,
+    qrels: dict[str, dict[str, int]],
+    lexical: str,
+    online: str,
+) -> dict[str, object]:
+    """Цена одного из двух путей из находки S24, посчитанная до решения.
+
+    Путь такой: опора считается по лексической выдаче, на которой выведен
+    порог, а цитаты берутся из выдачи связки по умолчанию, которой отвечает
+    сервис. Здесь это только замер, поведение сервиса не меняется.
+
+    Лексические кандидаты связка по умолчанию считает и сейчас (первая ступень
+    гибрида это они же), поэтому путь не добавляет сервису ни одного поиска, и
+    это видно по полю `seconds` рядом.
+    """
+    counts: Counter[str] = Counter()
+    # Второй счет того же пути с одной поправкой: опорный фрагмент обязан стоять
+    # в цитатах. Без нее сервис решает отвечать по тексту, которого на экране
+    # нет, и это возражение к пути надо не обсуждать, а считать.
+    pinned: Counter[str] = Counter()
+    # И тот же счет, когда опорный фрагмент ставится последней цитатой: набор
+    # цитат от места не меняется, а первая строка экрана остается за выдачей,
+    # которая ранжирует лучше.
+    appended: Counter[str] = Counter()
+    by_subsample: dict[str, Counter[str]] = {}
+    limit = service.settings.citations
+    started = time.monotonic()
+    for query_id, query in queries.items():
+        relevant = {chunk for chunk, grade in qrels[query_id].items() if grade > 0}
+        full = {chunk for chunk, grade in qrels[query_id].items() if grade >= FULL_ANSWER}
+        support, _ = service.support_of(
+            service.search.search(query.text, top=DEPTH, config=lexical), query.text
+        )
+        bucket = by_subsample.setdefault(query.podvyborka, Counter())
+        for tally in (counts, bucket, pinned, appended):
+            tally["queries"] += 1
+        if not support.passed:
+            for tally in (counts, bucket, pinned, appended):
+                tally["refused"] += 1
+            continue
+        # Цитата это фрагмент выдачи: слой ответа берет первые пять хитов и
+        # печатает рядом акт, раздел и пункты. Поэтому мера считается по тем же
+        # первым пяти, без второго прохода по слою ответа.
+        hits = service.search.search(query.text, top=DEPTH, config=online).hits[:limit]
+        cited = [hit.chunk_id for hit in hits]
+        cited_acts = {hit.act_id for hit in hits}
+        acts_relevant = {service.search.corpus.get(chunk).act.act_id for chunk in relevant}
+        for tally in (counts, bucket):
+            tally["answered"] += 1
+            # Слабое место этого пути, названное числом: опора нашлась в
+            # лексическом фрагменте, а в пятерку цитат он не попал, то есть
+            # отвечать решили по одному тексту, а печатают другие.
+            tally["support_not_cited"] += support.best_chunk_id not in cited
+            tally["strict"] += any(chunk in relevant for chunk in cited)
+            tally["full"] += any(chunk in full for chunk in cited)
+            tally["act"] += bool(cited_acts & acts_relevant)
+            tally["first"] += bool(cited) and cited[0] in relevant
+            tally["citations"] += len(cited)
+        # Поправка: опорный фрагмент встает первым, остальные сдвигаются, число
+        # цитат то же. Первым, а не последним, потому что именно по нему принято
+        # решение отвечать, и первую строку экрана читают раньше прочих.
+        fixed = (
+            cited
+            if support.best_chunk_id in cited
+            else [support.best_chunk_id, *cited[: limit - 1]]
+        )
+        fixed_acts = {service.search.corpus.get(chunk).act.act_id for chunk in fixed}
+        last = (
+            cited
+            if support.best_chunk_id in cited
+            else [*cited[: limit - 1], support.best_chunk_id]
+        )
+        for tally, order, acts in (
+            (pinned, fixed, fixed_acts),
+            (appended, last, fixed_acts),
+        ):
+            tally["answered"] += 1
+            tally["strict"] += any(chunk in relevant for chunk in order)
+            tally["full"] += any(chunk in full for chunk in order)
+            tally["act"] += bool(acts & acts_relevant)
+            tally["first"] += order[0] in relevant
+            tally["citations"] += len(order)
+    out: dict[str, object] = {
+        "путь": "опора по лексической выдаче, цитаты из связки по умолчанию",
+        "опора считается на": lexical,
+        "цитаты из": online,
+        "лишних поисков сервису": 0,
+        "seconds": round(time.monotonic() - started, 1),
+        **report_of(counts),
+    }
+    out["by_subsample"] = {name: report_of(tally) for name, tally in sorted(by_subsample.items())}
+    out["с опорой в цитатах"] = {
+        "поправка": "опорный фрагмент встает первой цитатой, число цитат то же",
+        **report_of(pinned),
+    }
+    out["с опорой последней цитатой"] = {
+        "поправка": "опорный фрагмент встает последней цитатой, число цитат то же",
+        **report_of(appended),
+    }
+    return out
 
 
 def human_section(part_a: Path, qrels: dict[str, dict[str, int]]) -> dict[str, object] | None:
@@ -190,6 +300,11 @@ def main() -> int:
     parser.add_argument("--config", nargs="+", default=None)
     parser.add_argument("--part-a", type=Path, default=DEFAULT_PART_A)
     parser.add_argument("--out", type=Path, default=OUT_FILE)
+    parser.add_argument(
+        "--only-cross",
+        action="store_true",
+        help="пересчитать только вариант из находки S24 и дописать его в готовый отчет",
+    )
     args = parser.parse_args()
 
     catalog = load_catalog()
@@ -211,6 +326,27 @@ def main() -> int:
     if args.sample:
         labeled = dict(list(labeled.items())[: args.sample])
 
+    if args.only_cross:
+        if not args.out.exists():
+            print(f"нет отчета {args.out}, считать нечего", file=sys.stderr)
+            return 2
+        report = json.loads(args.out.read_text(encoding="utf-8"))
+        report["cross_support"] = cross_support(
+            service, labeled, qrels, "bm25", catalog.default
+        )
+        args.out.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        block = report["cross_support"]
+        strict = block["ссылка на релевантный фрагмент"]
+        print(
+            f"вариант из S24: ссылка на релевантный фрагмент {strict['hit']} из {strict['of']}, "
+            f"отказов {block['refused']} из {block['queries']}, опора не в цитатах "
+            f"{block['опора не попала в цитаты']['hit']} из "
+            f"{block['опора не попала в цитаты']['of']}"
+        )
+        return 0
+
     report: dict[str, object] = {
         "measured_at": time.strftime("%Y-%m-%d"),
         "machine": f"{platform.machine()} {platform.system()} {platform.release()}",
@@ -230,6 +366,10 @@ def main() -> int:
     report["configs"] = {
         name: citations_quality(service, labeled, qrels, name) for name in configs
     }
+    if "bm25" in configs and catalog.default in configs and catalog.default != "bm25":
+        report["cross_support"] = cross_support(
+            service, labeled, qrels, "bm25", catalog.default
+        )
 
     human = human_section(args.part_a, qrels)
     if human is None:
