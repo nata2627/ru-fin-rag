@@ -117,6 +117,31 @@ def main() -> int:
         refused["router"] += int(run.answer is not None and not run.answer.answered)
         refused["direct"] += int(not plain.answered)
 
+    # Инструмент графа отдельно, потому что в основном замере он не может себя
+    # показать: расширение по цитированию занимает последнее место выдачи
+    # (режим резерва, S20), а в ответ идут первые пять цитат, то есть
+    # добавленный фрагмент до ответа не доходит вовсе. Здесь то же сравнение
+    # идет на глубине, равной числу цитат, где добавленный фрагмент в ответ
+    # попадает.
+    graph_tool = {"queries": 0, "base": 0, "reserve_deep": 0, "reserve_in_citations": 0}
+    citations = answer.settings.citations
+    for query_id, query in queries.items():
+        relevant = {chunk for chunk, grade in qrels[query_id].items() if grade > 0}
+        run = router.run(query.text, top=DEPTH)
+        if run.route != "граф":
+            continue
+        graph_tool["queries"] += 1
+        plain = search.search(query.text, top=DEPTH)
+        deep = search.search(query.text, top=DEPTH, config="hybrid-graph")
+        shallow = search.search(query.text, top=citations, config="hybrid-graph")
+        for name, result in (
+            ("base", plain),
+            ("reserve_deep", deep),
+            ("reserve_in_citations", shallow),
+        ):
+            cited = [hit.chunk_id for hit in result.hits[:citations]]
+            graph_tool[name] += int(any(chunk in relevant for chunk in cited))
+
     hits_router = int(sum(router_correct))
     hits_direct = int(sum(direct_correct))
     total = len(router_correct)
@@ -167,6 +192,7 @@ def main() -> int:
             "graph_first_query": graph_first_ms,
         },
         "refused": refused,
+        "graph_tool": graph_tool,
     }
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
