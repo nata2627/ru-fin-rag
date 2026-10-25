@@ -76,18 +76,24 @@
   },
   "latency_ms": {
     "router": {
-      "median": 150.0,
-      "p95": 373.1
+      "median": 157.1,
+      "p95": 566.5
     },
     "direct": {
-      "median": 138.6,
-      "p95": 277.9
+      "median": 153.3,
+      "p95": 316.8
     },
-    "difference_median": 11.4,
-    "graph_first_query": 7756.5
+    "difference_median": 3.8,
+    "graph_first_query": 7646.3
   },
   "refused": {
     "router": 15,
     "direct": 15
+  },
+  "graph_tool": {
+    "queries": 84,
+    "base": 60,
+    "reserve_deep": 60,
+    "reserve_in_citations": 59
   }
 }

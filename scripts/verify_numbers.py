@@ -990,6 +990,68 @@ def checks() -> list[tuple[str, str, str]]:
         )
     )
 
+    # Роутер на инструментах: качество, задержка и распределение маршрутов.
+    router = load("router.json")
+    quality = router["quality"]
+    latency = router["latency_ms"]
+    tool = router["graph_tool"]
+    out.append(
+        (
+            "качество роутера против прямого поиска",
+            "router.json",
+            f"| {quality['router']['correct']} из {quality['router']['of']} "
+            f"| {quality['direct']['correct']} из {quality['direct']['of']} |",
+        )
+    )
+    out.append(
+        (
+            "разница роутера с прямым поиском",
+            "router.json",
+            f"{ru(quality['difference']['mean'], 1)} [{ru(quality['difference']['lo'], 1)}; "
+            f"{ru(quality['difference']['hi'], 1)}]",
+        )
+    )
+    out.append(
+        (
+            "задержка роутера",
+            "router.json",
+            f"| {ru(latency['router']['median'], 1)} мс | {ru(latency['direct']['median'], 1)} мс |",
+        )
+    )
+    out.append(
+        (
+            "цена роутера в медиане",
+            "router.json",
+            f"стоит {ru(latency['difference_median'], 1)} мс в медиане",
+        )
+    )
+    out.append(
+        (
+            "маршруты роутера",
+            "router.json",
+            f"прямой поиск {router['routes']['акты']}, граф {router['routes']['граф']}, "
+            f"отказ {router['routes']['отказ']}, уточнение {router['routes']['уточнение']} "
+            f"из {router['queries']}",
+        )
+    )
+    out.append(
+        (
+            "инструмент графа на тех же запросах",
+            "router.json",
+            f"прямой поиск {tool['base']} из {tool['queries']}, граф с расширением на "
+            f"последнем месте {tool['reserve_deep']} из {tool['queries']}, граф на глубине, "
+            f"равной числу цитат, где расширение попадает в пятерку, "
+            f"{tool['reserve_in_citations']} из {tool['queries']}",
+        )
+    )
+    out.append(
+        (
+            "первое обращение к графу в роутере",
+            "router.json",
+            f"{ru(latency['graph_first_query'], 1)} мс на первое обращение",
+        )
+    )
+
     # Граф ссылок между актами и расширение выдачи по цитированию. Числа графа
     # и обе разницы с интервалами: отрицательный результат публикуется так же
     # подробно, как прибавка.

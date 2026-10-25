@@ -19,6 +19,7 @@ S25). Правилом, а не вызовом модели, по двум пр�
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, TypedDict
@@ -42,6 +43,16 @@ CLARIFY_MIN_ACTS = 4
 # на всех 991 запросах расширение не дало ничего (S20), а здесь оно работает как
 # инструмент для вопроса, в котором акт назван номером.
 GRAPH_CONFIG = "hybrid-graph"
+# Инструмент графа по умолчанию выключен, и это результат замера, а не
+# осторожность. На 84 запросах, где акт назван номером, расширение по
+# цитированию не изменило ответ ни разу: в режиме резерва оно занимает
+# последнее место выдачи, а в ответ идут первые пять цитат. Посчитанный
+# отдельно вариант, где добавленный фрагмент попадает в пятерку, дал 59
+# корректных ссылок из 84 против 60 у прямого поиска, то есть прибавки нет и
+# там. Цена маршрута при этом реальная: второй поиск на запрос и 7,8 с на
+# первое обращение, пока собирается граф ссылок. Включается переменной
+# RUFINRAG_ROUTER_GRAPH=1 (замер: results/router.json, EXPERIMENTS S25).
+GRAPH_ENV = "RUFINRAG_ROUTER_GRAPH"
 
 
 class State(TypedDict, total=False):
@@ -83,12 +94,16 @@ class Router:
     )
 
     @classmethod
-    def build(cls, answer: AnswerService):
+    def build(cls, answer: AnswerService, graph: bool | None = None):
         # Импорт внутри сборки, а не в начале модуля: без роутера сервис не
         # должен платить за библиотеку ни памятью, ни секундой старта.
         from langgraph.graph import END, START, StateGraph
 
-        router = cls(answer=answer, graph_config_available=GRAPH_CONFIG in load_catalog().configs)
+        enabled = os.environ.get(GRAPH_ENV, "") == "1" if graph is None else graph
+        router = cls(
+            answer=answer,
+            graph_config_available=enabled and GRAPH_CONFIG in load_catalog().configs,
+        )
         builder = StateGraph(State)
         builder.add_node("triage", router._triage)
         builder.add_node(REFUSE, router._refuse)
