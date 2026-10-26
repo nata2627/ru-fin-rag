@@ -93,6 +93,19 @@ def main() -> None:
     ap.add_argument("--probe", type=int, default=100,
                     help="0 — не мерить скорость")
     ap.add_argument("--train", type=int, default=0, help="сколько обучающих вопросов")
+    ap.add_argument("--train-file", default="synthetic_train.jsonl",
+                    help="имя файла обучающей выборки. Отдельное имя у каждого "
+                         "опыта: прежнюю выборку затирать нельзя, иначе опыт "
+                         "не с чем сравнить")
+    ap.add_argument("--pairs-limit", type=int, default=0,
+                    help="взять только первые N пар. Это и есть проба: сто пар, "
+                         "доля принятых считается по ста попыткам, а не по ста "
+                         "принятым вопросам")
+    ap.add_argument("--pairs", default="",
+                    help="E5: файл пар фрагментов (`scripts/make_pairs_e5.py`). "
+                         "С ним вопрос пишется по двум связанным нормам, "
+                         "а не по одному фрагменту, и фильтр учителя "
+                         "проверяет оба эталона")
     ap.add_argument("--fewshot", default="",
                     help="файл с примерами живых вопросов (E4): генератор "
                          "обучающей выборки видит их как образец манеры. "
@@ -110,6 +123,10 @@ def main() -> None:
                          "эталон. По умолчанию половина глубины — отношение "
                          "и есть смысл фильтра. Порог не меньше глубины "
                          "означает фильтр, который не отбрасывает ничего")
+    ap.add_argument("--filter-second", type=int, default=30,
+                    help="E5: в первые сколько кандидатов обязан попасть второй "
+                         "эталон пары. Это же число и есть мера "
+                         "многофрагментности (S26, пункт 5)")
     ap.add_argument("--judge", action="store_true", help="разметить пул судьёй")
     ap.add_argument("--pool", default="pool_candidates.tsv",
                     help="файл пула в приложенном датасете; для доразметки живых "
@@ -226,6 +243,14 @@ def main() -> None:
     all_texts = [c["text"] for c in chunks]
 
     # ---- 0. замер скорости ----
+    # В режиме пары замера нет: пробой служит сама генерация на сотне пар
+    # (`--train 100`), и она же печатает скорость, долю принятых и медиану
+    # длины вопроса. Отдельный замер гонял бы стили по одному фрагменту,
+    # то есть мерил бы не тот прогон.
+    if args.pairs and args.probe:
+        print("режим пары: отдельный замер скорости пропущен, проба это "
+              "генерация на сотне пар", flush=True)
+        args.probe = 0
     if args.probe and "скорость" not in report:
         llm = G.load_llm(args.train_model, args.dtype, quant, args.tensor_parallel,
                          args.max_model_len)
@@ -255,7 +280,39 @@ def main() -> None:
         print(f"примеры живых вопросов: {путь}, {len(examples)} шт., "
               f"в подсказке {args.shots}", flush=True)
 
-    train_path = os.path.join(qdir, "synthetic_train.jsonl")
+    pair_rows: list[dict] = []
+    if args.pairs:
+        путь_пар = common.find_file(args.pairs)
+        if путь_пар is None:
+            raise SystemExit(f"не найден {args.pairs}: соберите его локально "
+                             f"(`python3 scripts/make_pairs_e5.py`) и перезалейте "
+                             f"датасет запросов")
+        with open(путь_пар, encoding="utf-8") as f:
+            pair_rows = [json.loads(line) for line in f if line.strip()]
+        if args.pairs_limit:
+            pair_rows = pair_rows[:args.pairs_limit]
+            print(f"   проба: берем первые {len(pair_rows)} пар", flush=True)
+        по_способу: dict[str, int] = {}
+        for пара in pair_rows:
+            по_способу[пара["origin"]] = по_способу.get(пара["origin"], 0) + 1
+        print(f"пары: {путь_пар}, {len(pair_rows)} шт., по способу {по_способу}",
+              flush=True)
+        # Утечка через второй фрагмент пары проверяется здесь, а не на веру
+        # к скрипту, который пары собрал: акт, попавший в dev или в тест,
+        # обучением не трогается ни одним фрагментом, иначе проверять E5
+        # было бы нечем.
+        by_act = S.group_by_act(split)
+        чужие = {пара["act_id"] for пара in pair_rows
+                 if by_act.get(пара["act_id"]) != S.TRAIN}
+        чужие |= {пара["act_id_2"] for пара in pair_rows
+                  if by_act.get(пара["act_id_2"]) != S.TRAIN}
+        if чужие:
+            raise SystemExit(
+                f"пары трогают {len(чужие)} актов не из группы train, "
+                f"например {sorted(чужие)[:3]}. Это утечка: те же акты "
+                f"стоят в dev и тесте. Пересоберите пары.")
+
+    train_path = os.path.join(qdir, args.train_file)
     if args.train and not os.path.exists(train_path):
         if llm is None:
             # Веса ищутся во входах, как у судьи: токена у ядра, созданного
@@ -265,10 +322,16 @@ def main() -> None:
             llm = G.load_llm(common.resolve_model(args.train_model, обязательно=False),
                              args.dtype, quant, args.tensor_parallel,
                              args.max_model_len)
-        report["train"] = G.make_queries(
-            llm, chunks_of_groups(chunks, split, [S.TRAIN]), train_path,
-            target=args.train, prefix="tr", idf_texts=all_texts, batch=args.batch,
-            examples=examples, shots=args.shots)
+        if pair_rows:
+            report["train"] = G.make_pair_queries(
+                llm, pair_rows, chunks, train_path, target=args.train, prefix="tr",
+                idf_texts=all_texts, batch=args.batch, examples=examples,
+                shots=args.shots)
+        else:
+            report["train"] = G.make_queries(
+                llm, chunks_of_groups(chunks, split, [S.TRAIN]), train_path,
+                target=args.train, prefix="tr", idf_texts=all_texts, batch=args.batch,
+                examples=examples, shots=args.shots)
         report["train"]["модель"] = args.train_model
         save()
     if llm is not None:
@@ -300,17 +363,42 @@ def main() -> None:
         llm = None
 
     # ---- 3. третий фильтр ----
+    # Фильтр поднимает кросс-энкодер, а генерация vLLM, и вместе они
+    # не ставятся (установка vLLM сдвигает transformers). Поэтому фильтр
+    # идет отдельным прогоном, и выборка к нему приезжает датасетом:
+    # сначала файл ищется в рабочей папке, потом среди входов.
     if args.teacher_filter:
         for имя, path in (("train", train_path), ("test", test_path)):
-            if not os.path.exists(path) or f"фильтр учителя {имя}" in report:
+            if f"фильтр учителя {имя}" in report:
                 continue
+            if not os.path.exists(path):
+                извне = common.find_file(os.path.basename(path))
+                if извне is None:
+                    continue
+                path = извне
+                print(f"выборка {имя} из входов: {path}", flush=True)
             with open(path, encoding="utf-8") as f:
                 queries = [json.loads(l) for l in f if l.strip()]
-            kept, stats = G.filter_by_teacher(queries, chunks, depth=args.filter_depth,
-                                              keep_top=args.filter_keep, device=device)
-            with open(path, "w", encoding="utf-8") as f:
+            парная = bool(queries) and "gold_chunk_id_2" in queries[0]
+            if парная:
+                kept, stats = G.filter_pairs_by_teacher(
+                    queries, chunks, depth=args.filter_depth,
+                    keep_top=args.filter_keep, second_keep=args.filter_second,
+                    device=device)
+            else:
+                kept, stats = G.filter_by_teacher(queries, chunks,
+                                                  depth=args.filter_depth,
+                                                  keep_top=args.filter_keep,
+                                                  device=device)
+            # Отфильтрованное пишется рядом, а не поверх входа: по двум
+            # файлам доля отсеянного считается из файлов, а не из памяти
+            # о прогоне, и упавший прогон не уносит с собой выборку.
+            куда = os.path.join(qdir, os.path.basename(path).replace(
+                ".jsonl", "_filtered.jsonl"))
+            with open(куда, "w", encoding="utf-8") as f:
                 for q in kept:
                     f.write(json.dumps(q, ensure_ascii=False) + "\n")
+            print(f"отфильтрованное: {куда}", flush=True)
             report[f"фильтр учителя {имя}"] = stats
             save()
 

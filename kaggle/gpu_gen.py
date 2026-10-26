@@ -41,7 +41,14 @@ import re
 import time
 from dataclasses import dataclass
 
-from rufin.queryfilter import IdfTable, copy_score, is_good_source, judge_query
+from rufin.queryfilter import (
+    MAX_COMMON_RUN,
+    MAX_COPY_SHARE,
+    IdfTable,
+    copy_score,
+    is_good_source,
+    judge_query,
+)
 
 # Генератор обучающей выборки и генератор теста обязаны быть из разных
 # семейств: иначе тест меряет, насколько ученик выучил стиль своего же
@@ -399,14 +406,15 @@ def make_queries(llm, chunks: list[dict], out_path: str, target: int,
     return stats
 
 
-def next_style(by_style: collections.Counter) -> int:
+def next_style(by_style: collections.Counter,
+               styles: tuple[Style, ...] = STYLES) -> int:
     """Следующий стиль — тот, которого принято меньше всего.
 
     Не по кругу: стили отсеиваются фильтрами по-разному (короткий запрос
     чаще ловится на «подходит к слишком многим»), и ровное чередование
     пачек дало бы перекос в принятом.
     """
-    counts = [by_style[s.name] for s in STYLES]
+    counts = [by_style[s.name] for s in styles]
     return counts.index(min(counts))
 
 
@@ -487,4 +495,307 @@ def filter_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 100,
              "медиана места эталона": sorted(positions)[len(positions) // 2] if positions else 0}
     print(f"третий фильтр: принято {stats['принято']} из {stats['на входе']}, "
           f"медиана места эталона {stats['медиана места эталона']}", flush=True)
+    return kept, stats
+
+
+# ---- E5: вопрос по двум связанным нормам ----
+#
+# Все 6 112 вопросов прошлых прогонов собраны по одной инструкции: «ответ
+# содержится именно в этом фрагменте». Живой вопрос требует собрать норму
+# из частей, и E5 меняет ровно это (S26 части Б). Пары готовятся локально
+# (`scripts/make_pairs_e5.py`), здесь по паре пишется вопрос.
+#
+# Стилей два, а не три: короткий поисковый запрос из режима пары исключен.
+# Запросом в три слова ситуацию с двумя нормами не задашь, и такой вопрос
+# неизбежно оказался бы однофрагментным, то есть мерил бы не то, что
+# проверяет опыт. Примеры живых вопросов (E4) остаются: манера оказалась
+# не причиной, но и не помехой.
+
+PAIR_HEAD = """Ниже два фрагмента нормативных актов Банка России. Это две разные
+нормы ({откуда}).
+
+--- норма 1 ---
+{first}
+--- конец нормы 1 ---
+
+--- норма 2 ---
+{second}
+--- конец нормы 2 ---
+"""
+
+PAIR_COMMON = """
+Требования:
+- чтобы ответить на вопрос, нужны ОБЕ нормы; вопрос, на который хватает
+  одной из них, не годится;
+- вопрос по-русски, целиком; латиница допустима только в обозначениях
+  вроде USD, IFRS, SWIFT;
+- своими словами, без дословных кусков из фрагментов длиннее трех слов
+  подряд;
+- не упоминай номера и названия актов, не упоминай слова «норма 1»
+  и «норма 2».
+"""
+
+PAIR_STYLES = (
+    Style("вопрос профессионала по двум нормам", """
+Сформулируй ОДИН вопрос, который задал бы риск-аналитик, методолог или
+бухгалтер банка и ответ на который собирается из обеих норм сразу.
+Одно-два предложения, заканчивается знаком вопроса.
+""" + PAIR_COMMON, max_tokens=160),
+    Style("бытовая ситуация по двум нормам", """
+Опиши ОДНУ рабочую ситуацию в двух-четырех предложениях и закончи
+вопросом, ответ на который требует обеих норм. Пиши так, как пишут
+в банке коллеге: без ссылок на пункты, с обычными словами.
+""" + PAIR_COMMON, max_tokens=224),
+)
+
+PAIR_ORIGINS = {"внутри акта": "разные пункты одного акта",
+                "между актами": "разные акты, второй назван в первом"}
+
+
+def pair_prompt(tok, style: Style, pair: dict, first: dict, second: dict,
+                examples: list[str] | None, shots: int, seed: int, number: int) -> str:
+    head = PAIR_HEAD.format(откуда=PAIR_ORIGINS.get(pair["origin"], pair["origin"]),
+                            first=body_of(first)[:2600],
+                            second=body_of(second)[:2600])
+    if examples and style.fewshot and shots:
+        head += FEWSHOT.format(examples=shots_for(examples, shots, seed, number))
+    return _chat(tok, head + style.tail)
+
+
+def generate_pairs(llm, style: Style, pairs: list[dict], texts: dict[str, dict],
+                   temperature: float = 0.7, examples: list[str] | None = None,
+                   shots: int = 3, seed: int = 13, offset: int = 0) -> list[str]:
+    from vllm import SamplingParams
+    tok = llm.get_tokenizer()
+    prompts = [pair_prompt(tok, style, pair, texts[pair["chunk_id"]],
+                           texts[pair["chunk_id_2"]], examples, shots, seed,
+                           offset + i)
+               for i, pair in enumerate(pairs)]
+    params = SamplingParams(temperature=temperature, top_p=0.9,
+                            max_tokens=style.max_tokens)
+    out = llm.generate(prompts, params, use_tqdm=False)
+    return [_clean(o.outputs[0].text) for o in out]
+
+
+def judge_pair_query(query: str, first: str, second: str, idf: IdfTable) -> tuple[bool, str]:
+    """Годится ли вопрос по паре. Фильтр «списан» применяется к обоим
+    фрагментам (S26, пункт 3): списанный со второго так же сводит задачу
+    к поиску подстроки, как списанный с первого."""
+    ok, why = judge_query(query, first, idf, require_question_mark=True)
+    if not ok:
+        return False, why
+    run, share = copy_score(query, second)
+    if run > MAX_COMMON_RUN or share > MAX_COPY_SHARE:
+        return False, f"списан со второго фрагмента (цепочка {run} слов)"
+    return True, ""
+
+
+def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
+                      target: int, prefix: str = "tr", per_act: int = 12,
+                      seed: int = 13, batch: int = 256,
+                      idf_texts: list[str] | None = None,
+                      examples: list[str] | None = None, shots: int = 3) -> dict:
+    """Вопросы по парам фрагментов. Возвращает статистику.
+
+    Доля способов подбора пары печатается по принятым вопросам, а не по
+    пулу пар: равные доли в постановке были, а корпус их не дает (ссылка
+    на другой обучающий акт есть у 1358 пригодных фрагментов из 14 905),
+    и перекос надо видеть там, где он попадает в обучение.
+    """
+    idf = IdfTable(idf_texts if idf_texts is not None else [c["text"] for c in chunks])
+    texts = {c["chunk_id"]: c for c in chunks}
+    годные = [p for p in pairs
+              if p["chunk_id"] in texts and p["chunk_id_2"] in texts]
+    if len(годные) != len(pairs):
+        print(f"ВНИМАНИЕ: пар с неизвестными фрагментами {len(pairs) - len(годные)}: "
+              f"нарезка пар и нарезка корпуса разошлись", flush=True)
+    random.Random(seed).shuffle(годные)
+    print(f"пар дано {len(pairs)}, пригодных {len(годные)}, цель {target}", flush=True)
+
+    out: list[dict] = []
+    rejected: collections.Counter = collections.Counter()
+    per_act_count: collections.Counter = collections.Counter()
+    by_style: collections.Counter = collections.Counter()
+    by_origin: collections.Counter = collections.Counter()
+    t0 = time.time()
+    pos = 0
+    while len(out) < target and pos < len(годные):
+        batch_pairs: list[dict] = []
+        while len(batch_pairs) < batch and pos < len(годные):
+            pair = годные[pos]
+            pos += 1
+            if per_act_count[pair["act_id"]] >= per_act:
+                continue
+            batch_pairs.append(pair)
+        if not batch_pairs:
+            break
+        style = PAIR_STYLES[next_style(by_style, PAIR_STYLES)]
+        questions = generate_pairs(llm, style, batch_pairs, texts, examples=examples,
+                                  shots=shots, seed=seed, offset=pos - len(batch_pairs))
+        for pair, q in zip(batch_pairs, questions):
+            first, second = texts[pair["chunk_id"]], texts[pair["chunk_id_2"]]
+            ok, why = judge_pair_query(q, body_of(first), body_of(second), idf)
+            if not ok:
+                rejected[why.split("(")[0].strip()] += 1
+                continue
+            run, share = copy_score(q, body_of(first))
+            run2, _ = copy_score(q, body_of(second))
+            per_act_count[pair["act_id"]] += 1
+            by_style[style.name] += 1
+            by_origin[pair["origin"]] += 1
+            out.append({
+                "query_id": f"{prefix}{len(out):05d}", "origin": "синтетический",
+                "style": style.name, "text": q,
+                "gold_chunk_id": pair["chunk_id"],
+                "gold_chunk_id_2": pair["chunk_id_2"],
+                "pair_origin": pair["origin"], "pair_id": pair["pair_id"],
+                "pair_bm25": pair["bm25"],
+                "act_id": pair["act_id"], "act_id_2": pair["act_id_2"],
+                "number": first["number"], "date": first["date"],
+                "act_title": first["title"], "section": first["section"],
+                "units": pair["units"], "units_2": pair["units_2"],
+                "mean_idf": round(idf.mean_idf(q), 2),
+                "copy_run": run, "copy_share": round(share, 2),
+                "copy_run_2": run2,
+            })
+            if len(out) >= target:
+                break
+        print(f"   принято {len(out)}/{target}, отклонено {sum(rejected.values())}, "
+              f"{time.time() - t0:.0f} с", flush=True)
+
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        for q in out:
+            f.write(json.dumps(q, ensure_ascii=False) + "\n")
+
+    attempts = len(out) + sum(rejected.values())
+    длины = sorted(len(q["text"]) for q in out)
+    stats = {"accepted": len(out), "rejected": sum(rejected.values()),
+             "reject_share": round(sum(rejected.values()) / max(1, attempts), 2),
+             "reasons": dict(rejected.most_common()), "by_style": dict(by_style),
+             "по способу пары": dict(by_origin),
+             "доля между актами": round(by_origin["между актами"] / max(1, len(out)), 3),
+             "медиана длины вопроса": длины[len(длины) // 2] if длины else 0,
+             "acts_touched": len(per_act_count), "seconds": round(time.time() - t0, 1),
+             "пар израсходовано": pos,
+             "примеров в подсказке": shots if examples else 0,
+             "примеров доступно": len(examples) if examples else 0}
+    print(f"\nпринято {stats['accepted']}, отклонено {stats['rejected']} "
+          f"({100 * stats['reject_share']:.0f}% попыток)", flush=True)
+    print(f"причины отказа: {stats['reasons']}", flush=True)
+    print(f"по стилям: {stats['by_style']}", flush=True)
+    print(f"по способу пары: {stats['по способу пары']} "
+          f"(между актами {100 * stats['доля между актами']:.0f}%)", flush=True)
+    print(f"медиана длины вопроса {stats['медиана длины вопроса']} знаков, "
+          f"актов затронуто {stats['acts_touched']}, "
+          f"время {stats['seconds'] / 60:.0f} мин", flush=True)
+    return stats
+
+
+def pair_ranks_ok(место_1: int, место_2: int, keep_top: int, second_keep: int) -> bool:
+    """Правило приемки пары, объявленное в S26 до прогона.
+
+    Ноль означает, что эталона в выдаче учителя нет вовсе. Такая пара
+    не принимается: место неизвестно, а не велико.
+    """
+    return bool(место_1 and место_2 and место_1 <= keep_top
+                and место_2 <= second_keep)
+
+
+def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 50,
+                            keep_top: int | None = None, second_keep: int = 30,
+                            batch_size: int = 64, device: str = "cuda") -> tuple[list[dict], dict]:
+    """Фильтр учителя для пары и мера многофрагментности разом (S26, пункты 3 и 5).
+
+    Вопрос принимается, если первый фрагмент пары учитель ставит в лучшую
+    половину кандидатов (как в прошлых прогонах), а второй не ниже
+    тридцатого места. Иначе второй фрагмент к вопросу отношения не имеет,
+    и пара фиктивная: вопрос однофрагментный, как во всех прошлых прогонах,
+    а значит E5 мерил бы сам себя.
+
+    Эта же проверка и есть объявленная до прогона мера доли
+    многофрагментных вопросов. Ниже 0,5 на пробе прогон останавливается
+    **до обучения**, а не после.
+
+    Порог второго обязан быть строго меньше глубины. Оба эталона
+    вставляются в кандидатов силой, поэтому их место всегда не больше
+    глубины: при `second_keep >= depth` условие по второму фрагменту
+    выполняется у любой пары, фильтр не отбрасывает ничего и показывает
+    долю многофрагментных, равную единице.
+    """
+    import gpu_search as S
+
+    from rufin.retrieval.bm25 import BM25Index
+
+    if keep_top is None:
+        keep_top = max(1, depth // 2)
+    if keep_top >= depth or second_keep >= depth:
+        raise ValueError(
+            f"порог первого {keep_top} или второго {second_keep} не меньше "
+            f"глубины {depth}: оба эталона попадают в кандидатов силой, "
+            f"поэтому такой фильтр не отбрасывает ничего, а доля "
+            f"многофрагментных выходит единицей. Увеличьте глубину.")
+    print(f"фильтр пары: глубина {depth}, первый в первых {keep_top}, "
+          f"второй в первых {second_keep}", flush=True)
+
+    texts = {c["chunk_id"]: c["text"] for c in chunks}
+    t0 = time.time()
+    index = BM25Index.build([c["chunk_id"] for c in chunks],
+                            [c["text"] for c in chunks])
+    print(f"BM25 для фильтра построен за {time.time() - t0:.0f} с", flush=True)
+    print(f"проходов кросс-энкодера: {len(queries) * depth}", flush=True)
+
+    candidates: dict[str, list[tuple[str, float]]] = {}
+    for q in queries:
+        found = [c for c, _ in index.search(q["text"], depth)]
+        эталоны = [q["gold_chunk_id"], q["gold_chunk_id_2"]]
+        нехватка = [c for c in эталоны if c not in found]
+        if нехватка:
+            found = found[:depth - len(нехватка)] + нехватка
+        candidates[q["query_id"]] = [(c, 0.0) for c in found]
+
+    ranked = S.rerank_runs([{"query_id": q["query_id"], "text": q["text"]} for q in queries],
+                           candidates, texts, batch_size=batch_size, device=device)
+
+    kept: list[dict] = []
+    места_1: list[int] = []
+    места_2: list[int] = []
+    первый_в_половине = 0
+    for q in queries:
+        order = ranked.get(q["query_id"], [])
+        место_1 = order.index(q["gold_chunk_id"]) + 1 if q["gold_chunk_id"] in order else 0
+        место_2 = order.index(q["gold_chunk_id_2"]) + 1 if q["gold_chunk_id_2"] in order else 0
+        if место_1:
+            места_1.append(место_1)
+        if место_2:
+            места_2.append(место_2)
+        if место_1 and место_1 <= keep_top:
+            первый_в_половине += 1
+        if pair_ranks_ok(место_1, место_2, keep_top, second_keep):
+            kept.append(dict(q, teacher_rank=место_1, teacher_rank_2=место_2))
+
+    def медиана(значения: list[int]) -> int:
+        return sorted(значения)[len(значения) // 2] if значения else 0
+
+    доля = len(kept) / max(1, len(queries))
+    stats = {"на входе": len(queries), "принято": len(kept),
+             "отброшено": len(queries) - len(kept),
+             "глубина": depth, "порог первого": keep_top, "порог второго": second_keep,
+             "первый в лучшей половине": первый_в_половине,
+             "медиана места первого": медиана(места_1),
+             "медиана места второго": медиана(места_2),
+             # Мера объявлена в S26 до прогона: доля вопросов, у которых
+             # второй фрагмент выше тридцатого места при первом в лучшей
+             # половине. Знаменатель это все поданные вопросы.
+             "доля многофрагментных": round(доля, 3),
+             "доля многофрагментных при первом в половине":
+                 round(len(kept) / max(1, первый_в_половине), 3)}
+    print(f"фильтр пары: принято {len(kept)} из {len(queries)}, "
+          f"места эталонов (медианы) {stats['медиана места первого']} "
+          f"и {stats['медиана места второго']}", flush=True)
+    print(f"доля многофрагментных {stats['доля многофрагментных']:.3f} "
+          f"({len(kept)} из {len(queries)}), порог остановки 0,5", flush=True)
+    if доля < 0.5:
+        print("НИЖЕ 0,5: генератор инструкцию не выполняет, прогон "
+              "останавливается до обучения (S26, пункт 5)", flush=True)
     return kept, stats
