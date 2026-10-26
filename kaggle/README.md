@@ -430,44 +430,64 @@ Kaggle привязываются к конкретной тетради чер�
 импортироваться вовсе. Выборка едет из прогона в прогон выводом ядра
 (`--kernels`).
 
+**У пробы две ветки, опыт и контроль.** Доля многофрагментных сама по себе
+не интерпретируется: пару отобрал BM25, фрагменты тематически близки, и
+однофрагментный вопрос по первому может вытянуть второй в тот же топ сам
+собой. Поэтому по тем же ста парам генерируется контроль прежней инструкцией,
+и смысл имеет разница.
+
 ```bash
 # код и пары
 python3 scripts/kaggle_run.py dataset -m "режим пары для E5"
 python3 scripts/kaggle_run.py queries
 
-# проба: сто пар
-python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba --machine "" --args \
+# проба, опыт: вопрос по двум нормам
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba2 --machine "" --no-wait --args \
   "--probe 0 --pairs pairs_e5.jsonl --pairs-limit 100 --train 100 --batch 32 \
    --train-file synthetic_train_e5_proba.jsonl --fewshot live_fewshot.jsonl --shots 3"
 
-# проба: мера многофрагментности по тем же ста вопросам
-python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba-filter \
-  --kernels ru-fin-e5-proba --args \
-  "--probe 0 --teacher-filter --filter-depth 50 --filter-second 30 \
-   --train-file synthetic_train_e5_proba.jsonl"
+# проба, контроль: те же сто пар, вопрос по одному первому фрагменту
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba2-kontrol --machine "" --no-wait --args \
+  "--probe 0 --control --pairs pairs_e5.jsonl --pairs-limit 100 --train 100 --batch 32 \
+   --train-file synthetic_train_e5_kontrol.jsonl --fewshot live_fewshot.jsonl --shots 3"
 
-# полная генерация и фильтр, только если доля многофрагментных не ниже 0,5
+# мера многофрагментности, по одному прогону на ветку
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba2-filter \
+  --kernels ru-fin-e5-proba2 --args \
+  "--probe 0 --teacher-filter --filter-depth 100 --filter-second 30 \
+   --train-file synthetic_train_e5_proba.jsonl"
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-kontrol-filter \
+  --kernels ru-fin-e5-proba2-kontrol --args \
+  "--probe 0 --teacher-filter --filter-depth 100 --filter-second 30 \
+   --train-file synthetic_train_e5_kontrol.jsonl"
+
+# полная генерация и фильтр, только если проба прошла
 python3 scripts/kaggle_run.py run c --slug ru-fin-e5-train --machine "" --args \
   "--probe 0 --pairs pairs_e5.jsonl --train 6490 --batch 256 \
    --train-file synthetic_train_e5.jsonl --fewshot live_fewshot.jsonl --shots 3"
 python3 scripts/kaggle_run.py run c --slug ru-fin-e5-filter \
   --kernels ru-fin-e5-train --args \
-  "--probe 0 --teacher-filter --filter-depth 50 --filter-second 30 \
+  "--probe 0 --teacher-filter --filter-depth 100 --filter-second 50 \
    --train-file synthetic_train_e5.jsonl"
 ```
 
 | шаг | сколько карты |
 |---|---|
-| проба, генерация ста вопросов | ~20 мин с загрузкой весов |
-| проба, фильтр ста вопросов | ~10 мин |
-| генерация 6 490 вопросов | прогноз 3,4 ч |
-| фильтр 6 490 вопросов при глубине 50 | прогноз 2,2 ч |
+| проба, генерация ста вопросов | ~20 мин с загрузкой весов, по 20 на ветку |
+| проба, фильтр ста вопросов | ~10 мин на ветку |
+| генерация 6 490 вопросов | прогноз 4,9 ч по замеру пробы |
+| фильтр 6 490 вопросов при глубине 100 | прогноз 4,3 ч |
 
-**Правило остановки объявлено до прогона.** Доля многофрагментных вопросов
-(учитель ставит второй эталон не ниже тридцатого места при первом в лучшей
-половине) ниже 0,5 на пробе означает, что генератор инструкцию не выполняет,
-и прогон останавливается **до обучения**. Иначе E5 оказался бы пятым
-прогоном под новым именем.
+**Правило остановки объявлено до измерения.** Доля многофрагментных у опыта
+обязана быть выше, чем у контроля, и не ниже 0,5. Иначе генератор инструкцию
+не выполняет, и прогон останавливается **до обучения**: иначе E5 оказался бы
+пятым прогоном под новым именем. С порогом сравнивается доля по всем
+вопросам, поданным в фильтр.
+
+Глубина 100, а не 50, и это не про стоимость. При глубине 50 и пороге
+второго 30 слепой второй фрагмент проходит проверку с вероятностью 0,6 просто
+по счету мест, и порог 0,5 не отличал бы выполненную инструкцию от
+невыполненной. При глубине 100 случайная вероятность 0,3.
 
 Порог второго эталона обязан быть строго меньше глубины: оба эталона
 вставляются в кандидатов силой, поэтому при `--filter-second 30
