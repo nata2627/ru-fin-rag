@@ -413,6 +413,67 @@ Kaggle привязываются к конкретной тетради чер�
 `bfloat16` либо упадёт, либо тихо деградирует, а деградацию видно только
 по качеству вопросов, то есть когда квота уже потрачена.
 
+## E5: вопросы по двум нормам
+
+Опыт меняет одно: обучающий вопрос пишется по **паре** связанных фрагментов,
+и ответ требует обоих (S26 части Б). Пары собираются на маке
+(`make pairs-e5`), на карте идет генерация и фильтр учителя.
+
+Этап C здесь запускается через `scripts/kaggle_run.py`, а не из браузера:
+генератор и учитель подключаются входом-моделью, и токен HuggingFace ядру
+не нужен. Машина для генерации обязательно `--machine ""` (T4 x2): ядра AWQ
+требуют Turing или новее, на P100 они не работают.
+
+**Генерация и фильтр это два прогона, и объединить их нельзя.** Генерацию
+поднимает vLLM, фильтр это кросс-энкодер из sentence-transformers, а вторая
+установка сдвигает transformers, который привез первая, и он перестает
+импортироваться вовсе. Выборка едет из прогона в прогон выводом ядра
+(`--kernels`).
+
+```bash
+# код и пары
+python3 scripts/kaggle_run.py dataset -m "режим пары для E5"
+python3 scripts/kaggle_run.py queries
+
+# проба: сто пар
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba --machine "" --args \
+  "--probe 0 --pairs pairs_e5.jsonl --pairs-limit 100 --train 100 --batch 32 \
+   --train-file synthetic_train_e5_proba.jsonl --fewshot live_fewshot.jsonl --shots 3"
+
+# проба: мера многофрагментности по тем же ста вопросам
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-proba-filter \
+  --kernels ru-fin-e5-proba --args \
+  "--probe 0 --teacher-filter --filter-depth 50 --filter-second 30 \
+   --train-file synthetic_train_e5_proba.jsonl"
+
+# полная генерация и фильтр, только если доля многофрагментных не ниже 0,5
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-train --machine "" --args \
+  "--probe 0 --pairs pairs_e5.jsonl --train 6490 --batch 256 \
+   --train-file synthetic_train_e5.jsonl --fewshot live_fewshot.jsonl --shots 3"
+python3 scripts/kaggle_run.py run c --slug ru-fin-e5-filter \
+  --kernels ru-fin-e5-train --args \
+  "--probe 0 --teacher-filter --filter-depth 50 --filter-second 30 \
+   --train-file synthetic_train_e5.jsonl"
+```
+
+| шаг | сколько карты |
+|---|---|
+| проба, генерация ста вопросов | ~20 мин с загрузкой весов |
+| проба, фильтр ста вопросов | ~10 мин |
+| генерация 6 490 вопросов | прогноз 3,4 ч |
+| фильтр 6 490 вопросов при глубине 50 | прогноз 2,2 ч |
+
+**Правило остановки объявлено до прогона.** Доля многофрагментных вопросов
+(учитель ставит второй эталон не ниже тридцатого места при первом в лучшей
+половине) ниже 0,5 на пробе означает, что генератор инструкцию не выполняет,
+и прогон останавливается **до обучения**. Иначе E5 оказался бы пятым
+прогоном под новым именем.
+
+Порог второго эталона обязан быть строго меньше глубины: оба эталона
+вставляются в кандидатов силой, поэтому при `--filter-second 30
+--filter-depth 30` фильтр не отбросит ничего, а доля многофрагментных выйдет
+единицей. Код такой прогон не начинает.
+
 **Что скачать обратно** (всё маленькое): `queries/synthetic_train.jsonl`,
 `queries/synthetic_dev.jsonl`, `queries/synthetic_test.jsonl`,
 `queries/judge.tsv` — в `data/queries/`; `report_phase_c.json` —
