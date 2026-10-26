@@ -46,7 +46,7 @@
 ## A1. Собрать пакет на маке
 
 ```bash
-cd ~/Desktop/my_jobs/rag_retrieval
+cd ~/Desktop/my_jobs/ru-fin-rag/retrieval
 make kaggle
 ```
 
