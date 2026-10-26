@@ -1,0 +1,372 @@
+# Воспроизведение проекта по шагам.
+#
+# Тяжёлые вычисления вынесены на видеокарту Kaggle: на маке с восемью
+# гигабайтами памяти инференс языковой модели и подсчёт эмбеддингов
+# по шестидесяти тысячам фрагментов приводят к уходу системы в подкачку.
+# Локально остаётся то, что памяти не требует: сбор корпуса, нарезка,
+# метрики, разбор ошибок — и замеры задержки, которые по условию задачи
+# снимаются там, где система работает.
+
+PY ?= python3
+SAMPLE ?= 12
+ISSUES ?= 25
+PAUSE ?= 1.5
+CHUNKS ?= base
+FROM ?= base
+DENSE ?= bge-m3
+REPO ?= nata2627/ru-fin-retrieval
+WEIGHTS ?= data/weights/d-matryoshka
+# Готовые векторы запросов: нужны замеру задержки для моделей, которых нет
+# на этой машине. Считаны там же, где векторы корпуса.
+QVEC ?= data/embeddings/$(CHUNKS)/$(DENSE)/$(DENSE)-1024-queries.npy
+# Чьи веса мерить на шаге «кодирование запроса». Шаг отдельный от поиска.
+ENCODER ?=
+# Листы двух судей для голосования. Имя файла задаёт `--judge-out` прогона
+# на Kaggle, поэтому оно переменная, а не константа скрипта.
+JUDGE_A ?= data/queries/judge_14b.tsv
+JUDGE_B ?= data/queries/judge_32b.tsv
+# Сколько потоков отдать FAISS при замере. Ноль это все ядра машины.
+THREADS ?= 0
+
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa priemka judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap pairs-e5
+
+help:
+	@echo "Проверки (ни данных, ни видеокарты не требуют):"
+	@echo "  test         тесты: pytest"
+	@echo "  lint         проверка стиля: ruff"
+	@echo ""
+	@echo "Локально (памяти не требует):"
+	@echo "  probe        разведка источников: доступность, объём, качество текстового слоя"
+	@echo "  check-split  проверка нарезки выпусков «Вестника» на отдельные акты"
+	@echo "  check-bm25   сверка своей реализации BM25 с rank_bm25"
+	@echo "  check-alignment  сверка: тот ли текст под эталонным фрагментом"
+	@echo "  remap        перенести эталоны на другую нарезку (CHUNKS=size-256)"
+	@echo "  gate         ворота по живым вопросам (CAND=... BASE=...)"
+	@echo "  length-effect    растёт ли отставание с длиной эталона (DENSE=...)"
+	@echo "  chunking-effect  меняется ли разрыв при смене нарезки (CHUNKS=...)"
+	@echo "  parent-effect    мелкая нарезка с подъемом к родителю и цена шапки"
+	@echo "                   плотная ступень: DENSE=user-bge-m3, нужны векторы ветвей"
+	@echo "  friend-set       скачать набор соседа (формат MTEB) для контроля"
+	@echo "  friend-control   прогон нашего кода на его данных (DENSE=frida для плотной)"
+	@echo "  export-gpu       выгрузить тексты под счет векторов на карте (OUT=...)"
+	@echo "  morphology       цена отсутствия нормализации формы слова в BM25"
+	@echo "  corpus       сбор корпуса: выпуски «Вестника» -> акты"
+	@echo "  chunks       нарезка актов на фрагменты (CONFIGS=base ...)"
+	@echo "  use-chunks   поставить нарезку, выгруженную с видеокарты (FILE=...)"
+	@echo "  explan       скачать живые вопросы из «Разъяснений» Банка России"
+	@echo "  split        сплит корпуса по актам (обязателен до генерации)"
+	@echo "  live         живые вопросы: привязка к акту и разметка по пунктам"
+	@echo "  manual-task  лист актов, по которым писать ручные запросы"
+	@echo "  manual-apply перенести заполненный лист в набор"
+	@echo "  judge        перенести разметку судьи (judge.tsv с Kaggle) в эталоны"
+	@echo "  sample-for-human  выборка 150 пар для ручной разметки человеком"
+	@echo "  kappa        приёмка судьи: три числа и пороги"
+	@echo "  act-labels   слабая метка на уровне акта и поиск нужного акта"
+	@echo "  queries      собрать тексты запросов для прогона (эталоны не нужны)"
+	@echo "  pool         лист разметки по объединённым выдачам всех конфигураций"
+	@echo "  pool-live    пул полноты разметки по живым вопросам (задание судье)"
+	@echo "  judge-vote   голосование двух судей: в метрику идёт только согласие"
+	@echo "  judge-reproduction  тот же судья на тех же парах, другой стек вывода"
+	@echo "  judge-candidates  согласие судей-кандидатов с человеком, порог 0,40"
+	@echo "  pool-coverage     сколько в первой десятке размечено, границы незнания"
+	@echo "  act-filter   прибавка фильтра по номеру акта на живых вопросах"
+	@echo "  apply-pool   расширить эталон живых вопросов разметкой пула"
+	@echo "  bench        сборка набора запросов и выгрузка в формате MTEB"
+	@echo "  check-bench  сверка выгрузки самой с собой перед публикацией"
+	@echo "  publish      публикация набора на HuggingFace (REPO=$(REPO))"
+	@echo "  metrics      метрики по выдачам, посчитанным на Kaggle (CHUNKS=$(CHUNKS))"
+	@echo "  errors       разбор провальных запросов"
+	@echo "  razbor-provalov  двадцать провалов на живых вопросах по правилу S15"
+	@echo "  lexical-gap  лексический разрыв живых вопросов и написанных моделью"
+	@echo "  latency      замеры задержки на этой машине (DENSE=$(DENSE))"
+	@echo "  latency-matryoshka  то же по размерностям матрёшки, по готовым"
+	@echo "               векторам запросов (DENSE=$(DENSE), QVEC=...)"
+	@echo ""
+	@echo "Дообучение (счёт на Kaggle, проверки и отчёт локально):"
+	@echo "  check-train  проверка обучающих данных: утечка, эталоны, негативы"
+	@echo "  dev-metrics  метрики ТОЛЬКО по dev — на время подбора рецепта"
+	@echo "  recipe       таблица «этап рецепта -> dev» из журнала обучения"
+	@echo "  matryoshka   индексы урезанных размерностей из полной матрицы"
+	@echo "  act-numbers  вклад номера акта в качество на живых вопросах"
+	@echo ""
+	@echo "На видеокарте Kaggle (см. kaggle/README.md):"
+	@echo "  kaggle       собрать пакет для загрузки (dist/kaggle, ~20 МБ)"
+	@echo "               этап A: синтетические запросы и эмбеддинги"
+	@echo "               этап B: выдачи всех поисковых конфигураций"
+	@echo "               этап C: обучающая выборка, dev, тест, судья"
+	@echo "               этап D: подготовка, рецепт обучения, финал"
+
+# Тесты на собранных данных помечены `data` и пропускаются, если данных нет.
+test:
+	$(PY) -m pytest
+
+lint:
+	$(PY) -m ruff check src tests scripts kaggle
+
+probe:
+	$(PY) scripts/probe_sources.py --sample $(SAMPLE) --pause $(PAUSE) $(if $(REFRESH),--refresh,)
+
+check-split:
+	$(PY) scripts/validate_split.py --issues $(ISSUES) --pause $(PAUSE)
+
+check-bm25:
+	$(PY) scripts/check_bm25.py
+
+check-alignment:
+	$(PY) scripts/check_alignment.py --chunks $(CHUNKS)
+
+# Эталон записан идентификатором фрагмента, а нумерация у каждой нарезки своя.
+# Без переноса метрики по другой нарезке выйдут нулевыми — и ноль будет
+# означать «эталона тут нет», а не «нарезка плохая».
+remap:
+	$(PY) scripts/remap_qrels.py --from $(FROM) --to $(CHUNKS)
+
+# Ворота по живым вопросам. Синтетический dev ранжирует кандидатов, живые
+# отвечают на единственный вопрос, не стало ли хуже настоящему пользователю.
+# Каждое применение пишется в docs/raw/gate_log.txt: ворота, применённые
+# три раза, и ворота, применённые тридцать раз, это разные инструменты.
+CAND ?= dense-rufin
+BASE ?= dense-e5-small
+gate:
+	$(PY) scripts/gate.py --candidate $(CAND) --baseline $(BASE) $(if $(NOTE),--note "$(NOTE)",)
+
+# Обе проверки читают уже посчитанные выдачи и выносят вердикт с интервалом:
+# без него столбик цифр легко прочитать глазами как закономерность.
+length-effect:
+	$(PY) scripts/length_effect.py --dense dense-$(DENSE)
+
+chunking-effect:
+	$(PY) scripts/chunking_effect.py --from $(FROM) --to $(CHUNKS) --dense dense-$(DENSE)
+
+# Мелкая нарезка с подъемом к родительскому куску и цена шапки в тексте
+# фрагмента. Нужны локальные нарезки:
+#   make chunks CONFIGS="base no-heading" OUTDIR=data/chunks/local
+# Плотная ступень читает готовые векторы ветвей, они считаются на карте:
+#   make export-gpu OUT=/tmp/gpu_in      и дальше на машине с картой
+#   python scripts/embed_chunks.py --input chunks-<ветвь>.jsonl.gz \
+#       --model user-bge-m3 --out data/embeddings/<ветвь>/user-bge-m3
+parent-effect:
+	$(PY) scripts/chunk_parent_effect.py $(if $(ONLY),--only $(ONLY),) \
+		$(if $(DENSE),--dense $(DENSE),)
+
+export-gpu:
+	$(PY) scripts/export_for_gpu.py --what branches queries friend --out $(OUT)
+
+# Контроль на чужих данных: набор соседа в формате MTEB (3786 статей шести
+# кодексов). Качается один раз, в репозиторий не попадает.
+friend-set:
+	$(PY) scripts/fetch_friend_set.py --pause $(PAUSE)
+
+friend-control:
+	$(PY) scripts/friend_control.py $(if $(DENSE),--dense $(DENSE),)
+
+# Сколько стоит отсутствие нормализации формы слова в BM25. Вопрос пришел
+# из контроля на чужих данных.
+morphology:
+	$(PY) scripts/morphology_effect.py
+
+# Разбор номера акта в токенизации: номер целым токеном против прежнего
+# выражения, которое брало после дефиса только буквы. Ось здесь разбор,
+# а не нормализация формы, поэтому стеммер стоит во всех состояниях.
+token-numbers:
+	$(PY) scripts/token_numbers_effect.py
+
+corpus:
+	$(PY) scripts/build_corpus.py --pause $(PAUSE)
+
+# Нарезки занимают около двух гигабайт на диске. Для работы они локально
+# не нужны: базовую отдаёт этап B на видеокарте (chunks_base.jsonl.gz),
+# и брать надо именно её — граница фрагмента считается в токенах, а версия
+# токенизатора у себя и на Kaggle может отличаться, и тогда под прежним
+# именем окажется другой текст. Цель оставлена для разработки.
+chunks:
+	$(PY) scripts/build_chunks.py $(if $(CONFIGS),--only $(CONFIGS),--only base) $(if $(OUTDIR),--outdir $(OUTDIR),)
+
+# Нарезка, по которой считались эмбеддинги, ставится как рабочая: повторять
+# её локально нельзя, версия токенизатора другая и границы сдвинутся.
+use-chunks:
+	$(PY) scripts/install_chunks.py $(FILE) --config $(CHUNKS)
+
+kaggle:
+	$(PY) scripts/make_kaggle_package.py
+
+# Живые вопросы качаются с сайта Банка России один раз; дальше с собранным
+# файлом работает `make live`.
+explan:
+	$(PY) scripts/collect_explanations.py
+
+# Сплит режется по актам: фрагменты одного акта нарезаны с перекрытием,
+# и сплит по фрагментам — это утечка. Пересобирать после каждой новой
+# разметки и обязательно ДО генерации обучающей выборки.
+split:
+	$(PY) scripts/make_split.py $(if $(SEED),--seed $(SEED),)
+
+# Живые вопросы из «Разъяснений»: к какому акту относится вопрос, какие
+# из них размечаются по названным пунктам, какие идут в пул, какие
+# отбрасываются, потому что названного пункта в нашей редакции акта нет.
+live:
+	$(PY) scripts/label_by_clause.py --chunks $(CHUNKS)
+
+# Ручные запросы — единственное место, где разнообразие актов задаётся
+# нарочно. Лист назначает акт каждому запросу; заполняется руками.
+manual-task:
+	$(PY) scripts/manual_task.py --chunks $(CHUNKS)
+
+manual-apply:
+	$(PY) scripts/apply_manual_task.py
+
+# Разметка пула считается судьёй на Kaggle; сюда приезжает judge.tsv.
+judge:
+	$(PY) scripts/apply_judge.py
+
+# У судьи есть погрешность, и она измеряется согласием с человеком.
+sample-for-human:
+	$(PY) scripts/sample_for_human.py --chunks $(CHUNKS)
+
+# Лист пробы судьи: ровно те пары, которые размечает человек.
+judge-probe:
+	$(PY) scripts/make_judge_probe.py
+
+# E4: примеры живых вопросов для генератора, без единого вопроса набора.
+fewshot:
+	$(PY) scripts/make_fewshot_examples.py
+
+# E5: пары связанных фрагментов, по которым вопрос требует двух норм.
+pairs-e5:
+	$(PY) scripts/make_pairs_e5.py
+
+priemka: ## приёмка всех судей против ручной разметки, одним файлом чисел
+	$(PY) scripts/judge_acceptance.py
+
+kappa:
+	$(PY) scripts/kappa.py
+
+# Двое судей вместо одного: один судья неотличим от собственной погрешности.
+# Пара, где они разошлись, в метрику не идёт, и число таких пар печатается
+# со знаменателем (JUDGE_A=... JUDGE_B=...).
+judge-vote:
+	$(PY) scripts/judge_vote.py --judge-a $(JUDGE_A) --judge-b $(JUDGE_B)
+
+# Воспроизводим ли судья: та же модель и те же 150 пар на другом стеке вывода.
+judge-reproduction:
+	$(PY) scripts/judge_reproduction.py
+
+# Сборке разметки предшествует сверка нарезок: если под эталонным фрагментом
+# лежит не тот текст, по которому писался вопрос, метрики будут бессмысленны,
+# а заметить это по ним самим нельзя. Она встроена в `make bench`.
+queries:
+	$(PY) scripts/build_query_texts.py
+
+# Кандидаты для разметки берутся из выдач всех конфигураций сразу: подбор
+# эталона выдачей одного метода дал бы ему незаслуженное преимущество.
+pool:
+	$(PY) scripts/pool_candidates.py --config $(CHUNKS)
+
+# Полнота разметки живых вопросов (docs/11-polnota-razmetki.md): пул по
+# объединённым выдачам всех конфигураций до глубины 50, покрытие первой
+# десятки разметкой, задание обоим судьям.
+pool-live:
+	$(PY) scripts/pool_completeness.py --config $(CHUNKS)
+
+# Метка «вопрос про этот акт» из заголовков разделов cbr.ru/explan: охват
+# в два раза шире разметки по фрагментам и ни одной связке не подыгрывает.
+act-labels:
+	$(PY) scripts/act_level_labels.py --chunks $(CHUNKS) --config $(CHUNKS)
+
+judge-candidates:
+	$(PY) scripts/judge_candidates.py
+
+pool-coverage:
+	$(PY) scripts/pool_coverage.py --config $(CHUNKS)
+
+# Фильтр по номеру акта из вопроса: поиск внутри названного акта.
+act-filter:
+	$(PY) scripts/act_filter_effect.py --chunks $(CHUNKS)
+
+# Расширение эталона разметкой пула; ждёт judge_live.tsv с Kaggle.
+apply-pool:
+	$(PY) scripts/apply_pool_judge.py
+
+bench: check-alignment
+	$(PY) scripts/build_benchmark.py
+
+# Публикация: сначала проверки, потом заливка. Опубликованный набор
+# с эталоном на несуществующий фрагмент хуже, чем ненапубликованный.
+check-bench:
+	$(PY) scripts/publish_hf.py --dry-run
+
+publish: check-bench
+	$(PY) scripts/publish_hf.py --repo $(REPO)
+
+metrics:
+	$(PY) scripts/metrics_report.py --config $(CHUNKS)
+
+# Обучающие данные проверяются до того, как включена видеокарта: утечка
+# по актам обесценивает dev, а значит и весь подбор рецепта, а съехавший
+# эталон учит модель находить не то. Обе беды по метрикам не видны.
+check-train:
+	$(PY) scripts/check_train_data.py --chunks $(CHUNKS)
+
+# Тест трогается один раз, в самом конце. Пока подбирается рецепт, цель
+# `metrics` опасна: она считает по всему размеченному, то есть и по тесту,
+# и запустить её по привычке ничего не стоит. Эта считает только по dev.
+dev-metrics:
+	$(PY) scripts/metrics_report.py --config $(CHUNKS) --only dev
+
+# Вердикты пересчитываются из поквериных значений тем же кодом, которым
+# их считала видеокарта: расхождение означает, что журнал приехал не тем,
+# чем уехал.
+recipe:
+	$(PY) scripts/recipe_table.py
+
+# Матрёшка не требует второго прогона модели: урезанные размерности получаются
+# из полной срезом с повторной нормировкой. Нужны, чтобы померить задержку
+# и размер индекса по каждой размерности.
+matryoshka:
+	$(PY) scripts/matryoshka_index.py --chunks $(CHUNKS) --from-model $(DENSE)
+
+# Сколько качества на живых вопросах держится на номере акта. Опыт парный:
+# те же 142 вопроса в трёх видах — как заданы, без номеров, без ссылок.
+# Видеокарта не нужна: индекс BM25 держится разреженной матрицей в 52 МБ,
+# а матрица фрагментов дообученной модели уже посчитана и лежит в проекте.
+act-numbers:
+	$(PY) scripts/live_variants.py
+	$(PY) scripts/bm25_run.py --chunks data/chunks/$(CHUNKS).jsonl \
+		--queries data/queries/live_variants.jsonl \
+		--out data/runs/live-variants__bm25.jsonl
+	$(PY) scripts/dense_run.py --model rufin --weights $(WEIGHTS) \
+		--chunks $(CHUNKS) --queries data/queries/live_variants.jsonl \
+		--out data/runs/live-variants__dense-rufin.jsonl
+	$(PY) scripts/make_hybrid.py --config live-variants --dense rufin
+	$(PY) scripts/act_number_effect.py
+
+errors:
+	$(PY) scripts/error_analysis.py --run data/runs/$(CHUNKS)__hybrid-rerank.jsonl \
+		--chunks $(CHUNKS) --deep-run data/runs/$(CHUNKS)__hybrid.jsonl
+
+# Двадцать провалов на живых вопросах: отбор по правилу S15 и свод разбора.
+# Семя и размер выборки записаны до отбора, менять их значит менять выборку.
+razbor-provalov:
+	$(PY) scripts/error_analysis.py --run data/runs/$(CHUNKS)__hybrid-rerank.jsonl \
+		--chunks $(CHUNKS) --subset живые --take 20 --seed 20261023 \
+		--razbor docs/raw/razbor_provalov.tsv
+
+lexical-gap:
+	$(PY) scripts/lexical_gap.py --chunks $(CHUNKS)
+
+latency:
+	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE) \
+		--threads $(THREADS) $(if $(ENCODER),--encoder $(ENCODER))
+
+# Задержка по размерностям матрёшки одним процессом: индекс BM25 строится
+# один раз, индексы размерностей берутся готовыми (`make matryoshka`).
+# Векторы запросов тоже готовые: весов USER-bge-m3 на этой машине нет,
+# а поиск по индексу от весов не зависит. Кодирование запроса считается
+# отдельным шагом и только если задан ENCODER.
+latency-matryoshka:
+	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE) \
+		--family --query-vectors $(QVEC) --threads $(THREADS) \
+		--only bm25 dense hybrid $(if $(ENCODER),encode --encoder $(ENCODER))
+
+clean-raw:
+	rm -rf data/raw/*
