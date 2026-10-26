@@ -16,6 +16,7 @@
   weights   загрузить обученные веса отдельным датасетом
   run       собрать ноутбук, запустить и дождаться
   fetch     забрать результат последнего прогона
+  time      сколько ядро уже считает и сколько осталось до предела сессии
 """
 from __future__ import annotations
 
@@ -81,6 +82,53 @@ MODELS = {
     # Прежде генерация шла из браузера, где токен есть.
     "gen": "qwen-lm/qwen2.5/transformers/7b-instruct-awq/1",
 }
+
+
+# Предел одной сессии Kaggle. По нему планируются шаги: прогон, которому
+# осталось меньше, чем он просит, лучше резать на два заранее, а не узнавать
+# об обрыве на одиннадцатом часу.
+SESSION_HOURS = 12.0
+
+
+def kernel_times(user: str, фильтр: str = "ru-fin") -> list[dict]:
+    """Когда ядра запускались и сколько им осталось до предела сессии.
+
+    Время старта берется из `lastRunTime` списка ядер (он в UTC), состояние
+    спрашивается отдельно: в списке его нет вовсе.
+    """
+    import csv
+    import datetime as dt
+
+    # Поиск `-s` ищет по заголовку, а заголовки у Kaggle с пробелами («ru fin
+    # e5 train»), поэтому подстрока вроде `ru-fin` не находит ничего. Отбор
+    # идет по ссылке на ядро, здесь.
+    r = run(["kaggle", "kernels", "list", "--mine", "-v", "--page-size", "50"])
+    # Клиент печатает предупреждение о своей версии перед таблицей, и в нем
+    # тоже есть запятые: разбор начинается со строки заголовка, иначе
+    # предупреждение становится заголовком таблицы.
+    все = (r.stdout or "").splitlines()
+    начало = next((i for i, l in enumerate(все) if l.startswith("ref,")), None)
+    if начало is None:
+        return []
+    строки = все[начало:]
+    out = []
+    сейчас = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+    for row in csv.DictReader(строки):
+        ref = (row.get("ref") or "").strip()
+        сырое = (row.get("lastRunTime") or "").strip()
+        if not ref or not сырое or фильтр not in ref:
+            continue
+        try:
+            старт = dt.datetime.fromisoformat(сырое)
+        except ValueError:
+            continue
+        прошло = (сейчас - старт).total_seconds() / 3600
+        состояние = run(["kaggle", "kernels", "status", ref]).stdout or ""
+        out.append({"ref": ref, "старт": старт, "часов прошло": прошло,
+                    "часов осталось": SESSION_HOURS - прошло,
+                    "состояние": состояние.strip().split('"')[-2]
+                                 if '"' in состояние else состояние.strip()})
+    return out
 
 
 def flags_of(args_line: str) -> set[str]:
@@ -471,6 +519,12 @@ def main() -> None:
                    help="считать без видеокарты: квота GPU не тратится, а ядер "
                         "процессора сессии достаётся больше")
 
+    p = sub.add_parser("time", help="сколько ядро считает и сколько осталось")
+    p.add_argument("--filter", default="ru-fin",
+                   help="по какой подстроке искать ядра в своем списке")
+    p.add_argument("--running", action="store_true",
+                   help="только те, что сейчас считаются или стоят в очереди")
+
     p = sub.add_parser("fetch", help="забрать результат")
     p.add_argument("slug")
     p.add_argument("--dest", default=os.path.join(ROOT, "data", "kaggle_out"))
@@ -723,6 +777,25 @@ def main() -> None:
             print(f"\nсостояние: {state}")
             if state == "complete":
                 fetch(ref, os.path.join(ROOT, "data", "kaggle_out", slug.split("/")[-1]))
+
+    elif args.cmd == "time":
+        ядра = kernel_times(user, args.filter)
+        if args.running:
+            ядра = [k for k in ядра
+                    if "running" in k["состояние"].lower()
+                    or "queued" in k["состояние"].lower()]
+        if not ядра:
+            print("таких ядер нет")
+        for k in sorted(ядра, key=lambda k: k["старт"], reverse=True):
+            состояние = k["состояние"].rsplit(".", 1)[-1].lower()
+            строка = (f"{k['ref']:<40} {состояние:<10} "
+                      f"старт {k['старт']:%d.%m %H:%M} UTC")
+            # Остаток сессии печатается только тому, кто считается: у
+            # закончившего ядра он ушел бы в минус и читался бы как ошибка.
+            if состояние in ("running", "queued"):
+                строка += (f", прошло {k['часов прошло']:.1f} ч, "
+                           f"до предела сессии {k['часов осталось']:.1f} ч")
+            print(строка)
 
     elif args.cmd == "fetch":
         ref = args.slug if "/" in args.slug else f"{user}/{args.slug}"
