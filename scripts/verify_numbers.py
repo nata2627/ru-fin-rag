@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -53,6 +54,17 @@ def ru_plural(count: int, one: str, few: str, many: str) -> str:
     if 11 <= last_two <= 14 or last == 0 or last >= 5:
         return f"{count} {many}"
     return f"{count} {one}" if last == 1 else f"{count} {few}"
+
+
+def стоит_в_тексте(expected: str, text: str) -> bool:
+    """Есть ли в тексте ровно это число, а не число, которое с него начинается.
+
+    Простая проверка подстрокой пропускала бы «0,27» внутри «0,274» и «174»
+    внутри «1174»: ошибка в README выглядела бы как сошедшееся число. Поэтому
+    по краям требуется не цифра и не продолжение дробной части.
+    """
+    шаблон = rf"(?<![\d,]){re.escape(expected)}(?!\d|,\d)"
+    return re.search(шаблон, text) is not None
 
 
 def load(name: str) -> dict:
@@ -1314,7 +1326,7 @@ def main() -> int:
     readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
     missing = []
     for what, source, expected in checks():
-        if expected not in readme:
+        if not стоит_в_тексте(expected, readme):
             missing.append((what, source, expected))
     if missing:
         print("README расходится с замерами:", file=sys.stderr)
