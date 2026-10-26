@@ -7,15 +7,22 @@
 сверяет каждую ее строку с тем, что стоит в README. Руками в README правится
 текст строки, но не число: разойдись они, проверка упадет.
 
+Ключ `--write` вписывает таблицу в README на место прежней. Это нужно потому,
+что два числа таблицы меняются сами: ночной прогон увеличивает счетчик своих
+прогонов и запись приемки. Без перезаписи README следующий же прогон упал бы на
+сверке чисел, поэтому ночной прогон вписывает таблицу перед сверкой, а бот
+коммитит README вместе с результатами.
+
 Строки части А помечены отдельно. Их числа лежат в отчетах `retrieval/docs/`,
 а не в `results/`: сырые выводы прогонов части А закрыты ее `.gitignore`, и это
 незакрытый вопрос к сдаче (решение за Наталией: либо класть в репозиторий
 компактные итоговые таблицы, либо открыть часть `data/results/`).
 
-Запуск: python scripts/skills_table.py
+Запуск: python scripts/skills_table.py [--write]
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -163,8 +170,35 @@ def таблица() -> str:
     return шапка + тело
 
 
+def вписать(readme: str, table: str) -> str:
+    """Заменить таблицу в README. Границы это шапка и последняя строка таблицы."""
+    шапка = "| Навык | Где в коде | Чем подтвержден | Где посчитано |"
+    начало = readme.index(шапка)
+    конец = начало
+    for строка in readme[начало:].split("\n"):
+        if строка.startswith("|"):
+            конец += len(строка) + 1
+        else:
+            break
+    return readme[:начало] + table + readme[конец:]
+
+
 def main() -> None:
-    print(таблица(), end="")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--write", action="store_true",
+                    help="вписать таблицу в README вместо печати")
+    args = ap.parse_args()
+    if not args.write:
+        print(таблица(), end="")
+        return
+    readme = ROOT / "README.md"
+    текст = readme.read_text(encoding="utf-8")
+    новый = вписать(текст, таблица())
+    if новый == текст:
+        print("таблица навыков в README уже совпадает с замерами")
+        return
+    readme.write_text(новый, encoding="utf-8")
+    print("таблица навыков в README перезаписана по замерам")
 
 
 if __name__ == "__main__":

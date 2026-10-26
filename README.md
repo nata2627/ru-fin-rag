@@ -47,7 +47,8 @@ curl -s -X POST https://ru-fin-rag.onrender.com/search \
 написан, справа число и файл, в котором это число посчитано. Таблица печатается
 скриптом `scripts/skills_table.py` из файлов `results/`, а `scripts/verify_numbers.py`
 сверяет ее строки с этим README и падает при расхождении, поэтому числа здесь не
-набраны руками.
+набраны руками. Два числа таблицы меняет сам ночной прогон, поэтому он же вписывает
+таблицу заново (`skills_table.py --write`) и коммитит README вместе с результатами.
 
 | Навык | Где в коде | Чем подтвержден | Где посчитано |
 |---|---|---|---|
@@ -62,7 +63,7 @@ curl -s -X POST https://ru-fin-rag.onrender.com/search \
 | Онлайн сравнение связок и перестановочный тест | `src/rufinrag/interleaving.py`, `scripts/compare_configs.py` | 0,6126 против 0,5711, разница 0,0414 | `results/compare-configs.json` |
 | Правило размера выборки и остановки, записанное до данных | `scripts/plan_sample_size.py`, `src/rufinrag/interleaving.py` | альфа 0,05, мощность 0,80, целевой эффект 0,02 | `results/sample-size.json` |
 | Порог алерта по истории прогонов и проверка деградацией | `src/rufinrag/monitoring.py`, `scripts/measure_alert_threshold.py` | порог 0,4839 по 11 прогонам, учебная деградация поймана на просадке 0,0216, самая большая незамеченная 0,0108 | `results/alert-threshold.json`, `results/alert-drill.json` |
-| Регламент по расписанию без ее машины | `.github/workflows/nightly.yml`, `dags/` | 9 прогонов, следимая метрика 0,5712 | `results/regulation.json` |
+| Регламент по расписанию без ее машины | `.github/workflows/nightly.yml`, `dags/` | 10 прогонов, следимая метрика 0,5712 | `results/regulation.json` |
 | Ответ с цитатами и отказ без опоры | `src/rufinrag/answer.py`, `generation.py` | ссылка на релевантный фрагмент 731 из 976, отказов 15 из 991 | `results/answer-quality.json` |
 | Роутер на инструментах, отрицательный результат | `src/rufinrag/router.py` | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | `results/router.json` |
 | Граф ссылок между актами, отрицательный результат | `src/rufinrag/graph.py` | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | `results/graph-expansion.json` |
