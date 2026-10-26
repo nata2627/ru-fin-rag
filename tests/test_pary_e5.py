@@ -104,6 +104,12 @@ def test_razbor_punktov(units, ожидание):
     ("1.1–1.4", "2.1–2.3", False),
     ("2.3", "2.3", True),
     ("", "2.3", True),
+    # Вложенность: пункт и его подпункт это одна норма на двух уровнях,
+    # а лексикографическое сравнение диапазонов их пропускало.
+    ("1.5", "1.5.4", True),
+    ("1.1", "1", True),
+    ("5.2–5.3", "4–5", True),
+    ("1.5.4", "1.6", False),
 ])
 def test_peresechenie_punktov(первый, второй, пересекаются):
     assert P.units_overlap({"units": первый}, {"units": второй}) is пересекаются
@@ -225,3 +231,154 @@ def test_generaciya_po_pare_na_poddelnom_dvizhke(monkeypatch, tmp_path):
     # взяться ниоткуда не может.
     assert "Кредитная организация оценивает" in движок.подсказки[0]
     assert "Резервные копии баз данных" in движок.подсказки[0]
+
+
+def test_filtr_pary_beret_uchitelya_iz_vhodov_i_schitaet_meru(monkeypatch):
+    """Два места разом: откуда берутся веса учителя и что считает мера.
+
+    Веса: ядру, созданному командой, токен HuggingFace прицепить нельзя,
+    и при выключенном интернете загрузка из хаба падает уже после того, как
+    BM25 построен. На этом прогон фильтра пробы E5 и встал.
+
+    Мера: доля многофрагментных считается по всем поданным вопросам, а рядом
+    печатается доля при первом эталоне в лучшей половине. Порог остановки
+    0,5 сравнивается с первой, и спутать их нельзя.
+    """
+    записано: dict = {}
+    порядки = {
+        # первый на 1, второй на 2: пара принимается
+        "q1": ["c000", "c001"] + [f"c{i:03d}" for i in range(2, 50)],
+        # первый на 1, второй на 40: второй к вопросу отношения не имеет
+        "q2": ["c002"] + [f"c{i:03d}" for i in range(10, 48)] + ["c003"],
+        # первый на 30: в лучшую половину не попал
+        "q3": [f"c{i:03d}" for i in range(20, 49)] + ["c004", "c005"],
+    }
+
+    поиск = type(sys)("gpu_search")
+    поиск.RERANKER = "BAAI/bge-reranker-v2-m3"
+
+    def rerank_runs(queries, candidates, texts, model_path=None, batch_size=32,
+                    device="cuda"):
+        записано["путь"] = model_path
+        записано["кандидатов"] = {q["query_id"]: len(candidates[q["query_id"]])
+                                  for q in queries}
+        записано["списки"] = {q["query_id"]: [c for c, _ in candidates[q["query_id"]]]
+                             for q in queries}
+        return {q["query_id"]: порядки[q["query_id"]] for q in queries}
+
+    поиск.rerank_runs = rerank_runs
+    общее = type(sys)("gpu_common")
+    общее.resolve_model = lambda hf_id, *a, **k: "/kaggle/input/reranker/weights"
+    monkeypatch.setitem(sys.modules, "gpu_search", поиск)
+    monkeypatch.setitem(sys.modules, "gpu_common", общее)
+
+    chunks = [{"chunk_id": f"c{i:03d}",
+               "text": f"пункт {i}. Кредитная организация оценивает риск и "
+                       f"ведет учет операций номер {i} по правилам главы {i}."}
+              for i in range(60)]
+    queries = [
+        {"query_id": "q1", "text": "как оценивается риск и как ведется учет операций?",
+         "gold_chunk_id": "c000", "gold_chunk_id_2": "c001"},
+        {"query_id": "q2", "text": "какие правила главы применяются к учету операций?",
+         "gold_chunk_id": "c002", "gold_chunk_id_2": "c003"},
+        {"query_id": "q3", "text": "кто ведет учет операций по правилам главы?",
+         "gold_chunk_id": "c004", "gold_chunk_id_2": "c005"},
+    ]
+
+    kept, stats = G.filter_pairs_by_teacher(queries, chunks, depth=50, keep_top=25,
+                                           second_keep=30, device="cpu")
+
+    assert записано["путь"] == "/kaggle/input/reranker/weights"
+    assert [q["query_id"] for q in kept] == ["q1"]
+    assert kept[0]["teacher_rank"] == 1 and kept[0]["teacher_rank_2"] == 2
+    assert stats["доля многофрагментных"] == round(1 / 3, 3)
+    assert stats["первый в лучшей половине"] == 2
+    assert stats["доля многофрагментных при первом в половине"] == 0.5
+    # Оба эталона обязаны оказаться среди кандидатов, и длина списка от этого
+    # не растет: иначе место эталона считалось бы по списку другой глубины.
+    assert set(записано["кандидатов"].values()) == {50}
+    # Оба эталона обязаны быть в списке у каждого вопроса, в том числе когда
+    # BM25 нашел один из них сам: прежний срез выбрасывал найденный эталон
+    # из хвоста выдачи, место выходило нулем, и пара отклонялась по длине
+    # списка, а не по сути.
+    for q in queries:
+        список = записано["списки"][q["query_id"]]
+        assert q["gold_chunk_id"] in список
+        assert q["gold_chunk_id_2"] in список
+        assert len(список) == len(set(список))
+
+
+def test_predel_na_akt_derzhitsya_vnutri_odnoy_pachki(monkeypatch, tmp_path):
+    """Предел вопросов на акт считается в момент приемки.
+
+    Счетчик проверялся только при наборе пачки, а пачка это 256 пар. Акт,
+    у которого в одной пачке лежало больше предела пар, забирал их все,
+    и выборка получала перекос в сторону самых «парных» актов. S26 говорит,
+    что предел на акт не меняется, значит он обязан держаться.
+    """
+    поддельный_vllm(monkeypatch)
+    тело = ("Кредитная организация оценивает кредитный риск по ссуде и ведет "
+            "учет операций по правилам внутренних документов. ") * 4
+    chunks = [{"chunk_id": f"акт0#{i:04d}", "act_id": "акт0", "number": "1-П",
+               "date": "01.01.2020", "title": "Положение", "section": "",
+               "units": f"{i}.1", "position": i, "text": "шапка\n\n" + тело}
+              for i in range(8)]
+    пары = [{"pair_id": f"pr{i:05d}", "origin": "внутри акта", "bm25": 80.0,
+             "chunk_id": chunks[i]["chunk_id"], "chunk_id_2": chunks[i + 4]["chunk_id"],
+             "act_id": "акт0", "act_id_2": "акт0",
+             "units": chunks[i]["units"], "units_2": chunks[i + 4]["units"]}
+            for i in range(4)]
+    вопрос = ("Как часто пересматривается категория качества ссуды и в каком "
+              "порядке сведения попадают во внутренние документы?")
+    движок = ПоддельныйДвижок([вопрос])
+    корпус = [f"посторонний документ номер {i} про лицензии и надзор"
+              for i in range(200)] + [c["text"] for c in chunks]
+
+    out = tmp_path / "train.jsonl"
+    stats = G.make_pair_queries(движок, пары, chunks, str(out), target=4,
+                               per_act=2, idf_texts=корпус, batch=8)
+
+    assert stats["accepted"] == 2
+    assert stats["пропущено по пределу на акт"] == 2
+
+
+def test_kontrolnaya_vetka_pishet_vopros_po_odnomu_fragmentu(monkeypatch, tmp_path):
+    """Контроль нужен мере многофрагментности.
+
+    Само значение меры ни о чем не говорит: пара отобрана по BM25, фрагменты
+    тематически близки, и однофрагментный вопрос по первому может вытянуть
+    второй в тот же топ сам собой. Поэтому тем же фильтром меряется контроль
+    по прежней инструкции на тех же парах, и смысл имеет разница.
+    """
+    поддельный_vllm(monkeypatch)
+    тексты = [
+        ("Кредитная организация оценивает кредитный риск по ссуде на постоянной "
+         "основе и выносит профессиональное суждение о категории качества. "),
+        ("Резервные копии баз данных хранятся на отчуждаемых носителях и "
+         "представляются в Банк России вместе с паспортом копий. "),
+    ]
+    chunks = [фрагмент(i, текст * 4) for i, текст in enumerate(тексты)]
+    пары = [{"pair_id": "pr00000", "origin": "внутри акта", "bm25": 80.0,
+             "chunk_id": chunks[0]["chunk_id"], "chunk_id_2": chunks[1]["chunk_id"],
+             "act_id": chunks[0]["act_id"], "act_id_2": chunks[1]["act_id"],
+             "units": chunks[0]["units"], "units_2": chunks[1]["units"]}]
+    вопрос = ("В каком порядке выносится профессиональное суждение о категории "
+              "качества выданной ссуды?")
+    движок = ПоддельныйДвижок([вопрос])
+    корпус = [f"посторонний документ номер {i} про лицензии и надзор"
+              for i in range(200)] + [c["text"] for c in chunks]
+
+    out = tmp_path / "control.jsonl"
+    stats = G.make_pair_queries(движок, пары, chunks, str(out), target=1,
+                               idf_texts=корпус, batch=1, control=True)
+
+    assert stats["accepted"] == 1
+    assert "контроль" in stats["ветка"]
+    # В подсказке контроля второго фрагмента нет, иначе это тот же опыт.
+    assert "Кредитная организация оценивает" in движок.подсказки[0]
+    assert "Резервные копии баз данных" not in движок.подсказки[0]
+    # Поля пары при этом сохраняются: фильтр меряет место обоих эталонов
+    # и у контроля тоже, иначе мере не с чем сравниваться.
+    строка = json.loads(open(out, encoding="utf-8").read().strip())
+    assert строка["gold_chunk_id_2"] == chunks[1]["chunk_id"]
+    assert строка["style"] in {с.name for с in G.STYLES[:2]}
