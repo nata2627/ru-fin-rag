@@ -41,7 +41,8 @@ from rufinrag.config import load_catalog  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
 OUT_FILE = ROOT / "results/answer-quality.json"
-DEFAULT_PART_A = Path.home() / "Desktop/my_jobs/rag_retrieval"
+# Часть А внутри репозитория папкой `retrieval` (решение 22).
+DEFAULT_PART_A = Path(__file__).resolve().parents[1] / "retrieval"
 HUMAN_SHEET = "data/queries/human_sample_new.tsv"
 JUDGE_REPORT = "data/results/judge_acceptance.json"
 # Глубина выдачи, с которой слой ответа берет цитаты. Та же, что в S21.
