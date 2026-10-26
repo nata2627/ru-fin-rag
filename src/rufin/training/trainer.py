@@ -27,10 +27,11 @@ import time
 from collections.abc import Mapping, Sequence
 
 from ..retrieval.model_specs import MODELS
+from .batching import make_grouped_trainer, row_keys
 from .config import STUDENT, TrainConfig
 from .freeze import apply_freeze
 from .negatives import logit
-from .pairs import TrainPair, as_dataset
+from .pairs import TrainPair, as_dataset, retained
 
 
 def build_distill_columns(pairs: Sequence[TrainPair], prepared: Mapping[str, Mapping],
@@ -56,7 +57,18 @@ def build_distill_columns(pairs: Sequence[TrainPair], prepared: Mapping[str, Map
         rec = prepared.get(p.query_id)
         if rec is None:
             continue
-        отобрано = [(p.gold_chunk_id, rec["gold_score"])]
+        # Оценка берется у того эталона, который стоит в этой строке.
+        # У пары E5 две строки на один вопрос и две оценки учителя,
+        # и подстановка первой во вторую строку испортила бы распределение,
+        # которое ученик повторяет.
+        оценка = rec["gold_score"] if p.gold_chunk_id == rec["gold_chunk_id"] \
+            else rec.get("gold_score_2")
+        if оценка is None:
+            raise SystemExit(
+                f"у вопроса {p.query_id} в подготовке нет оценки второго "
+                f"эталона: файл D0 посчитан до того, как у вопроса стало два "
+                f"эталона. Пересчитайте gpu_prepare.py этой выборкой.")
+        отобрано = [(p.gold_chunk_id, оценка)]
         for chunk_id, score in rec["candidates"]:
             if chunk_id == p.gold_chunk_id or chunk_id not in texts:
                 continue
@@ -109,6 +121,21 @@ def build_datasets(cfg: TrainConfig, pairs: Sequence[TrainPair],
     if not наборы:
         raise ValueError(f"этап {cfg.tag}: наборов данных нет, обучать нечего")
     return наборы, stats
+
+
+def batch_keys(cfg: TrainConfig, pairs: Sequence[TrainPair],
+               negatives: Mapping[str, list[str]] | None) -> list[set]:
+    """Ключи строк набора `pairs` для сборки батча (S26, пункт 4).
+
+    Считаются по тому же списку строк, из которого собран набор, поэтому
+    номер ключа это номер строки набора. Пустой список означает, что
+    разводить нечего: контрастива в этапе нет.
+    """
+    if "pairs" not in cfg.datasets:
+        return []
+    негативы = negatives if cfg.with_negatives else None
+    строки = retained(pairs, негативы, cfg.negatives_per_query)
+    return row_keys(строки, негативы, cfg.negatives_per_query)
 
 
 def load_student(cfg: TrainConfig, weights: str = "", base: str = ""):
@@ -204,13 +231,17 @@ def ужать(cfg: TrainConfig) -> TrainConfig | None:
 
 def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
           model=None, base: str = "", замер_шагов: int = 0,
-          ужимать: int = 4) -> dict:
+          ужимать: int = 4, ключи: Sequence[set] = ()) -> dict:
     """Обучить один этап и сохранить веса. Возвращает отчёт для журнала.
 
     Про типы данных: `fp16` и `bf16` выключены явно, и это решение этапа,
     а не умолчание библиотеки. T4 — это Turing, bf16 на нём нет вовсе,
     а fp16 с масштабированием лосса добавляет риск молчаливого расхождения
     ради выигрыша по времени, которого на модели в 118M не нужно.
+
+    `ключи` включают правило сборки батча для выборки с двумя эталонами
+    (`batch_keys`, S26 пункт 4). Пустые ключи это прежний путь: сэмплер
+    остается библиотечный.
     """
     import torch
     from sentence_transformers import (
@@ -228,7 +259,7 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
         for попытка in range(ужимать + 1):
             try:
                 return train(меньше, наборы, out_dir, weights, model, base,
-                             замер_шагов, ужимать=0)
+                             замер_шагов, ужимать=0, ключи=ключи)
             except Exception as e:  # noqa: BLE001
                 if "out of memory" not in str(e).lower() and \
                         type(e).__name__ != "OutOfMemoryError":
@@ -257,6 +288,12 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
     # половину батча, поэтому при двух наборах остаётся обычный сэмплер.
     sampler = BatchSamplers.NO_DUPLICATES if tuple(cfg.datasets) == ("pairs",) \
         else BatchSamplers.BATCH_SAMPLER
+    if ключи and len(ключи) != len(наборы.get("pairs", ())):
+        raise ValueError(
+            f"ключей сборки батча {len(ключи)}, а строк в наборе "
+            f"{len(наборы.get('pairs', ()))}: батчи собрались бы по чужим "
+            f"номерам вопросов, и два позитива одного вопроса оказались бы "
+            f"в одном батче")
     параметры = dict(
         output_dir=os.path.join(out_dir, "trainer"),
         num_train_epochs=cfg.epochs,
@@ -315,8 +352,13 @@ def train(cfg: TrainConfig, наборы: dict, out_dir: str, weights: str = "",
         данные, потери = DatasetDict(наборы), losses
     else:
         данные, потери = next(iter(наборы.values())), next(iter(losses.values()))
-    trainer = SentenceTransformerTrainer(model=model, args=args,
-                                         train_dataset=данные, loss=потери)
+    # При двух эталонах сборку батча ведет свое правило. Сэмплер, объявленный
+    # выше, остается запасным: у двух строк одного вопроса совпадает текст
+    # вопроса, и NO_DUPLICATES развел бы их по батчам сам, но по совпадению
+    # текстов, а не по номеру вопроса.
+    Обучатель = make_grouped_trainer(ключи, seed=cfg.seed) if ключи \
+        else SentenceTransformerTrainer
+    trainer = Обучатель(model=model, args=args, train_dataset=данные, loss=потери)
     t0 = time.time()
     result = trainer.train()
     seconds = time.time() - t0

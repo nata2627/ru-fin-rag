@@ -30,18 +30,39 @@ from ..split import act_of_chunk
 
 @dataclass(frozen=True)
 class TrainPair:
-    """Одна обучающая пара. Тексты уже с префиксами — дальше их не трогают."""
+    """Одна обучающая строка. Тексты уже с префиксами — дальше их не трогают.
+
+    У вопроса E5 два эталона, и он разворачивается в две строки с общим
+    `query_id`. Какой из двух эталонов в этой строке, говорит `gold_no`:
+    по нему читается отчет, а разводит строки по батчам номер вопроса.
+    """
 
     query_id: str
     anchor: str
     positive: str
     gold_chunk_id: str
     act_id: str
+    gold_no: int = 1
 
 
 def read_jsonl(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         return [json.loads(l) for l in f if l.strip()]
+
+
+def golds_of(query: Mapping) -> list[str]:
+    """Эталоны вопроса: один, а у выборки E5 два.
+
+    Второй эталон такой же эталон, как первый, поэтому все проверки на
+    утечку и на группу сплита считаются по обоим: вопрос, у которого
+    второй фрагмент лежит в акте dev, означает ровно ту же утечку, что
+    и первый.
+    """
+    эталоны = [query["gold_chunk_id"]]
+    второй = query.get("gold_chunk_id_2")
+    if второй:
+        эталоны.append(второй)
+    return эталоны
 
 
 def acts_of(queries: Iterable[Mapping]) -> set[str]:
@@ -51,7 +72,7 @@ def acts_of(queries: Iterable[Mapping]) -> set[str]:
     поле могло не доехать или разойтись с эталоном, а эталон — это то,
     на чём модель учится.
     """
-    return {act_of_chunk(q["gold_chunk_id"]) for q in queries}
+    return {act_of_chunk(c) for q in queries for c in golds_of(q)}
 
 
 def leaked_acts(train: Iterable[Mapping], held_out: Iterable[Mapping]) -> set[str]:
@@ -76,48 +97,75 @@ def check_group(queries: Iterable[Mapping], split: Mapping, group: str) -> dict[
             where[act_id] = name
     bad: dict[str, str] = {}
     for q in queries:
-        act = act_of_chunk(q["gold_chunk_id"])
-        actual = where.get(act, "нет в сплите")
-        if actual != group:
-            bad[q["query_id"]] = actual
+        for chunk_id in golds_of(q):
+            actual = where.get(act_of_chunk(chunk_id), "нет в сплите")
+            if actual != group:
+                bad[q["query_id"]] = actual
+                break
     return bad
 
 
 def build_pairs(queries: Iterable[Mapping], texts: Mapping[str, str],
-                spec_name: str = "e5-small") -> tuple[list[TrainPair], dict[str, int]]:
+                spec_name: str = "e5-small",
+                two_positives: bool = False) -> tuple[list[TrainPair], dict[str, int]]:
     """Собрать пары. Второе значение — статистика отбраковки.
 
     Вопрос выбрасывается, если его эталона нет в нарезке: учить на нём
     нечему, а молча подставить пустой текст значило бы учить модель
     притягивать вопрос к пустоте.
+
+    `two_positives` разворачивает вопрос E5 в две строки с общим номером
+    вопроса (S26, пункт 4). По умолчанию выключено: прежние выборки знают
+    один эталон, и путь данных у них обязан остаться прежним до строки.
+    Вторая строка не появляется и при включенном ключе, если второго
+    эталона у вопроса нет: выборки можно смешивать, а молчать о том,
+    сколько строк вышло вторыми, нельзя, и это считает статистика.
     """
     spec = MODELS[spec_name]
     out: list[TrainPair] = []
     stats = {"на входе": 0, "эталона нет в нарезке": 0, "пустой текст эталона": 0,
-             "повтор вопроса": 0, "собрано пар": 0}
+             "повтор вопроса": 0, "вторых эталонов": 0, "собрано пар": 0}
     видели: set[str] = set()
     for q in queries:
         stats["на входе"] += 1
-        gold = q["gold_chunk_id"]
-        body = texts.get(gold)
-        if body is None:
+        эталоны = golds_of(q) if two_positives else [q["gold_chunk_id"]]
+        тела = [texts.get(c) for c in эталоны]
+        if any(body is None for body in тела):
             stats["эталона нет в нарезке"] += 1
             continue
-        if not body.strip():
+        if any(not body.strip() for body in тела):
             stats["пустой текст эталона"] += 1
             continue
         if q["query_id"] in видели:
             stats["повтор вопроса"] += 1
             continue
         видели.add(q["query_id"])
-        out.append(TrainPair(
-            query_id=q["query_id"],
-            anchor=spec.query_prefix + q["text"],
-            positive=spec.passage_prefix + body,
-            gold_chunk_id=gold,
-            act_id=act_of_chunk(gold)))
+        for номер, (gold, body) in enumerate(zip(эталоны, тела), start=1):
+            out.append(TrainPair(
+                query_id=q["query_id"],
+                anchor=spec.query_prefix + q["text"],
+                positive=spec.passage_prefix + body,
+                gold_chunk_id=gold,
+                act_id=act_of_chunk(gold),
+                gold_no=номер))
+        stats["вторых эталонов"] += len(эталоны) - 1
     stats["собрано пар"] = len(out)
     return out, stats
+
+
+def retained(pairs: Iterable[TrainPair],
+             negatives: Mapping[str, list[str]] | None = None,
+             per_query: int = 2) -> list[TrainPair]:
+    """Строки, которые и правда попадут в набор, в том же порядке.
+
+    Отдельной функцией, потому что по этому же списку считаются ключи
+    сборки батча. Посчитать их вторым проходом по своему правилу значило
+    бы завести второе место, где это правило записано, и ключи разошлись
+    бы со строками молча: батчи собрались бы по чужим номерам вопросов.
+    """
+    if negatives is None:
+        return list(pairs)
+    return [p for p in pairs if len(negatives.get(p.query_id, [])) >= per_query]
 
 
 def as_dataset(pairs: Iterable[TrainPair],
@@ -145,10 +193,8 @@ def as_dataset(pairs: Iterable[TrainPair],
         raise ValueError("с негативами нужны тексты фрагментов")
     for i in range(1, per_query + 1):
         cols[f"negative_{i}"] = []
-    for p in pairs:
+    for p in retained(pairs, negatives, per_query):
         negs = negatives.get(p.query_id, [])
-        if len(negs) < per_query:
-            continue
         cols["anchor"].append(p.anchor)
         cols["positive"].append(p.positive)
         for i, chunk_id in enumerate(negs[:per_query], start=1):

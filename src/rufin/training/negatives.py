@@ -41,10 +41,12 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 
 from ..split import act_of_chunk
+from .pairs import golds_of
 
 # Причины отбраковки. Имена уезжают в отчёт как есть, поэтому они русские
 # и означают ровно то, что написано.
 ЭТАЛОН = "сам эталон"
+ВТОРОЙ_ЭТАЛОН = "второй эталон вопроса"
 ТОТ_ЖЕ_АКТ = "тот же акт"
 ВЫШЕ_ПОРОГА = "учитель считает релевантным"
 БЛИЗКО_К_ЭТАЛОНУ = "оценка близка к эталону"
@@ -121,9 +123,16 @@ def pick_negatives(record: Mapping, rules: NegativeRules,
 
     `record` — строка файла подготовки D0: эталон, его оценка учителем
     и список кандидатов с оценками, уже по убыванию.
+
+    Второй эталон вопроса (выборка E5) негативом не становится ни в одной
+    из двух строк пары, и его акт исключается так же, как акт первого:
+    фрагменты акта нарезаны с перекрытием, то есть сосед второго эталона
+    буквально содержит часть его текста. У вопросов с одним эталоном поля
+    `gold_chunk_id_2` нет, и отсечка идет прежним путем.
     """
     gold = record["gold_chunk_id"]
-    gold_act = act_of_chunk(gold)
+    эталоны = set(golds_of(record))
+    gold_acts = {act_of_chunk(c) for c in эталоны}
     gold_p = probability(record["gold_score"], scale)
     порог_близости = gold_p - rules.absolute_margin
 
@@ -134,13 +143,13 @@ def pick_negatives(record: Mapping, rules: NegativeRules,
         dropped[причина] = dropped.get(причина, 0) + 1
 
     for chunk_id, score in record["candidates"]:
-        if chunk_id == gold:
-            отбросить(ЭТАЛОН)
+        if chunk_id in эталоны:
+            отбросить(ЭТАЛОН if chunk_id == gold else ВТОРОЙ_ЭТАЛОН)
             continue
         if rules.train_acts and act_of_chunk(chunk_id) not in rules.train_acts:
             отбросить(НЕ_ИЗ_ОБУЧАЮЩИХ)
             continue
-        if rules.drop_same_act and act_of_chunk(chunk_id) == gold_act:
+        if rules.drop_same_act and act_of_chunk(chunk_id) in gold_acts:
             отбросить(ТОТ_ЖЕ_АКТ)
             continue
         p = probability(score, scale)
