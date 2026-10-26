@@ -83,6 +83,17 @@ MODELS = {
 }
 
 
+def flags_of(args_line: str) -> set[str]:
+    """Ключи прогона словами, а не подстрокой.
+
+    `--train-file` содержит `--train`, и проверка подстрокой считала фильтр
+    учителя прогоном генерации: ядро отказывалось запускаться с правилом
+    «vLLM и sentence-transformers вместе не ставятся», хотя языковая модель
+    в нем не поднимается вовсе.
+    """
+    return {слово for слово in args_line.split() if слово.startswith("--")}
+
+
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     print("  $ " + " ".join(cmd), flush=True)
     return subprocess.run(cmd, text=True, capture_output=True, **kw)
@@ -572,6 +583,7 @@ def main() -> None:
                      "веса этапов рецепта: " + ", ".join(метки))
 
     elif args.cmd == "run":
+        ключи = flags_of(args.args)
         # вывод этапа A подключается как источник: там лежат матрицы эмбеддингов
         source = [f"{user}/{args.source}"] if args.source else []
         stages = {
@@ -647,7 +659,7 @@ def main() -> None:
         # генерация запросов идёт своими моделями, а монтирование десяти
         # гигабайтов перед каждым прогоном стоит минут впустую.
         packages = ("sentence-transformers",)
-        if args.stage == "c" and "--judge" in args.args:
+        if args.stage == "c" and "--judge" in ключи:
             # Судей двое, и монтировать обоих разом незачем: 18 ГиБ второго
             # стоят минут впустую в прогоне первого. Выбор по подстроке имени
             # в аргументах, потому что `--judge-model` это hub-идентификатор,
@@ -674,7 +686,7 @@ def main() -> None:
             # а torch от vLLM приезжает под 13.0, и `-U torchaudio` ничего
             # не меняет, потому что новее на PyPI нет. Этот конфликт лечит
             # сама ячейка подготовки, после проверки импорта.
-        if args.stage == "c" and "--teacher-filter" in args.args:
+        if args.stage == "c" and "--teacher-filter" in ключи:
             # Фильтр учителя поднимает кросс-энкодер, и без входа он поехал бы
             # за ним в хаб. Токена у ядра, созданного командой, нет вовсе, и
             # скачивание там режется по скорости: прогон встаёт, а квота идёт.
@@ -684,9 +696,8 @@ def main() -> None:
             # образе Kaggle его нет. Прогон E4 на этом упал: ставился
             # sentence-transformers, а падало на `import vllm` через минуту
             # после старта.
-            нужен_vllm = any(key in args.args for key in
-                             ("--judge", "--train", "--dev", "--test"))
-            if нужен_vllm and "--teacher-filter" in args.args:
+            нужен_vllm = bool(ключи & {"--judge", "--train", "--dev", "--test"})
+            if нужен_vllm and "--teacher-filter" in ключи:
                 raise SystemExit(
                     "в одном прогоне просят и языковую модель, и фильтр учителя. "
                     "Ставить vLLM и sentence-transformers вместе нельзя: второй "
@@ -696,7 +707,7 @@ def main() -> None:
                 packages = ("vllm",)
             # Генератор вопросов подключается входом, как и судья. Без этого
             # он поехал бы за весами в хаб без токена и встал бы там.
-            if any(key in args.args for key in ("--train", "--dev", "--test")):
+            if ключи & {"--train", "--dev", "--test"}:
                 models = models + [MODELS["gen"]]
         # Опыту нужна только исходная модель ученика: учитель весит 2,29 ГБ,
         # и Kaggle монтирует его перед каждым запуском впустую.
