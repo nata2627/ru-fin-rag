@@ -26,6 +26,12 @@
 Поэтому `--step train` физически не умеет считать по тесту: он фильтрует
 запросы по составу dev и отказывается работать, если dev не нашёлся.
 
+Выборка с двумя эталонами (опыт E5) включается ключом `--two-positives`:
+вопрос разворачивается в две обучающие строки с общим номером, и батч
+собирается так, чтобы два позитива одного вопроса в него не попали. Сама
+выборка задаётся ключом `--train` по имени. Без `--two-positives` путь
+данных прежний, и нулевая точка рецепта воспроизводится как раньше.
+
 Порядок наследования. Каждый этап обучается **с исходных весов**,
 а рецепт наращивается составом: B это A плюс трудные негативы, C это B
 плюс дистилляция. Почему так, а не дообучением по цепочке, написано
@@ -65,6 +71,7 @@ from rufin.training.negatives import NegativeRules, detect_scale, pick_all  # no
 from rufin.training.pairs import (  # noqa: E402
     build_pairs,
     check_group,
+    golds_of,
     leaked_acts,
     read_jsonl,
     train_acts,
@@ -82,10 +89,24 @@ def освободить(*что) -> None:
         torch.cuda.empty_cache()
 
 
+def разыскать(имя: str, путь: str | None = None) -> str | None:
+    """Вход по ключу: путь берётся как есть, имя без каталога ищется.
+
+    Обучающих выборок стало несколько (E4 и E5 лежат рядом с прежней),
+    и какая из них учит, задаётся ключом. Копия файла под именем
+    `synthetic_train.jsonl` ради того, чтобы он нашёлся, стоила бы знания
+    о том, какой именно выборкой обучены веса.
+    """
+    if путь and (os.sep in путь or os.path.exists(путь)):
+        return путь
+    return common.find_file(путь or имя)
+
+
 def найти(имя: str, путь: str | None = None) -> str:
-    нашлось = путь or common.find_file(имя)
+    нашлось = разыскать(имя, путь)
     if нашлось is None:
-        raise SystemExit(f"не найден {имя}: подключите датасет с набором запросов")
+        raise SystemExit(f"не найден {путь or имя}: подключите датасет "
+                         f"с набором запросов")
     return нашлось
 
 
@@ -147,12 +168,12 @@ class Окружение:
             # проба и правда возьмёт. Все шесть тысяч тянут за собой семь
             # тысяч фрагментов, и оценка на процессоре растягивается
             # с восьми минут до тридцати при том, что обучению хватит двухсот.
-            обучающий = args.train or common.find_file("synthetic_train.jsonl")
+            обучающий = разыскать("synthetic_train.jsonl", args.train)
             if обучающий:
                 вопросы = read_jsonl(обучающий)
                 if args.limit_train:
                     вопросы = вопросы[:args.limit_train]
-                нужные |= {q["gold_chunk_id"] for q in вопросы}
+                нужные |= {c for q in вопросы for c in golds_of(q)}
             оставить = [c for c in self.chunks if c["chunk_id"] in нужные]
             прочие = [c for c in self.chunks if c["chunk_id"] not in нужные]
             self.chunks = (оставить + прочие)[:max(args.limit_chunks, len(оставить))]
@@ -180,6 +201,18 @@ class Окружение:
 
     def обучающее(self, args) -> tuple[list, dict, dict, str]:
         train = read_jsonl(найти("synthetic_train.jsonl", args.train))
+        двойных = sum(1 for q in train if q.get("gold_chunk_id_2"))
+        if двойных and not args.two_positives:
+            raise SystemExit(
+                f"у {двойных} вопросов выборки два эталона, а ключа "
+                f"--two-positives нет. Второй эталон тогда не попал бы "
+                f"в обучение вовсе, а батч собрался бы прежним правилом: "
+                f"прогон назывался бы E5, а учил бы как прошлые пять.")
+        if args.two_positives and not двойных:
+            raise SystemExit(
+                "ключ --two-positives задан, а второго эталона нет ни "
+                "у одного вопроса: это выборка прежнего вида, и разводить "
+                "по батчам нечего.")
         утечка = leaked_acts(train, self.dev_queries)
         if утечка:
             raise SystemExit(
@@ -191,15 +224,25 @@ class Окружение:
         if чужие:
             raise SystemExit(f"{len(чужие)} обучающих вопросов не в группе train: "
                              f"{list(чужие.items())[:3]}")
-        pairs, stats = build_pairs(train, self.texts)
+        pairs, stats = build_pairs(train, self.texts,
+                                   two_positives=args.two_positives)
         print(f"пары: {stats}", flush=True)
         if args.limit_train:
-            pairs = pairs[:args.limit_train]
+            # Предел задан в вопросах, а у вопроса E5 две строки: срез
+            # по строкам оставил бы половину пары без второй половины.
+            оставить = set(list(dict.fromkeys(p.query_id for p in pairs))
+                           [:args.limit_train])
+            pairs = [p for p in pairs if p.query_id in оставить]
             print(f"ПРОБА: обучающая выборка урезана до {len(pairs)} пар. "
                   f"Результат в таблицу рецепта не годится", flush=True)
         if stats["эталона нет в нарезке"]:
             raise SystemExit("часть эталонов обучающей выборки отсутствует "
                              "в нарезке: нарезка разошлась с генерацией")
+        if args.two_positives and stats["вторых эталонов"] != двойных:
+            raise SystemExit(
+                f"вторых эталонов в наборе {stats['вторых эталонов']}, "
+                f"а в выборке {двойных}: часть пар развернулась в одну "
+                f"строку, и обучение шло бы наполовину прежним правилом")
 
         # Подготовки может не быть, и это законный случай. Этап A учится
         # на одних парах, негативы ему не нужны вовсе, и пробу пути можно
@@ -325,8 +368,9 @@ def шаг_train(env: Окружение, args, journal: Journal) -> None:
                                              env.texts, scale)
         for имя, s in data_stats.items():
             print(f"    набор {имя}: {s}", flush=True)
+        ключи = T.batch_keys(cfg, pairs, негативы) if args.two_positives else ()
         t0 = time.time()
-        отчёт = T.train(cfg, наборы, out_dir, base=env.student)
+        отчёт = T.train(cfg, наборы, out_dir, base=env.student, ключи=ключи)
         освободить()
 
         итог = оценить_dev(out_dir, env, cfg.matryoshka, args.batch_size)
@@ -464,8 +508,10 @@ def шаг_замер(env: Окружение, args, journal: Journal) -> None:
         наборы, _ = T.build_datasets(cfg, pairs, негативы, подготовка,
                                      env.texts, scale)
         шагов = T.steps_per_epoch(cfg, наборы)
+        ключи = T.batch_keys(cfg, pairs, негативы) if args.two_positives else ()
         отчёт = T.train(cfg, наборы, os.path.join(args.weights, "замер"),
-                        base=env.student, замер_шагов=args.probe_steps)
+                        base=env.student, замер_шагов=args.probe_steps,
+                        ключи=ключи)
         по_составу[ключ] = {"секунд на шаг": отчёт["секунд на шаг"],
                             "шагов в эпохе": шагов}
         print(f"   {отчёт['секунд на шаг']} с на шаг, {шагов} шагов в эпохе",
@@ -678,7 +724,13 @@ def main() -> None:
     ap.add_argument("--queries", default=None)
     ap.add_argument("--qrels", default=None)
     ap.add_argument("--subsets", default=None, help="podvyborki.json")
-    ap.add_argument("--train", default=None, help="synthetic_train.jsonl")
+    ap.add_argument("--train", default=None,
+                    help="имя или путь обучающей выборки; имя без каталога "
+                         "ищется среди входов, по умолчанию synthetic_train.jsonl")
+    ap.add_argument("--two-positives", action="store_true",
+                    help="выборка E5: у вопроса два эталона, пара идёт двумя "
+                         "строками, и два позитива одного вопроса не кладутся "
+                         "в один батч")
     ap.add_argument("--prepared", default=None, help="train_prepared.jsonl из D0")
     ap.add_argument("--chunks-cache", default="/kaggle/working/chunks")
     ap.add_argument("--weights", default="/kaggle/working/weights")

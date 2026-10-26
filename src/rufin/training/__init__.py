@@ -11,6 +11,7 @@
 
 * `config`   — рецепт: один этап, один объект, все числа в одном месте;
 * `pairs`    — пары «вопрос — эталонный фрагмент» и проверки на утечку;
+* `batching` — сборка батча, когда у вопроса два эталона (E5);
 * `negatives`— трудные негативы и отсечка по оценке учителя;
 * `freeze`   — что заморожено и сколько параметров обучается;
 * `losses`   — списочная KL-дистилляция из кросс-энкодера;
@@ -19,16 +20,27 @@
 """
 from __future__ import annotations
 
+from .batching import plan_batches, row_keys
 from .config import BY_TAG, RECIPE, TrainConfig
 from .freeze import FreezePlan, plan_freeze
 from .journal import Entry, Journal, verdict
 from .negatives import NegativeRules, pick_negatives, probability
-from .pairs import TrainPair, acts_of, build_pairs, check_group, leaked_acts
+from .pairs import (
+    TrainPair,
+    acts_of,
+    build_pairs,
+    check_group,
+    golds_of,
+    leaked_acts,
+    retained,
+)
 
 __all__ = [
     "BY_TAG", "RECIPE", "TrainConfig",
     "FreezePlan", "plan_freeze",
     "Entry", "Journal", "verdict",
     "NegativeRules", "pick_negatives", "probability",
-    "TrainPair", "acts_of", "build_pairs", "check_group", "leaked_acts",
+    "TrainPair", "acts_of", "build_pairs", "check_group", "golds_of",
+    "leaked_acts", "retained",
+    "plan_batches", "row_keys",
 ]
