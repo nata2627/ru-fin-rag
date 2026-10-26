@@ -18,12 +18,15 @@
   fetch     забрать результат последнего прогона
   time      остаток недельной квоты, сколько ядро считает и сколько осталось
             до предела сессии
+  watch     следить за идущим ядром, печатать его живые числа и погасить его,
+            когда вышел объявленный срок
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -146,6 +149,79 @@ def kernel_times(user: str, фильтр: str = "ru-fin") -> list[dict]:
                     "состояние": состояние.strip().split('"')[-2]
                                  if '"' in состояние else состояние.strip()})
     return out
+
+
+def _разобрать(сырое) -> str:
+    """Текст лога из того, что отдал клиент.
+
+    Русские строки приезжают дважды закодированными: клиент отдает UTF-8
+    байты от строки, которая уже была испорчена однобайтовой кодировкой,
+    поэтому прямое чтение дает «Ð¿ÑÐ¸Ð½ÑÑÐ¾» вместо «принято». Обратная
+    перекодировка возвращает текст; если она не удалась, берется прямое
+    чтение, чтобы латинские строки лога не потерять.
+    """
+    текст = сырое.decode("utf-8", "replace") if isinstance(сырое, bytes) else (сырое or "")
+    # Символы вне однобайтовой кодировки (рамки, проценты загрузки) при
+    # обратной перекодировке теряются, поэтому и encode, и decode идут
+    # терпимыми, а результат берется только если русский в нем нашелся.
+    исправленное = текст.encode("latin-1", "ignore").decode("utf-8", "replace")
+    кириллица = re.compile(r"[а-яА-Я]")
+    return исправленное if кириллица.search(исправленное) else текст
+
+
+def live_tail(ref: str, seconds: int = 20, игла: str = "") -> list[str]:
+    """Последние строки лога идущей сессии.
+
+    Клиент умеет отдавать лог вживую (`kernels logs -f`), и утверждать
+    обратное нельзя: на этом проекте молчащий прогон дважды оказывался
+    вставшим и стоил по двенадцать часов квоты. Поток обрывается по
+    таймауту, потому что сам он не кончается до конца сессии.
+    """
+    try:
+        п = subprocess.run(["kaggle", "kernels", "logs", "-f", ref],
+                           text=True, capture_output=True, timeout=seconds)
+        вывод = _разобрать(п.stdout)
+    except subprocess.TimeoutExpired as истек:
+        вывод = _разобрать(истек.stdout)
+    строки = [l.strip() for l in вывод.splitlines() if l.strip()]
+    if игла:
+        строки = [l for l in строки if игла in l]
+    # Клиент повторяет каждую строку дважды (поток и его копия в выводе
+    # ячейки), поэтому подряд идущие повторы убираются.
+    без_повторов: list[str] = []
+    for l in строки:
+        if not без_повторов or без_повторов[-1] != l:
+            без_повторов.append(l)
+    return без_повторов
+
+
+def watch(ref: str, deadline_hours: float, every: int = 300,
+          игла: str = "принято") -> str:
+    """Следить за ядром, печатать его числа и погасить по сроку.
+
+    Срок объявляется до запуска и берется из замера. Гасит тот, кто
+    запускал: зависшее ядро стоит двенадцати часов квоты, а потерянный
+    прогон стоит минут. Отмены у клиента нет, ядро останавливает удаление.
+    """
+    начало = time.monotonic()
+    while True:
+        состояние = (run(["kaggle", "kernels", "status", ref]).stdout or "").lower()
+        прошло = (time.monotonic() - начало) / 3600
+        if "complete" in состояние:
+            print(f"{ref}: завершилось, слежение {прошло:.1f} ч", flush=True)
+            return "complete"
+        if "error" in состояние or "cancel" in состояние:
+            print(f"{ref}: упало или отменено, слежение {прошло:.1f} ч", flush=True)
+            return "error"
+        for строка in live_tail(ref, игла=игла)[-1:]:
+            print(f"{ref} [{прошло:.1f} ч]: {строка}", flush=True)
+        if прошло >= deadline_hours:
+            print(f"{ref}: вышел объявленный срок {deadline_hours:.1f} ч, гашу "
+                  f"ядро удалением (команды отмены у клиента нет)", flush=True)
+            р = run(["kaggle", "kernels", "delete", ref, "-y"])
+            print((р.stdout or р.stderr).strip(), flush=True)
+            return "deadline"
+        time.sleep(every)
 
 
 def flags_of(args_line: str) -> set[str]:
@@ -542,6 +618,15 @@ def main() -> None:
     p.add_argument("--running", action="store_true",
                    help="только те, что сейчас считаются или стоят в очереди")
 
+    p = sub.add_parser("watch", help="следить за ядром и погасить его по сроку")
+    p.add_argument("slug")
+    p.add_argument("--deadline-hours", type=float, required=True,
+                   help="объявленный срок. Берется из замера, а не из надежды: "
+                        "зависшее ядро стоит двенадцати часов квоты")
+    p.add_argument("--every", type=int, default=300, help="как часто смотреть")
+    p.add_argument("--match", default="принято",
+                   help="какие строки лога печатать")
+
     p = sub.add_parser("fetch", help="забрать результат")
     p.add_argument("slug")
     p.add_argument("--dest", default=os.path.join(ROOT, "data", "kaggle_out"))
@@ -818,6 +903,14 @@ def main() -> None:
                 строка += (f", прошло {k['часов прошло']:.1f} ч, "
                            f"до предела сессии {k['часов осталось']:.1f} ч")
             print(строка)
+
+    elif args.cmd == "watch":
+        ref = args.slug if "/" in args.slug else f"{user}/{args.slug}"
+        исход = watch(ref, args.deadline_hours, args.every, args.match)
+        print(f"исход слежения: {исход}")
+        if исход == "complete":
+            fetch(ref, os.path.join(ROOT, "data", "kaggle_out",
+                                    ref.split("/")[-1]))
 
     elif args.cmd == "fetch":
         ref = args.slug if "/" in args.slug else f"{user}/{args.slug}"
