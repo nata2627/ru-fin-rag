@@ -20,6 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import skills_table  # noqa: E402
 
 from rufinrag import dashboard  # noqa: E402
 
@@ -1295,6 +1298,21 @@ def dashboard_values() -> list[str]:
     return problems
 
 
+def skills_rows(readme: str) -> list[str]:
+    """Строки таблицы навыков обязаны стоять в README ровно так, как их
+    печатает `skills_table.py`.
+
+    Проверяется строка целиком, а не одно число: в таблице рядом с числом
+    стоит файл, где оно посчитано, и разъехаться они не должны тоже.
+    """
+    беда = []
+    for навык, где, число, файл in skills_table.строки():
+        строка = " ".join(f"| {навык} | {где} | {число} | {файл} |".split())
+        if строка not in readme:
+            беда.append(f"  {навык}: ожидается строка «{строка}»")
+    return беда
+
+
 def dag_report_fresh() -> list[str]:
     """Пересборка `results/dag.md`: текст обязан совпасть с отчетами прогонов.
 
@@ -1333,6 +1351,11 @@ def main() -> int:
         for what, source, expected in missing:
             print(f"  {what}: в {source} стоит {expected}, в README такого нет", file=sys.stderr)
         return 1
+    problems = skills_rows(readme)
+    if problems:
+        print("таблица навыков разошлась с замерами:", file=sys.stderr)
+        print("\n".join(problems), file=sys.stderr)
+        return 1
     problems = dag_report_fresh()
     if problems:
         print("отчет регламента разошелся с замерами:", file=sys.stderr)
@@ -1344,7 +1367,8 @@ def main() -> int:
         print("\n".join(problems), file=sys.stderr)
         return 1
     print(
-        f"числа README сошлись с замерами, проверок {len(checks())}; "
+        f"числа README сошлись с замерами, проверок {len(checks())}, "
+        f"строк таблицы навыков {len(skills_table.строки())}; "
         f"страница дашборда пересобрана, чисел {len(load('dashboard.json')['values'])}"
     )
     return 0
