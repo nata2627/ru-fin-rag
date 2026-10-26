@@ -61,6 +61,9 @@ MIN_SECOND_CHARS = 200
 # разными нормами. Нарезка идет с перекрытием: сосед это вторая половина
 # того же куска.
 MIN_POSITION_GAP = 2
+# Доля принятых генерацией, замерена пробой на карте 26.10: 79 из 100 пар.
+# Нужна одной строке вывода, которая пересчитывает пары в вопросы.
+ACCEPT_SHARE = 0.79
 
 
 def body(chunk: dict) -> str:
@@ -85,14 +88,27 @@ def parse_units(units: str) -> tuple[tuple[int, ...], tuple[int, ...]] | None:
     return numbers[0], numbers[-1]
 
 
+def _nested(a: tuple[int, ...], b: tuple[int, ...]) -> bool:
+    """Вложен ли один номер пункта в другой: 1.5 и 1.5.4 это одна норма."""
+    return a[:len(b)] == b or b[:len(a)] == a
+
+
 def units_overlap(first: dict, second: dict) -> bool:
     """Пересекаются ли диапазоны пунктов. Нечитаемый диапазон считается
     пересечением: пара, про которую неизвестно, разные ли это пункты,
-    не берется."""
+    не берется.
+
+    Вложенность проверяется отдельно от порядка. Лексикографически (1, 5)
+    меньше (1, 5, 4), поэтому пункт 1.5 и его подпункт 1.5.4 сравнение
+    диапазонов пропускало как разные нормы, а это один и тот же текст
+    на двух уровнях: 230 таких пар из 12 076 в первом прогоне скрипта.
+    """
     a, b = parse_units(first["units"]), parse_units(second["units"])
     if a is None or b is None:
         return True
-    return a[0] <= b[1] and b[0] <= a[1]
+    if a[0] <= b[1] and b[0] <= a[1]:
+        return True
+    return any(_nested(x, y) for x in a for y in b)
 
 
 class ActIndex:
@@ -187,7 +203,8 @@ def within_pairs(good: list[dict], index: ActIndex, per_act: int,
                  rounds: int = 2) -> tuple[list[dict], dict]:
     """Пары внутри акта, лучшие по BM25 первыми.
 
-    Проходов два, и это не удвоение ради объема. Лучшее совпадение взаимно:
+    Проходов столько, сколько просит `--rounds` (по умолчанию четыре), и это
+    не удвоение ради объема. Лучшее совпадение взаимно:
     для фрагмента A лучший это B, а для B лучший это A, и один проход по
     источникам выбрасывал бы вторую половину пар как повтор (1808 пар на
     первом прогоне). Поэтому во втором проходе источник отдает следующее
@@ -255,6 +272,11 @@ def main() -> None:
                     help="сколько совпадений отдает один фрагмент-источник "
                          "в парах внутри акта. Пул должен быть больше цели "
                          "вдвое: фильтры отклоняют около половины попыток")
+    ap.add_argument("--per-chunk", type=int, default=8,
+                    help="в сколько пар максимум входит один фрагмент. "
+                         "В прошлых выборках у фрагмента был один вопрос, "
+                         "а здесь ссылочный хаб попадал в 30 пар, и его текст "
+                         "стал бы позитивом тридцати вопросов")
     ap.add_argument("--min-bm25", type=float, default=20.0,
                     help="пары, у которых второй фрагмент почти не имеет общих "
                          "слов с первым, отбрасываются: это и есть случайный "
@@ -293,6 +315,21 @@ def main() -> None:
         print(f"   {имя:<32} {число}", flush=True)
 
     pairs = между + внутри
+    # Дедуп по неупорядоченной паре идет по обоим способам вместе. Между
+    # актами встречаются обратные ссылки (4464-У и 4466-У ссылаются друг
+    # на друга), и такая пара приезжала дважды, с переставленными
+    # фрагментами.
+    видели: set[frozenset[str]] = set()
+    без_повторов: list[dict] = []
+    for pair in pairs:
+        ключ = frozenset((pair["chunk_id"], pair["chunk_id_2"]))
+        if ключ in видели:
+            continue
+        видели.add(ключ)
+        без_повторов.append(pair)
+    повторов = len(pairs) - len(без_повторов)
+    pairs = без_повторов
+    print(f"\nповторов по неупорядоченной паре отброшено {повторов}", flush=True)
     слабые = [pair for pair in pairs if pair["bm25"] < args.min_bm25]
     pairs = [pair for pair in pairs if pair["bm25"] >= args.min_bm25]
     между = [pair for pair in pairs if pair["origin"] == CROSS]
@@ -300,6 +337,21 @@ def main() -> None:
     print(f"\nпо порогу BM25 {args.min_bm25:.0f} отброшено {len(слабые)} пар",
           flush=True)
     random.Random(args.seed).shuffle(pairs)
+    if args.per_chunk:
+        вхождений: dict[str, int] = {}
+        отобранные: list[dict] = []
+        for pair in pairs:
+            свои = (pair["chunk_id"], pair["chunk_id_2"])
+            if any(вхождений.get(c, 0) >= args.per_chunk for c in свои):
+                continue
+            for c in свои:
+                вхождений[c] = вхождений.get(c, 0) + 1
+            отобранные.append(pair)
+        print(f"по пределу {args.per_chunk} пар на фрагмент отброшено "
+              f"{len(pairs) - len(отобранные)} пар", flush=True)
+        pairs = отобранные
+        между = [pair for pair in pairs if pair["origin"] == CROSS]
+        внутри = [pair for pair in pairs if pair["origin"] == WITHIN]
     for номер, pair in enumerate(pairs):
         pair["pair_id"] = f"pr{номер:05d}"
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -310,10 +362,13 @@ def main() -> None:
     доля = len(между) / max(1, len(pairs))
     print(f"\nвсего пар {len(pairs)}: {CROSS} {len(между)} "
           f"({100 * доля:.0f}%), {WITHIN} {len(внутри)}", flush=True)
+    # Доля принятых взята из пробы на карте (79 из 100), а не назначена:
+    # пересчет пар в вопросы без замера был бы догадкой в выводе прогона.
     print(f"равные доли дали бы {2 * len(между)} пар, то есть около "
-          f"{int(2 * len(между) * 0.55)} принятых вопросов против 6490 "
-          f"у прошлых прогонов: объем выборки важнее равенства долей, "
-          f"перекос записан в S26", flush=True)
+          f"{int(2 * len(между) * ACCEPT_SHARE)} принятых вопросов против 6490 "
+          f"у прошлых прогонов (доля принятых {ACCEPT_SHARE} замерена пробой): "
+          f"объем выборки важнее равенства долей, перекос записан в S26",
+          flush=True)
     for имя, часть in ((CROSS, между), (WITHIN, внутри)):
         if часть:
             print(f"   {имя}: BM25 медиана "

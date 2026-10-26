@@ -97,6 +97,15 @@ def main() -> None:
                     help="имя файла обучающей выборки. Отдельное имя у каждого "
                          "опыта: прежнюю выборку затирать нельзя, иначе опыт "
                          "не с чем сравнить")
+    ap.add_argument("--gen-seed", type=int, default=13,
+                    help="семя движка генерации. Идет в метаданные прогона: "
+                         "воспроизводимость это одно из чисел приемки набора")
+    ap.add_argument("--control", action="store_true",
+                    help="контрольная ветка пробы: по тем же парам вопрос "
+                         "пишется по ОДНОМУ первому фрагменту, прежней "
+                         "инструкцией. Нужна мере многофрагментности: само "
+                         "ее значение ни о чем не говорит, смысл имеет "
+                         "разница с контролем")
     ap.add_argument("--pairs-limit", type=int, default=0,
                     help="взять только первые N пар. Это и есть проба: сто пар, "
                          "доля принятых считается по ста попыткам, а не по ста "
@@ -319,14 +328,18 @@ def main() -> None:
             # командой, нет, а без токена хаб не падает, а молча режет
             # скорость. Хаб остается запасным путем, и какой сработал,
             # печатает сам resolve_model.
+            # Семя передается движку. Без него вопросы не повторяются даже
+            # при том же порядке пар: температура 0,7, и выборка токенов
+            # случайна. Прогоны E0 E4 тоже были невоспроизводимы по текстам,
+            # и это так и названо в карточке набора.
             llm = G.load_llm(common.resolve_model(args.train_model, обязательно=False),
                              args.dtype, quant, args.tensor_parallel,
-                             args.max_model_len)
+                             args.max_model_len, seed=args.gen_seed)
         if pair_rows:
             report["train"] = G.make_pair_queries(
                 llm, pair_rows, chunks, train_path, target=args.train, prefix="tr",
                 idf_texts=all_texts, batch=args.batch, examples=examples,
-                shots=args.shots)
+                shots=args.shots, control=args.control)
         else:
             report["train"] = G.make_queries(
                 llm, chunks_of_groups(chunks, split, [S.TRAIN]), train_path,

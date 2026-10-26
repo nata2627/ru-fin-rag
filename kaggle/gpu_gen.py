@@ -449,6 +449,7 @@ def filter_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 100,
     полтора миллиона пар, то есть часы. Глубину имеет смысл уменьшать,
     а не отказываться от фильтра.
     """
+    import gpu_common as common
     import gpu_search as S
 
     from rufin.retrieval.bm25 import BM25Index
@@ -463,6 +464,9 @@ def filter_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 100,
             f"--teacher-filter совсем.")
     print(f"третий фильтр: глубина {depth}, порог {keep_top} "
           f"(эталон обязан попасть в первые {keep_top} из {depth})", flush=True)
+
+    # Веса учителя из входов, а не из хаба: см. тот же разбор в фильтре пары.
+    учитель = common.resolve_model(S.RERANKER)
 
     texts = {c["chunk_id"]: c["text"] for c in chunks}
     t0 = time.time()
@@ -479,7 +483,8 @@ def filter_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 100,
         candidates[q["query_id"]] = [(c, 0.0) for c in found]
 
     ranked = S.rerank_runs([{"query_id": q["query_id"], "text": q["text"]} for q in queries],
-                           candidates, texts, batch_size=batch_size, device=device)
+                           candidates, texts, model_path=учитель,
+                           batch_size=batch_size, device=device)
 
     kept, positions = [], []
     for q in queries:
@@ -564,13 +569,34 @@ def pair_prompt(tok, style: Style, pair: dict, first: dict, second: dict,
 
 def generate_pairs(llm, style: Style, pairs: list[dict], texts: dict[str, dict],
                    temperature: float = 0.7, examples: list[str] | None = None,
-                   shots: int = 3, seed: int = 13, offset: int = 0) -> list[str]:
+                   shots: int = 3, seed: int = 13, offset: int = 0,
+                   control: bool = False) -> list[str]:
+    """Вопросы по парам. `control` пишет вопрос по ОДНОМУ первому фрагменту.
+
+    Контрольная ветка нужна одной мере. Доля многофрагментных считается так:
+    учитель ставит второй фрагмент не ниже тридцатого места при первом
+    в лучшей половине. Само это число ни о чем не говорит: пара отобрана
+    по BM25, фрагменты тематически близки, и однофрагментный вопрос по
+    первому часто вытянет второй в тот же топ сам собой. Поэтому тем же
+    фильтром меряется контроль, собранный по прежней инструкции на тех же
+    парах, и смысл имеет разница.
+    """
     from vllm import SamplingParams
     tok = llm.get_tokenizer()
-    prompts = [pair_prompt(tok, style, pair, texts[pair["chunk_id"]],
-                           texts[pair["chunk_id_2"]], examples, shots, seed,
-                           offset + i)
-               for i, pair in enumerate(pairs)]
+    if control:
+        prompts = []
+        for i, pair in enumerate(pairs):
+            first = texts[pair["chunk_id"]]
+            head = HEAD.format(passage=body_of(first)[:4000])
+            if examples and style.fewshot and shots:
+                head += FEWSHOT.format(
+                    examples=shots_for(examples, shots, seed, offset + i))
+            prompts.append(_chat(tok, head + style.tail))
+    else:
+        prompts = [pair_prompt(tok, style, pair, texts[pair["chunk_id"]],
+                               texts[pair["chunk_id_2"]], examples, shots, seed,
+                               offset + i)
+                   for i, pair in enumerate(pairs)]
     params = SamplingParams(temperature=temperature, top_p=0.9,
                             max_tokens=style.max_tokens)
     out = llm.generate(prompts, params, use_tqdm=False)
@@ -594,7 +620,8 @@ def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
                       target: int, prefix: str = "tr", per_act: int = 12,
                       seed: int = 13, batch: int = 256,
                       idf_texts: list[str] | None = None,
-                      examples: list[str] | None = None, shots: int = 3) -> dict:
+                      examples: list[str] | None = None, shots: int = 3,
+                      control: bool = False) -> dict:
     """Вопросы по парам фрагментов. Возвращает статистику.
 
     Доля способов подбора пары печатается по принятым вопросам, а не по
@@ -617,6 +644,10 @@ def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
     per_act_count: collections.Counter = collections.Counter()
     by_style: collections.Counter = collections.Counter()
     by_origin: collections.Counter = collections.Counter()
+    # Пропуск по пределу на акт считается отдельно от отказов фильтров:
+    # доля отклоненных это мера качества генерации, и смешивать с ней
+    # вопросы, которых фильтры не видели, значит портить обе величины.
+    по_пределу = 0
     t0 = time.time()
     pos = 0
     while len(out) < target and pos < len(годные):
@@ -629,12 +660,30 @@ def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
             batch_pairs.append(pair)
         if not batch_pairs:
             break
-        style = PAIR_STYLES[next_style(by_style, PAIR_STYLES)]
+        # В контроле стили те же два, но инструкция прежняя, по одному
+        # фрагменту: иначе сравнивались бы два изменения сразу, манера
+        # и устройство задачи.
+        стили = STYLES[:2] if control else PAIR_STYLES
+        style = стили[next_style(by_style, стили)]
         questions = generate_pairs(llm, style, batch_pairs, texts, examples=examples,
-                                  shots=shots, seed=seed, offset=pos - len(batch_pairs))
+                                  shots=shots, seed=seed, offset=pos - len(batch_pairs),
+                                  control=control)
         for pair, q in zip(batch_pairs, questions):
+            # Предел проверяется и здесь, а не только при наборе пачки. Пачка
+            # это 256 пар, счетчик растет после приемки, и акт, у которого
+            # в одной пачке лежало больше двенадцати пар, забирал их все.
+            if per_act_count[pair["act_id"]] >= per_act:
+                по_пределу += 1
+                continue
             first, second = texts[pair["chunk_id"]], texts[pair["chunk_id_2"]]
-            ok, why = judge_pair_query(q, body_of(first), body_of(second), idf)
+            # В контроле фильтр «списан» применяется только к первому
+            # фрагменту: вопрос писался по нему, и требовать того же
+            # от второго значило бы отбирать контроль строже опыта.
+            if control:
+                ok, why = judge_query(q, body_of(first), idf,
+                                      require_question_mark=style.question_mark)
+            else:
+                ok, why = judge_pair_query(q, body_of(first), body_of(second), idf)
             if not ok:
                 rejected[why.split("(")[0].strip()] += 1
                 continue
@@ -674,10 +723,13 @@ def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
              "reject_share": round(sum(rejected.values()) / max(1, attempts), 2),
              "reasons": dict(rejected.most_common()), "by_style": dict(by_style),
              "по способу пары": dict(by_origin),
+             "пропущено по пределу на акт": по_пределу,
              "доля между актами": round(by_origin["между актами"] / max(1, len(out)), 3),
              "медиана длины вопроса": длины[len(длины) // 2] if длины else 0,
              "acts_touched": len(per_act_count), "seconds": round(time.time() - t0, 1),
              "пар израсходовано": pos,
+             "ветка": "контроль, вопрос по одному фрагменту" if control
+                      else "опыт, вопрос по двум нормам",
              "примеров в подсказке": shots if examples else 0,
              "примеров доступно": len(examples) if examples else 0}
     print(f"\nпринято {stats['accepted']}, отклонено {stats['rejected']} "
@@ -723,6 +775,7 @@ def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int 
     выполняется у любой пары, фильтр не отбрасывает ничего и показывает
     долю многофрагментных, равную единице.
     """
+    import gpu_common as common
     import gpu_search as S
 
     from rufin.retrieval.bm25 import BM25Index
@@ -738,6 +791,14 @@ def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int 
     print(f"фильтр пары: глубина {depth}, первый в первых {keep_top}, "
           f"второй в первых {second_keep}", flush=True)
 
+    # Веса учителя берутся из входов, а не из хаба. Ядру, созданному
+    # командой, токен HuggingFace прицепить нельзя, и без токена хаб не
+    # падает, а молча режет скорость; при выключенном интернете он падает
+    # уже на загрузке, после того как BM25 построен и кандидаты посчитаны.
+    # На этом прогон фильтра пробы E5 и встал. Пороги проверяются раньше
+    # весов: отказ по порогу должен стоить секунду, а не монтирование модели.
+    учитель = common.resolve_model(S.RERANKER)
+
     texts = {c["chunk_id"]: c["text"] for c in chunks}
     t0 = time.time()
     index = BM25Index.build([c["chunk_id"] for c in chunks],
@@ -749,13 +810,19 @@ def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int 
     for q in queries:
         found = [c for c, _ in index.search(q["text"], depth)]
         эталоны = [q["gold_chunk_id"], q["gold_chunk_id_2"]]
-        нехватка = [c for c in эталоны if c not in found]
-        if нехватка:
-            found = found[:depth - len(нехватка)] + нехватка
+        # Эталоны сначала вынимаются из выдачи, потом дописываются в конец.
+        # Срез `found[:depth - len(нехватка)]` выбрасывал тот эталон, который
+        # BM25 нашел сам и поставил в хвост: место выходило нулем, и пара
+        # отклонялась не по сути, а по длине списка. Длина остается ровно
+        # `depth`, иначе места эталонов считались бы по спискам разной
+        # глубины у разных вопросов.
+        прочие = [c for c in found if c not in эталоны]
+        found = прочие[:max(0, depth - len(эталоны))] + эталоны
         candidates[q["query_id"]] = [(c, 0.0) for c in found]
 
     ranked = S.rerank_runs([{"query_id": q["query_id"], "text": q["text"]} for q in queries],
-                           candidates, texts, batch_size=batch_size, device=device)
+                           candidates, texts, model_path=учитель,
+                           batch_size=batch_size, device=device)
 
     kept: list[dict] = []
     места_1: list[int] = []
