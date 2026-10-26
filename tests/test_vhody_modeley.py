@@ -18,8 +18,10 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "kaggle"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 import gpu_common as common  # noqa: E402
+from kaggle_run import flags_of  # noqa: E402
 
 
 def положить(корень, относительный: str) -> str:
@@ -62,3 +64,18 @@ def test_берётся_корень_модели_а_не_вложенная_п�
     положить(tmp_path, "qwen2.5/transformers/14b-instruct-awq/1/onnx")
     assert common.resolve_model("Qwen/Qwen2.5-14B-Instruct-AWQ",
                                 root=str(tmp_path)) == корень
+
+
+def test_klyuch_s_defisom_ne_schitaetsya_drugim_klyuchom():
+    """`--train-file` это не `--train`.
+
+    По этому месту прогон фильтра учителя для E5 не запустился вовсе:
+    выбор пакетов решал, что в прогоне поднимается языковая модель, и
+    отказывал по правилу «vLLM и sentence-transformers вместе не ставятся».
+    """
+    ключи = flags_of("--probe 0 --teacher-filter --filter-depth 50 "
+                     "--train-file synthetic_train_e5_proba.jsonl")
+    assert "--train-file" in ключи
+    assert "--train" not in ключи
+    assert not ключи & {"--judge", "--train", "--dev", "--test"}
+    assert flags_of("--probe 0 --train 6490 --batch 256") & {"--train"}
