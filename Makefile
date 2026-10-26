@@ -28,7 +28,7 @@ JUDGE_B ?= data/queries/judge_32b.tsv
 # Сколько потоков отдать FAISS при замере. Ноль это все ядра машины.
 THREADS ?= 0
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa priemka judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa priemka judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap pairs-e5
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -230,6 +230,10 @@ judge-probe:
 # E4: примеры живых вопросов для генератора, без единого вопроса набора.
 fewshot:
 	$(PY) scripts/make_fewshot_examples.py
+
+# E5: пары связанных фрагментов, по которым вопрос требует двух норм.
+pairs-e5:
+	$(PY) scripts/make_pairs_e5.py
 
 priemka: ## приёмка всех судей против ручной разметки, одним файлом чисел
 	$(PY) scripts/judge_acceptance.py
