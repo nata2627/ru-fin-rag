@@ -22,7 +22,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from rufinrag.corpus import FIELDS  # noqa: E402
 
-DEFAULT_PART_A = Path.home() / "Desktop/my_jobs/rag_retrieval"
+# Часть А лежит внутри этого же репозитория папкой `retrieval` (решение 22):
+# сдается одна ссылка и один клон, поэтому путь считается от корня репозитория,
+# а не от домашней папки.
+DEFAULT_PART_A = Path(__file__).resolve().parents[1] / "retrieval"
 
 
 def main() -> int:

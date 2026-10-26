@@ -25,7 +25,7 @@ from rufinrag.retrieval.bm25 import BM25Index
 from rufinrag.retrieval.fusion import rrf
 from rufinrag.search import SearchService
 
-PART_A = Path(os.environ.get("RUFIN_PART_A", Path(__file__).resolve().parents[2] / "rag_retrieval"))
+PART_A = Path(os.environ.get("RUFIN_PART_A", Path(__file__).resolve().parents[1] / "retrieval"))
 
 SAMPLES = (
     "В соответствии с Положением Банка России № 590-П и пунктом 3.12 указанного положения",
