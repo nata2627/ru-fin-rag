@@ -54,6 +54,10 @@ QUERIES = [
     # по памяти о прогоне
     "data/queries/synthetic_train_e4.jsonl",
     "data/queries/synthetic_train_e4_filtered.jsonl",
+    # E5: пары связанных фрагментов, вход генератора в режиме пары. Сами
+    # пары собираются локально (`make pairs-e5`): подбор это BM25 по актам,
+    # видеокарте там делать нечего.
+    "data/queries/pairs_e5.jsonl",
     "data/queries/synthetic_dev.jsonl",
     "data/queries/qrels.tsv",
     "data/queries/podvyborki.json",
