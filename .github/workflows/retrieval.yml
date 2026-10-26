@@ -1,0 +1,45 @@
+# Тесты и стиль части А (папка `retrieval`).
+#
+# Лежит в корне, а не в `retrieval/.github/workflows`, потому что GitHub
+# читает рабочие процессы только из корня репозитория. После слияния двух
+# репозиториев (решение 22) прежний прогон части А перестал бы запускаться
+# вовсе, и это было бы не видно: зеленым оставался бы только прогон части Б.
+#
+# Окружение свое: части А нужны torch и sentence-transformers, части Б
+# fastapi и langgraph, и один набор зависимостей тянул бы тяжелое в сервис,
+# который живет на бесплатном тарифе с 512 МБ памяти.
+name: retrieval
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: retrieval
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: retrieval/pyproject.toml
+
+      - name: Установить пакет
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Проверка стиля
+        run: ruff check src tests scripts kaggle
+
+      - name: Тесты
+        run: pytest
