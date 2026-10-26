@@ -63,6 +63,8 @@ def main() -> None:
     ap.add_argument("--private", action="store_true")
     ap.add_argument("--dry-run", action="store_true",
                     help="только проверки, без заливки")
+    ap.add_argument("--card-only", action="store_true",
+                    help="залить только карточку, выгрузку не трогать")
     args = ap.parse_args()
 
     stats = check(args.bench)
@@ -86,8 +88,11 @@ def main() -> None:
     api = HfApi(token=os.environ.get("HF_TOKEN"))
     api.create_repo(args.repo, repo_type="dataset", private=args.private,
                     exist_ok=True)
-    api.upload_folder(folder_path=args.bench, repo_id=args.repo,
-                      repo_type="dataset", path_in_repo=".")
+    # Выгрузка весит 228 МБ и не меняется, а карточка меняется: правка адреса
+    # репозитория не повод гонять корпус заново.
+    if not args.card_only:
+        api.upload_folder(folder_path=args.bench, repo_id=args.repo,
+                          repo_type="dataset", path_in_repo=".")
     api.upload_file(path_or_fileobj=card, path_in_repo="README.md",
                     repo_id=args.repo, repo_type="dataset")
     print(f"опубликовано: https://huggingface.co/datasets/{args.repo}")
