@@ -1,0 +1,76 @@
+# сырые выгрузки с сайтов в репозиторий не попадают: только скрипт сбора
+data/raw/
+data/interim/
+data/corpus/*.parquet
+data/embeddings/
+
+# индексы и матрицы эмбеддингов считаются заново
+*.npy
+*.faiss
+qdrant_storage/
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+
+.DS_Store
+.ipynb_checkpoints/
+# Нарезка и корпус пересобираются скриптом из выпусков «Вестника», выдачи —
+# прогоном на видеокарте. Воспроизводимое в репозиторий не кладём.
+# Исключение — data/queries/: разметку воспроизвести нельзя, она там и лежит.
+data/chunks/
+data/corpus/acts.jsonl
+data/runs/
+# Обученные веса: полгигабайта на этап. В репозиторий не идут,
+# публикуются отдельно на HuggingFace.
+data/weights/
+data/results/
+# Выгрузка в формате MTEB: корпус в ней тот же, что в data/corpus, — 240 МБ.
+# Собирается `make bench`, публикуется на HuggingFace, в репозитории
+# не нужна. Разметка, из которой она собрана, лежит в data/queries.
+data/benchmark/
+# лист ручной проверки градаций пересобирается `make bench` из разметки
+data/queries/grade_candidates.tsv
+# сюда kaggle_run.py складывает скачанный вывод ядра целиком,
+# вместе с корпусом и нарезкой: гигабайты, и всё воспроизводимое
+data/kaggle_out/
+data/embeddings/
+dist/
+
+# личные заметки по проекту в публичный репозиторий не идут
+docs/cv-block.md
+
+# ключи Kaggle лежат вне проекта, но на всякий случай
+.kaggle/
+kaggle.json
+access_token
+
+# рабочие файлы и секреты
+.env.*
+!.env.example
+*.session
+*.pem
+*-session-export*.txt
+exports/
+*.pyc
+node_modules/
+logs/
+.vscode/
+
+# Задание судье пересобирается скриптом и весит тридцать пять мегабайт
+data/queries/pool_live.tsv
+data/queries/rubric.txt
+
+# чужой набор для контрольного прогона: качается скриптом, в репозиторий не идет
+data/friend/
+
+# Служебная папка агента: в репозиторий проекта она не входит
+# (AGENTS.md, раздел 3). Навык запуска на Kaggle жил здесь и уехал в
+# публичный репозиторий, это чистится здесь же.
+.claude/

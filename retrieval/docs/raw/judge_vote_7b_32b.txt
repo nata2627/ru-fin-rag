@@ -1,0 +1,19 @@
+судья Qwen2.5-7B-Instruct-AWQ: data/kaggle_out/ru-fin-judge-7b/queries/judge_live_7b.tsv, строк 67, разметкой стали 67
+судья Qwen2.5-32B-Instruct-AWQ: data/kaggle_out/ru-fin-judge-32b-fix/queries/judge_live_32b.tsv, строк 150, разметкой стали 150
+
+размечено обоими: 67 пар, это знаменатель всех долей ниже
+совпало дословно: 6 из 67 (9.0%)
+разошлось: 61 из 67 (91.0%), в метрику не идут
+из них на две ступени: 0 из 67
+размечено только одним: 0 у Qwen2.5-7B-Instruct-AWQ, 83 у Qwen2.5-32B-Instruct-AWQ; голоса двоих там нет, в метрику тоже не идут
+
+матрица оценок (строки Qwen2.5-7B-Instruct-AWQ, столбцы Qwen2.5-32B-Instruct-AWQ):
+               0       1       2
+   0          0       0       0
+   1          0       0       1
+   2          0      60       6
+
+согласованная разметка: 6 пар по 5 запросам
+   оценка 2: 6, оценка 1: 0, оценка 0: 0
+   в qrels идут оценки больше нуля: пар 6, запросов 5; нерелевантные пары в qrels не перечисляются
+файлы: data/results/qrels_probe_vote_7b_32b.tsv, data/results/probe_disagreed_7b_32b.tsv
