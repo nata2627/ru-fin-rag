@@ -138,6 +138,13 @@ jobs:
       - name: Record the heartbeat
         run: python scripts/record_heartbeat.py
 
+      # Отметка живости только что увеличила счетчик прогонов, а он стоит
+      # строкой в таблице навыков README. Таблица вписывается скриптом после
+      # отметки: иначе следующий прогон упал бы на сверке чисел, а красный
+      # main остановил бы часы приемки автономности.
+      - name: Rewrite the skills table
+        run: python scripts/skills_table.py --write
+
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
@@ -145,7 +152,7 @@ jobs:
           git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
             results/corpus-update.json results/regression.json results/regulation.json \
             results/monitoring.json results/dag.md results/registry.json \
-            data/events results/events.json
+            data/events results/events.json README.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
