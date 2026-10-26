@@ -16,7 +16,8 @@
   weights   загрузить обученные веса отдельным датасетом
   run       собрать ноутбук, запустить и дождаться
   fetch     забрать результат последнего прогона
-  time      сколько ядро уже считает и сколько осталось до предела сессии
+  time      остаток недельной квоты, сколько ядро считает и сколько осталось
+            до предела сессии
 """
 from __future__ import annotations
 
@@ -88,6 +89,22 @@ MODELS = {
 # осталось меньше, чем он просит, лучше резать на два заранее, а не узнавать
 # об обрыве на одиннадцатом часу.
 SESSION_HOURS = 12.0
+
+
+def quota() -> list[dict]:
+    """Недельная квота ускорителей: сколько потрачено, сколько осталось, когда
+    обновится. Отдает ее сам клиент (`kaggle quota`), и это надежнее любой
+    своей бухгалтерии по журналам прогонов: в квоту идет время ядра целиком,
+    включая установку пакетов и монтирование весов, а не время счета.
+    """
+    import csv
+
+    r = run(["kaggle", "quota", "--csv"])
+    все = (r.stdout or "").splitlines()
+    начало = next((i for i, l in enumerate(все) if l.startswith("resource,")), None)
+    if начало is None:
+        return []
+    return list(csv.DictReader(все[начало:]))
 
 
 def kernel_times(user: str, фильтр: str = "ru-fin") -> list[dict]:
@@ -779,6 +796,11 @@ def main() -> None:
                 fetch(ref, os.path.join(ROOT, "data", "kaggle_out", slug.split("/")[-1]))
 
     elif args.cmd == "time":
+        for ряд in quota():
+            if ряд.get("resource") == "GPU":
+                print(f"квота GPU: потрачено {ряд.get('used')}, осталось "
+                      f"{ряд.get('remaining')} из {ряд.get('total')}, "
+                      f"обновится {ряд.get('refreshAt', '')[:10]}")
         ядра = kernel_times(user, args.filter)
         if args.running:
             ядра = [k for k in ядра
