@@ -66,7 +66,12 @@ from rufin.retrieval.hybrid import rrf  # noqa: E402
 from rufin.retrieval.model_specs import MODELS  # noqa: E402
 from rufin.training.config import SPEC, STUDENT, TEACHER  # noqa: E402
 from rufin.training.negatives import NegativeRules, detect_scale, pick_all  # noqa: E402
-from rufin.training.pairs import assert_only_train_acts, read_jsonl, train_acts  # noqa: E402
+from rufin.training.pairs import (  # noqa: E402
+    assert_only_train_acts,
+    golds_of,
+    read_jsonl,
+    train_acts,
+)
 
 
 def probe_speed(tok, model, chunks: list[dict], device: str,
@@ -277,14 +282,23 @@ def score_pairs(pairs: list[tuple[str, str]], tok, model, device: str,
 
 
 def _с_эталоном(выдача, query: dict, depth: int) -> list[str]:
-    """Список кандидатов, в котором эталон есть обязательно.
+    """Список кандидатов, в котором эталоны вопроса есть обязательно.
 
-    Без его оценки не работает отсечка негативов: порог считается от неё.
+    Без оценки эталона не работает отсечка негативов: порог считается
+    от неё. У вопроса выборки E5 эталона два, и второй нужен здесь
+    не меньше первого: без его оценки он не исключается из негативов
+    по порогу и попадает в список дистилляции чужим числом.
+
+    Эталон, который выдача нашла сама, остаётся на своём месте. Список
+    пересобирается только при нехватке: иначе у выборок с одним эталоном
+    поменялся бы порядок кандидатов, а он уезжает в файл подготовки.
     """
     найдено = [c for c, _ in выдача] if выдача and isinstance(выдача[0], tuple) \
         else list(выдача)
-    if query["gold_chunk_id"] not in найдено:
-        найдено = найдено[:depth - 1] + [query["gold_chunk_id"]]
+    эталоны = golds_of(query)
+    if any(c not in найдено for c in эталоны):
+        прочие = [c for c in найдено if c not in эталоны]
+        найдено = прочие[:max(0, depth - len(эталоны))] + эталоны
     return найдено
 
 
@@ -402,6 +416,7 @@ def собрать_отчёт(записи: list[dict], scale: str, разреш
     правила = NegativeRules(per_query=args.per_query, train_acts=разрешено)
     _, stats = pick_all(записи, правила, scale)
     места = sorted(r["teacher_place"] for r in записи)
+    места_2 = sorted(r["teacher_place_2"] for r in записи if "teacher_place_2" in r)
     отчёт = dict(прочее)
     отчёт.update({
         "шкала оценок": scale,
@@ -413,6 +428,11 @@ def собрать_отчёт(записи: list[dict], scale: str, разреш
         "эталон первым у учителя": sum(1 for m in места if m == 1),
         "негативы": stats,
     })
+    # Второй эталон бывает только у выборки E5. Поля без него в отчёте нет
+    # вовсе: ноль в нём читался бы как измеренный, а он не измерялся.
+    if места_2:
+        отчёт["вопросов с двумя эталонами"] = len(места_2)
+        отчёт["медиана места второго эталона у учителя"] = места_2[len(места_2) // 2]
     return отчёт
 
 
@@ -420,7 +440,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--acts", default=None)
     ap.add_argument("--split", default=None)
-    ap.add_argument("--train", default=None, help="synthetic_train.jsonl; ищется сам")
+    ap.add_argument("--train", default=None,
+                    help="имя или путь обучающей выборки; имя без каталога "
+                         "ищется среди входов, по умолчанию synthetic_train.jsonl")
     ap.add_argument("--out", default="/kaggle/working/train")
     ap.add_argument("--chunks-cache", default="/kaggle/working/chunks")
     ap.add_argument("--teacher", default=TEACHER,
@@ -528,7 +550,8 @@ def main() -> None:
               flush=True)
     if not queries:
         print("считать нечего: все вопросы уже посчитаны", flush=True)
-    assert_only_train_acts([q["gold_chunk_id"] for q in queries], split, "эталоны обучения")
+    assert_only_train_acts([c for q in queries for c in golds_of(q)], split,
+                           "эталоны обучения")
 
     # Учитель поднимается один раз на весь прогон: веса 2,3 ГБ, и загрузка
     # их на каждую пачку — минуты, помноженные на число пачек.
@@ -581,12 +604,22 @@ def main() -> None:
         with open(out_path, "a", encoding="utf-8") as f:
             for q in пачка:
                 свои = по_вопросу[q["query_id"]]
-                gold = q["gold_chunk_id"]
+                эталоны = golds_of(q)
+                gold = эталоны[0]
                 упорядочено = sorted(свои.items(), key=lambda kv: -kv[1])
+                порядок = [c for c, _ in упорядочено]
                 rec = {"query_id": q["query_id"], "gold_chunk_id": gold,
                        "gold_score": свои[gold],
-                       "teacher_place": [c for c, _ in упорядочено].index(gold) + 1,
-                       "candidates": [[c, s] for c, s in упорядочено]}
+                       "teacher_place": порядок.index(gold) + 1}
+                # Поля второго эталона появляются только у вопросов, у которых
+                # он есть: у прежних выборок файл подготовки остаётся прежним
+                # до байта, и этапы B и C читают его как раньше.
+                if len(эталоны) > 1:
+                    второй = эталоны[1]
+                    rec["gold_chunk_id_2"] = второй
+                    rec["gold_score_2"] = свои[второй]
+                    rec["teacher_place_2"] = порядок.index(второй) + 1
+                rec["candidates"] = [[c, s] for c, s in упорядочено]
                 вышло.append(rec)
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         return вышло
