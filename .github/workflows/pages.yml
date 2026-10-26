@@ -1,0 +1,61 @@
+# Дашборд: страница собирается по тем же моделям витрины и уезжает на GitHub
+# Pages. Отдельным прогоном от ночного регламента по трем причинам. Движок
+# витрины это 354 МБ, а обновлению корпуса он не нужен ни строкой. Страница
+# должна обновляться с каждым изменением результатов, а не дважды в сутки по
+# расписанию. И отметка живости регламента считает свои прогоны: публикация
+# страницы не повод увеличивать их число.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "results/**"
+      - "data/events/**"
+      - "scripts/build_dashboard.py"
+      - "src/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[analytics]'
+
+      # Пустой журнал это не ошибка: страница собирается и говорит, что данных
+      # пока нет.
+      - name: Build the dashboard
+        run: python scripts/build_dashboard.py
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
