@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check lint test fmt serve answer-threshold vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check check-retrieval check-all lint test fmt serve answer-threshold vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -30,6 +30,16 @@ track: ## завести прогоны из results/*.json в MLflow (нуже�
 
 check: ## линтер, тесты, числа README, проверка на секреты
 	scripts/check.sh
+
+# Часть А живет папкой `retrieval` со своим окружением: ей нужны torch и
+# sentence-transformers, части Б fastapi и langgraph, и одно окружение тянуло
+# бы тяжелое в сервис, который держится на 512 МБ бесплатного тарифа.
+check-retrieval: ## тесты и стиль части А (папка retrieval, свое окружение)
+	cd retrieval && $(MAKE) lint test
+
+check-all: ## обе проверки одной командой: сервис и часть А
+	$(MAKE) check
+	$(MAKE) check-retrieval
 
 lint: ## только линтер
 	$(PY) -m ruff check src tests dags
