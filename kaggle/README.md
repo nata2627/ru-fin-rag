@@ -467,7 +467,7 @@ python3 scripts/kaggle_run.py run c --slug ru-fin-e5-train --machine "" --args \
    --train-file synthetic_train_e5.jsonl --fewshot live_fewshot.jsonl --shots 3"
 python3 scripts/kaggle_run.py run c --slug ru-fin-e5-filter \
   --kernels ru-fin-e5-train --args \
-  "--probe 0 --teacher-filter --filter-depth 100 --filter-second 50 \
+  "--probe 0 --teacher-filter --filter-depth 100 --filter-second 30 \
    --train-file synthetic_train_e5.jsonl"
 ```
 
