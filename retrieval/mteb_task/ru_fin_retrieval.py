@@ -42,7 +42,7 @@ class RuFinRetrieval(AbsTaskRetrieval):
             "вопросы поднадзорных организаций из раздела «Разъяснения» Банка "
             "России, короткие поисковые запросы, написанные руками, "
             "и синтетические вопросы к актам, не участвовавшим в обучении."),
-        reference="https://github.com/nata2627/ru-fin-retrieval",
+        reference="https://github.com/nata2627/ru-fin-rag/tree/main/retrieval",
         dataset={"path": HF_NAME, "revision": "main"},
         type="Retrieval",
         category="s2p",
@@ -61,7 +61,7 @@ class RuFinRetrieval(AbsTaskRetrieval):
   title  = {ru-fin-retrieval: бенчмарк поиска по нормативным актам Банка России},
   author = {Гордеева, Наталия},
   year   = {2026},
-  url    = {https://github.com/nata2627/ru-fin-retrieval}
+  url    = {https://github.com/nata2627/ru-fin-rag/tree/main/retrieval}
 }""",
     )
 

@@ -25,7 +25,7 @@ part measures**.
 
 * License of the code and the annotations: MIT. The act texts themselves are official
   documents of the Bank of Russia, published in the Vestnik Banka Rossii bulletin.
-* Repository: <https://github.com/nata2627/ru-fin-retrieval>
+* Repository: <https://github.com/nata2627/ru-fin-rag/tree/main/retrieval>
 * Format: MTEB / BeIR, files `corpus.jsonl`, `queries.jsonl`, `qrels/test.tsv`,
   `qrels/dev.tsv`.
 * Language of the data: Russian. This card is in English, the Russian original lives in the

@@ -7,7 +7,7 @@
 
 * Лицензия кода и разметки: MIT. Тексты актов это официальные документы
   Банка России, опубликованные в «Вестнике Банка России».
-* Репозиторий: <https://github.com/nata2627/ru-fin-retrieval>
+* Репозиторий: <https://github.com/nata2627/ru-fin-rag/tree/main/retrieval>
 * Формат: MTEB / BeIR, файлы `corpus.jsonl`, `queries.jsonl`, `qrels/test.tsv`.
 * Таск для MTEB: [`mteb_task/`](../mteb_task/README.md).
 
