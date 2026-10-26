@@ -38,6 +38,7 @@ import json
 import os
 import random
 import re
+import statistics
 import time
 from dataclasses import dataclass
 
@@ -468,6 +469,15 @@ def filter_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 100,
     # Веса учителя из входов, а не из хаба: см. тот же разбор в фильтре пары.
     учитель = common.resolve_model(S.RERANKER)
 
+    # Вопросы, назвавшие нормы словами подсказки, выбрасываются здесь тоже,
+    # а не только при генерации: выборка могла быть сделана прежней версией
+    # кода, а переделывать пять часов карты из-за четырех вопросов незачем.
+    каркас = [q for q in queries if упоминает_каркас(q["text"])]
+    if каркас:
+        queries = [q for q in queries if not упоминает_каркас(q["text"])]
+        print(f"выброшено как назвавших нормы словами подсказки: {len(каркас)}",
+              flush=True)
+
     texts = {c["chunk_id"]: c["text"] for c in chunks}
     t0 = time.time()
     index = BM25Index.build([c["chunk_id"] for c in chunks],
@@ -603,6 +613,24 @@ def generate_pairs(llm, style: Style, pairs: list[dict], texts: dict[str, dict],
     return [_clean(o.outputs[0].text) for o in out]
 
 
+# Слова самой подсказки, протекшие в вопрос. На пробе так вышло 6 вопросов
+# из 73, и 4 из них фильтры пропустили: «чтобы соответствовать требованиям
+# нормы 1 и нормы 2», «требования обеих норм». `PAIR_COMMON` это запрещает
+# отдельным пунктом, но запрет в подсказке держится на послушании модели,
+# а проверять надо кодом. Живой человек так не спрашивает, и такой вопрос
+# в обучении учит модель узнавать каркас задания, а не собирать норму.
+КАРКАС = re.compile(
+    r"норм[аыуе]\s*№?\s*[12]\b"
+    r"|об[еи]их\s+норм|обоих\s+норм|об[ае]\s+норм|двух\s+норм"
+    r"|перв(?:ая|ой|ую)\s+норм|втор(?:ая|ой|ую)\s+норм"
+    r"|указанных\s+норм", re.I)
+
+
+def упоминает_каркас(query: str) -> bool:
+    """Назвал ли вопрос нормы словами подсказки («обеих норм», «нормы 1»)."""
+    return КАРКАС.search(query) is not None
+
+
 def judge_pair_query(query: str, first: str, second: str, idf: IdfTable) -> tuple[bool, str]:
     """Годится ли вопрос по паре. Фильтр «списан» применяется к обоим
     фрагментам (S26, пункт 3): списанный со второго так же сводит задачу
@@ -610,6 +638,8 @@ def judge_pair_query(query: str, first: str, second: str, idf: IdfTable) -> tupl
     ok, why = judge_query(query, first, idf, require_question_mark=True)
     if not ok:
         return False, why
+    if упоминает_каркас(query):
+        return False, "назвал нормы словами подсказки"
     run, share = copy_score(query, second)
     if run > MAX_COMMON_RUN or share > MAX_COPY_SHARE:
         return False, f"списан со второго фрагмента (цепочка {run} слов)"
@@ -718,14 +748,17 @@ def make_pair_queries(llm, pairs: list[dict], chunks: list[dict], out_path: str,
             f.write(json.dumps(q, ensure_ascii=False) + "\n")
 
     attempts = len(out) + sum(rejected.values())
-    длины = sorted(len(q["text"]) for q in out)
+    # Медиана, а не верхний средний элемент: на четном числе вопросов
+    # `длины[len(длины) // 2]` давал 201 там, где медиана 200, и это уже
+    # уехало в отчет опыта.
+    длины = [len(q["text"]) for q in out]
     stats = {"accepted": len(out), "rejected": sum(rejected.values()),
              "reject_share": round(sum(rejected.values()) / max(1, attempts), 2),
              "reasons": dict(rejected.most_common()), "by_style": dict(by_style),
              "по способу пары": dict(by_origin),
              "пропущено по пределу на акт": по_пределу,
              "доля между актами": round(by_origin["между актами"] / max(1, len(out)), 3),
-             "медиана длины вопроса": длины[len(длины) // 2] if длины else 0,
+             "медиана длины вопроса": round(statistics.median(длины)) if длины else 0,
              "acts_touched": len(per_act_count), "seconds": round(time.time() - t0, 1),
              "пар израсходовано": pos,
              "ветка": "контроль, вопрос по одному фрагменту" if control
@@ -756,7 +789,8 @@ def pair_ranks_ok(место_1: int, место_2: int, keep_top: int, second_ke
 
 def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int = 50,
                             keep_top: int | None = None, second_keep: int = 30,
-                            batch_size: int = 64, device: str = "cuda") -> tuple[list[dict], dict]:
+                            batch_size: int = 64, device: str = "cuda",
+                            ranks_path: str = "") -> tuple[list[dict], dict]:
     """Фильтр учителя для пары и мера многофрагментности разом (S26, пункты 3 и 5).
 
     Вопрос принимается, если первый фрагмент пары учитель ставит в лучшую
@@ -798,6 +832,15 @@ def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int 
     # На этом прогон фильтра пробы E5 и встал. Пороги проверяются раньше
     # весов: отказ по порогу должен стоить секунду, а не монтирование модели.
     учитель = common.resolve_model(S.RERANKER)
+
+    # Вопросы, назвавшие нормы словами подсказки, выбрасываются здесь тоже,
+    # а не только при генерации: выборка могла быть сделана прежней версией
+    # кода, а переделывать пять часов карты из-за четырех вопросов незачем.
+    каркас = [q for q in queries if упоминает_каркас(q["text"])]
+    if каркас:
+        queries = [q for q in queries if not упоминает_каркас(q["text"])]
+        print(f"выброшено как назвавших нормы словами подсказки: {len(каркас)}",
+              flush=True)
 
     texts = {c["chunk_id"]: c["text"] for c in chunks}
     t0 = time.time()
@@ -844,8 +887,27 @@ def filter_pairs_by_teacher(queries: list[dict], chunks: list[dict], depth: int 
     def медиана(значения: list[int]) -> int:
         return sorted(значения)[len(значения) // 2] if значения else 0
 
+    # Места всех поданных вопросов, включая отклоненных, ложатся файлом рядом.
+    # Без него в отчете остаются только медианы, а они по опубликованным
+    # файлам не пересчитываются: у принятых место есть в самой выборке,
+    # у отклоненных не остается нигде.
+    if ranks_path:
+        os.makedirs(os.path.dirname(ranks_path) or ".", exist_ok=True)
+        with open(ranks_path, "w", encoding="utf-8") as f:
+            for q in queries:
+                order = ranked.get(q["query_id"], [])
+                f.write(json.dumps({
+                    "query_id": q["query_id"],
+                    "место первого": order.index(q["gold_chunk_id"]) + 1
+                                     if q["gold_chunk_id"] in order else 0,
+                    "место второго": order.index(q["gold_chunk_id_2"]) + 1
+                                      if q["gold_chunk_id_2"] in order else 0,
+                }, ensure_ascii=False) + "\n")
+        print(f"места эталонов всех поданных: {ranks_path}", flush=True)
+
     доля = len(kept) / max(1, len(queries))
     stats = {"на входе": len(queries), "принято": len(kept),
+             "выброшено как каркас подсказки": len(каркас),
              "отброшено": len(queries) - len(kept),
              "глубина": depth, "порог первого": keep_top, "порог второго": second_keep,
              "первый в лучшей половине": первый_в_половине,

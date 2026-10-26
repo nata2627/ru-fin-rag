@@ -405,7 +405,9 @@ def main() -> None:
                 kept, stats = G.filter_pairs_by_teacher(
                     queries, chunks, depth=args.filter_depth,
                     keep_top=args.filter_keep, second_keep=args.filter_second,
-                    device=device)
+                    device=device,
+                    ranks_path=os.path.join(qdir, os.path.basename(path).replace(
+                        ".jsonl", "_ranks.jsonl")))
             else:
                 kept, stats = G.filter_by_teacher(queries, chunks,
                                                   depth=args.filter_depth,
