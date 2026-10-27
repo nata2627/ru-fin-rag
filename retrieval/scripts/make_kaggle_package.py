@@ -89,9 +89,10 @@ PACKAGE = [
     "src/rufin/retrieval/hybrid.py",
     "src/rufin/retrieval/dense.py",
     "src/rufin/retrieval/model_specs.py",
-    # обучение: рецепт, пары, негативы, заморозка, журнал
+    # обучение: рецепт, пары, негативы, заморозка, журнал, раскладка батчей
     "src/rufin/training/__init__.py",
     "src/rufin/training/config.py",
+    "src/rufin/training/batching.py",
     "src/rufin/training/pairs.py",
     "src/rufin/training/negatives.py",
     "src/rufin/training/freeze.py",
