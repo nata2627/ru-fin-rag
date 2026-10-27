@@ -90,11 +90,12 @@ curl -s -X POST https://ru-fin-rag.onrender.com/search \
 
 ## Как поднять
 
-Нужен python 3.11 и около 250 МБ свободной памяти. Корпус лежит в репозитории сжатым
+Нужен python 3.11 или 3.12 и около 250 МБ свободной памяти. Корпус лежит в репозитории сжатым
 (22,7 МиБ), скачивать ничего не надо.
 
 ```
 make venv                                 # окружение и зависимости
+source .venv/bin/activate                 # дальше python в этом файле это .venv/bin/python
 python scripts/build_index.py             # индекс BM25 и блоки текстов, около 12 с
 make serve                                # сервис на http://127.0.0.1:8000
 ```
