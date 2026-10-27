@@ -59,6 +59,20 @@ def load_task(name: str, split: str = "test") -> tuple[dict, dict, dict]:
         raise RuntimeError(f"MTEB не знает задачи {name}")
     задача = задачи[0]
     задача.load_data()
+    # mteb 2 держит данные одним словарем по подвыборкам и разделениям, а
+    # корпус и запросы там Dataset, а не словарь. Старые поля `corpus`,
+    # `queries`, `relevant_docs` в нем пропали совсем, поэтому сначала
+    # проверяется новая раскладка, а прежняя остается путем для mteb 1.
+    по_подвыборкам = getattr(задача, "dataset", None)
+    if по_подвыборкам:
+        подвыборка = (по_подвыборкам.get("default")
+                      or next(iter(по_подвыборкам.values())))
+        часть = подвыборка.get(split) or next(iter(подвыборка.values()))
+        корпус = {r["id"]: {"title": r.get("title", ""), "text": r["text"]}
+                  for r in часть["corpus"]}
+        запросы = {r["id"]: r["text"] for r in часть["queries"]}
+        return корпус, запросы, часть["relevant_docs"]
+
     def достать(имя: str):
         значение = getattr(задача, имя, None)
         if значение is None:

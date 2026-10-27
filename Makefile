@@ -6,8 +6,16 @@ PIP := $(PY) -m pip
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
 
-venv: ## собрать окружение на python3.11 и поставить зависимости
-	python3.11 -m venv .venv
+# На чистой Ubuntu 24.04 стоит python3.12, и жесткий вызов python3.11 обрывал
+# README на первой же команде сообщением «No such file or directory». Берем то,
+# что есть, и проверяем версию сами: ошибка должна называть причину.
+PYBOOT := $(shell command -v python3.11 || command -v python3.12 || command -v python3)
+
+venv: ## собрать окружение (python 3.11 или 3.12) и поставить зависимости
+	@test -n "$(PYBOOT)" || { echo "python3 не найден: нужен python 3.11 или 3.12"; exit 1; }
+	@$(PYBOOT) -c 'import sys; sys.exit(0 if (3,11) <= sys.version_info < (3,13) else 1)' \
+		|| { echo "нужен python 3.11 или 3.12, найден $$($(PYBOOT) -V)"; exit 1; }
+	$(PYBOOT) -m venv .venv
 	$(PIP) install --upgrade pip
 	# analytics это движок ClickHouse внутри процесса, 354 МБ на диске: без
 	# него сверка режимов витрины пропускается, а она часть проверки.
