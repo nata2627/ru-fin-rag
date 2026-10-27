@@ -1263,7 +1263,63 @@ def checks() -> list[tuple[str, str, str]]:
             f"{len(str(registered['version']))} знаков отпечатка",
         )
     )
+    # Состав набора части А считается по ее файлам, а не переписывается из ее
+    # отчетов: README сервиса называет долю синтетики, и проверять ее надо там,
+    # где лежат сами запросы и разметка.
+    размечено, по_происхождению = состав_nabora()
+    out.append(
+        (
+            "размеченных запросов в наборе части А",
+            "retrieval/data/queries/qrels.tsv",
+            f"{размечено} размеченного запроса",
+        )
+    )
+    out.append(
+        (
+            "написано моделью",
+            "retrieval/data/queries/queries.jsonl",
+            f"{по_происхождению['синтетический']} написала модель",
+        )
+    )
+    out.append(
+        (
+            "доля синтетики",
+            "retrieval/data/queries/queries.jsonl",
+            f"({round(по_происхождению['синтетический'] / размечено * 100)}%)",
+        )
+    )
+    out.append(
+        (
+            "живых вопросов",
+            "retrieval/data/queries/queries.jsonl",
+            f"{по_происхождению['вопрос из разъяснений Банка России']} это настоящие вопросы",
+        )
+    )
+    out.append(
+        (
+            "написано руками",
+            "retrieval/data/queries/queries.jsonl",
+            f"{по_происхождению['ручной']} написаны руками",
+        )
+    )
     return out
+
+
+def состав_nabora() -> tuple[int, dict[str, int]]:
+    """Сколько запросов размечено и кто их написал. Считается по файлам части А."""
+    часть_а = ROOT / "retrieval" / "data" / "queries"
+    размеченные = set()
+    with open(часть_а / "qrels.tsv", encoding="utf-8") as f:
+        next(f)
+        for line in f:
+            размеченные.add(line.split("\t")[0])
+    по_происхождению: dict[str, int] = {}
+    with open(часть_а / "queries.jsonl", encoding="utf-8") as f:
+        for line in f:
+            row = json.loads(line)
+            if row["query_id"] in размеченные:
+                по_происхождению[row["origin"]] = по_происхождению.get(row["origin"], 0) + 1
+    return len(размеченные), по_происхождению
 
 
 def dashboard_values() -> list[str]:
