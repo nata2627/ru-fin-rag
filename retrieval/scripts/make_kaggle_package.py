@@ -58,6 +58,11 @@ QUERIES = [
     # пары собираются локально (`make pairs-e5`): подбор это BM25 по актам,
     # видеокарте там делать нечего.
     "data/queries/pairs_e5.jsonl",
+    # E5: обучающая выборка по парам норм, до фильтра учителя и после него,
+    # как у E4. В обучение идёт отфильтрованная, первая нужна затем, чтобы
+    # доля отсеянного считалась по файлам, а не по памяти о прогоне.
+    "data/queries/synthetic_train_e5.jsonl",
+    "data/queries/synthetic_train_e5_filtered.jsonl",
     "data/queries/synthetic_dev.jsonl",
     "data/queries/qrels.tsv",
     "data/queries/podvyborki.json",
