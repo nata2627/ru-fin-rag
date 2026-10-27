@@ -15,6 +15,13 @@ on:
       - "scripts/build_dashboard.py"
       - "src/**"
       - ".github/workflows/pages.yml"
+  # Ночной прогон коммитит новые числа от имени бота, а коммит с токеном
+  # прогона чужих прогонов не запускает: правило GitHub против рекурсии. Без
+  # этого повода страница обновлялась бы только с ее пушей, а ночные числа
+  # лежали бы в репозитории и не доезжали до ссылки.
+  workflow_run:
+    workflows: [nightly]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -34,7 +41,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # Ветка, а не коммит события: после ночного прогона нужны числа из
+      # коммита бота, который сделан уже после его начала.
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
