@@ -115,8 +115,17 @@ def prepare(corpus: dict, queries: dict, qrels: dict, сколько: int,
 
 
 def measure(модели: dict[str, str], device: str, task: str = DEFAULT_TASK,
-            queries: int = 300, batch_size: int = 128) -> dict:
-    """NDCG@10 на посторонней задаче для каждой модели и падение к базовой."""
+            queries: int = 300, batch_size: int = 128,
+            cap: int = CORPUS_CAP) -> dict:
+    """NDCG@10 на посторонней задаче для каждой модели и падение к базовой.
+
+    `cap` это размер урезанного корпуса, и он параметр, а не константа модуля.
+    На процессоре без AVX2 кодирование шло 1,3 текста в секунду, и 20 000
+    документов на две модели стоили бы 8,4 часа аренды против 57 минут на
+    2 000. Урезание меняет саму задачу (дистракторов меньше, NDCG у всех
+    моделей выше), поэтому размер пишется в результат рядом с метрикой, а не
+    остаётся в голове у того, кто запускал.
+    """
     import gpu_traineval as E
 
     if os.environ.get("HF_DATASETS_OFFLINE") == "1":
@@ -133,13 +142,13 @@ def measure(модели: dict[str, str], device: str, task: str = DEFAULT_TASK,
               "не зависят", file=sys.stderr, flush=True)
         return {"задача": task, "ошибка": f"{type(e).__name__}: {e}"}
 
-    док, зап, разметка = prepare(corpus, texts, qrels, queries)
+    док, зап, разметка = prepare(corpus, texts, qrels, queries, cap=cap)
     print(f"задача {task}: документов {len(док)} из {len(corpus)}, "
           f"запросов {len(зап)}", flush=True)
     spec = MODELS[SPEC]
 
-    итог: dict = {"задача": task, "документов": len(док), "запросов": len(зап),
-                  "модели": {}}
+    итог: dict = {"задача": task, "документов": len(док), "из корпуса": len(corpus),
+                  "запросов": len(зап), "урезание корпуса": cap, "модели": {}}
     поквериные: dict[str, dict] = {}
     for имя, путь in модели.items():
         t0 = time.time()
