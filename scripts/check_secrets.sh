@@ -26,7 +26,14 @@ cd "$(dirname "$0")/.."
 patterns='hf_[A-Za-z0-9]{34}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{70,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 # Чужая почта в публичном репозитории это личные данные, а не секрет, и попасть
 # туда ей проще всего: имя машины, подпись в примере, адрес из переписки.
+#
+# Домены из RFC 2606 (`example.com`, `.invalid`, `.test`, `.localhost`) выброшены
+# из шаблона нарочно: они зарезервированы именно под примеры, за ними нет ничьего
+# почтового ящика, и образец в документации это законное их применение. Без этого
+# исключения проверка падала на собственном тесте, который подкладывает
+# `petrov@example.com` и ждет отказа, то есть ловила сама себя.
 mail_pattern='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+mail_allow='@example\.(com|org|net)|\.(example|invalid|test|localhost)($|[^A-Za-z0-9])'
 # Домашний путь с именем пользователя внутри публичного файла это не утечка, но
 # это мусор, который читающий видит первым: он описывает чужой диск, а не проект.
 home_pattern='(/Users/|/home/)[a-z][a-z0-9._-]+/'
@@ -40,7 +47,8 @@ if [ -n "$tree_hits" ]; then
   bad=1
 fi
 
-mail_hits=$(git ls-files -z | xargs -0 grep -InE "$mail_pattern" 2>/dev/null || true)
+mail_hits=$(git ls-files -z | xargs -0 grep -InE "$mail_pattern" 2>/dev/null \
+  | grep -vE "$mail_allow" || true)
 if [ -n "$mail_hits" ]; then
   echo "рабочее дерево: адрес почты, проверьте чей он" >&2
   echo "$mail_hits" >&2
