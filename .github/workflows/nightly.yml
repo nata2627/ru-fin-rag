@@ -81,6 +81,12 @@ jobs:
       - name: Rebuild index
         run: python scripts/build_index.py
 
+      # Снимок корпуса берется после докачки и пересборки индекса. Раньше его
+      # не звал ни один прогон: числа корпуса в README молча устаревали, а
+      # сверка оставалась зеленой, потому что сравнивала README со старым файлом.
+      - name: Snapshot the corpus
+        run: python scripts/describe_corpus.py
+
       - name: Regression on the frozen benchmark
         env:
           RUFINRAG_DISABLE_DENSE: "1"
@@ -143,6 +149,14 @@ jobs:
       - name: Rewrite the skills table
         run: python scripts/skills_table.py --write
 
+      # Докачка меняет число фрагментов и актов, пересборка индекса меняет
+      # словарь. Эти числа стоят в README и сверяются с results/corpus.json и
+      # results/index.json, значит вписываются до сверки, иначе первая же
+      # докачка уронила бы прогон на его собственной проверке (красный плановый
+      # прогон рвет цепочку приемки).
+      - name: Rewrite the corpus numbers
+        run: python scripts/corpus_numbers.py --write
+
       # Проверка чисел идет последней, после всех перезаписей: она обязана
       # читать ровно тот README, который уйдет в коммит ниже. Раньше она стояла
       # до перезаписи таблицы и проверяла состояние, которого в истории не
@@ -157,6 +171,7 @@ jobs:
           git add data/corpus/chunks.jsonl.gz data/corpus/skipped.json \
             results/corpus-update.json results/regression.json results/regulation.json \
             results/monitoring.json results/dag.md results/registry.json \
+            results/corpus.json results/index.json results/corpus-published.json \
             data/events results/events.json README.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
