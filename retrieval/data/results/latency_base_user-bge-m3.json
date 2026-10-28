@@ -1,0 +1,108 @@
+{
+ "machine": "Darwin arm64, arm",
+ "chunks": "base",
+ "chunk_count": 62594,
+ "latency": {
+  "bm25": {
+   "median_ms": 1.2,
+   "p95_ms": 3.0,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3": {
+   "median_ms": 5.4,
+   "p95_ms": 6.3,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3": {
+   "median_ms": 7.8,
+   "p95_ms": 11.6,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-512": {
+   "median_ms": 3.0,
+   "p95_ms": 3.6,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-512": {
+   "median_ms": 4.3,
+   "p95_ms": 6.7,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-256": {
+   "median_ms": 1.5,
+   "p95_ms": 1.7,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-256": {
+   "median_ms": 2.8,
+   "p95_ms": 5.1,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-128": {
+   "median_ms": 0.8,
+   "p95_ms": 1.7,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-128": {
+   "median_ms": 2.1,
+   "p95_ms": 3.9,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  }
+ },
+ "index": {
+  "bm25": {
+   "build_seconds": 11.1,
+   "size_mb": 43.3,
+   "vocab": 49641
+  },
+  "dense:user-bge-m3": {
+   "disk_mb": 122.3,
+   "dtype_disk": "float16",
+   "memory_mb": 244.5,
+   "dim": 1024,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-512": {
+   "disk_mb": 61.1,
+   "dtype_disk": "float16",
+   "memory_mb": 122.3,
+   "dim": 512,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-256": {
+   "disk_mb": 30.6,
+   "dtype_disk": "float16",
+   "memory_mb": 61.1,
+   "dim": 256,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-128": {
+   "disk_mb": 15.3,
+   "dtype_disk": "float16",
+   "memory_mb": 30.6,
+   "dim": 128,
+   "backend": "faiss"
+  }
+ },
+ "query_vectors": "data/embeddings/base/user-bge-m3/user-bge-m3-1024-queries.npy",
+ "backend": "faiss",
+ "peak_memory_gb": 0.89
+}
