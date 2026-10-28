@@ -110,6 +110,8 @@ def checks() -> list[tuple[str, str, str]]:
     rerank_run = load("rerank-hybrid-rufin.json")
     vectors = load("vectors.json")
     first_run = load("corpus-update-first.json")
+    settled = load("corpus-update-settled.json")
+    online = load("compare-configs.json")
     load_report = load("load.json")
     warehouse = load("warehouse.json")
     mart = load("dbt.json")
@@ -305,8 +307,94 @@ def checks() -> list[tuple[str, str, str]]:
     out.append(
         ("время первого прогона", "corpus-update-first.json", f"{ru(first_run['seconds'], 1)} с")
     )
+    # Установившийся прогон заморожен отдельным файлом, а не взят из живого
+    # отчета: живой перезаписывается каждой ночью, и число в README устаревало
+    # молча. До 28.10.2026 там стояли 25,0 с при настоящих 28,9.
+    out.append(
+        (
+            "время установившегося прогона",
+            "corpus-update-settled.json",
+            f"{ru(settled['seconds'], 1)} с",
+        )
+    )
     out.append(
         ("фрагментов в корпусе", "corpus.json", f"{corpus['chunks']:,} фрагмента".replace(",", " "))
+    )
+
+    # Онлайн сравнение связок. Числа слоя лежали только строкой таблицы
+    # навыков, а раздел с разбором появился 28.10.2026, и его числа тоже обязаны
+    # сверяться с файлом.
+    пара = online["все"]
+    пара_ndcg = пара["ndcg"]
+    взгляд = пара["fixed_look"]
+    схема = пара["sequential"]
+    слияние = пара["interleaving"]
+    out.append(
+        (
+            "онлайн сравнение, NDCG@10 связок",
+            "compare-configs.json",
+            f"{ru(пара_ndcg['left'], 4)} против {ru(пара_ndcg['right'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "онлайн сравнение, разница связок",
+            "compare-configs.json",
+            f"{ru(пара_ndcg['diff_right_minus_left'], 4)}, интервал "
+            f"[{ru(пара_ndcg['ci'][0], 4)}; {ru(пара_ndcg['ci'][1], 4)}]",
+        )
+    )
+    out.append(
+        (
+            "онлайн сравнение, порог до данных",
+            "compare-configs.json",
+            f"{ru(пара_ndcg['target_effect'], 3)}",
+        )
+    )
+    out.append(
+        (
+            "интерливинг, доля выигранных",
+            "compare-configs.json",
+            f"доля выигранных {ru(слияние['win_share_mean'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "интерливинг, информативных запросов",
+            "compare-configs.json",
+            f"в среднем {ru(слияние['informative_mean'], 1)}",
+        )
+    )
+    out.append(
+        (
+            "фиксированный взгляд, доля и интервал",
+            "compare-configs.json",
+            f"доля {ru(взгляд['win_share'], 4)}, интервал Уилсона "
+            f"[{ru(взгляд['ci_wilson'][0], 3)}; {ru(взгляд['ci_wilson'][1], 4)}]",
+        )
+    )
+    out.append(
+        (
+            "фиксированный взгляд, статистика против границы",
+            "compare-configs.json",
+            f"статистика {ru(взгляд['statistic'], 4)} против границы "
+            f"{ru(взгляд['boundary_single_look'], 2)}",
+        )
+    )
+    out.append(
+        (
+            "последовательная схема, остановки и граница",
+            "compare-configs.json",
+            f"остановились {схема['stopped_runs']}, средняя граница "
+            f"{ru(схема['boundary_mean'], 4)}",
+        )
+    )
+    out.append(
+        (
+            "последовательная схема, информативных на остановке",
+            "compare-configs.json",
+            f"в среднем {ru(схема['informative_at_stop_mean'], 1)}",
+        )
     )
     out.append(
         ("сборка в репетиции", "render-rehearsal.json", f"{ru(rehearsal['build_seconds'], 1)} с")
