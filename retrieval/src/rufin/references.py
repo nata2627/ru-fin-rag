@@ -71,7 +71,8 @@ CLAUSE_FULL = re.compile(rf"{POINTER}\s*{CLAUSE_LIST}", re.I)
 
 def has_act_number(text: str) -> bool:
     """Есть ли в вопросе номер акта. По этому признаку живые вопросы делятся
-    на две группы: 108 с номером и 34 без."""
+    на две группы: 112 с номером и 30 без (счет 108 и 34 был от грубого
+    прежнего выражения, документ 08)."""
     return bool(ACT.search(text) or ACT_TAIL.search(text))
 
 
