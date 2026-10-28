@@ -118,6 +118,7 @@ def checks() -> list[tuple[str, str, str]]:
     drain = load("events-rehearsal.json")
     logging_report = load("logging.json")
     page = load("dashboard.json")
+    inventory = load("inventory.json")["записи"]
     runs = {(r["config"], r["users"]): r for r in load_report["runs"]}
 
     out: list[tuple[str, str, str]] = []
@@ -320,6 +321,34 @@ def checks() -> list[tuple[str, str, str]]:
     out.append(
         ("фрагментов в корпусе", "corpus.json", f"{corpus['chunks']:,} фрагмента".replace(",", " "))
     )
+    index_report = load("index.json")
+    out.append(
+        ("сборка индекса", "index.json", f"сборка {ru(index_report['build_seconds'], 1)} с")
+    )
+
+    # Вес открытого и закрытого в части А. Числа стояли в тексте руками, и
+    # «26 МБ» выдач прогонов разошлись с диском в два с половиной раза
+    # (на деле 62,7 МиБ). Теперь их считает scripts/inventory.py.
+    выводы = inventory["выводы прогонов части А"]
+    out.append(
+        (
+            "открытых выводов части А",
+            "inventory.json",
+            f"{выводы['файлов в git']} файла и {ru(выводы['КиБ в git'], 1)} КиБ",
+        )
+    )
+    for имя, подпись in (
+        ("выдачи прогонов части А", "выдачи прогонов части А"),
+        ("веса моделей части А", "веса моделей части А"),
+        ("корпус набора на HuggingFace", "корпус набора на HuggingFace"),
+    ):
+        out.append(
+            (
+                подпись,
+                "inventory.json",
+                f"{ru_spaced(inventory[имя]['МиБ на диске'], 1)} МиБ",
+            )
+        )
 
     # Онлайн сравнение связок. Числа слоя лежали только строкой таблицы
     # навыков, а раздел с разбором появился 28.10.2026, и его числа тоже обязаны
@@ -1118,7 +1147,8 @@ def checks() -> list[tuple[str, str, str]]:
         (
             "задержка роутера",
             "router.json",
-            f"| {ru(latency['router']['median'], 1)} мс | {ru(latency['direct']['median'], 1)} мс |",
+            f"| {ru(latency['router']['median'], 1)} мс "
+            f"| {ru(latency['direct']['median'], 1)} мс |",
         )
     )
     out.append(

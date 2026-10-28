@@ -14,7 +14,10 @@ if ! "$PY" -c "import rufinrag" >/dev/null 2>&1; then
 fi
 
 echo "== ruff"
-"$PY" -m ruff check src tests dags
+# Каталог scripts линтер не видел до 28.10.2026, хотя именно эти скрипты
+# создают каждое публичное число. Формат пока проверяется только там, где он
+# уже приведен: ruff format по всем 49 скриптам идет отдельной правкой.
+"$PY" -m ruff check src tests dags scripts
 "$PY" -m ruff format --check src tests dags
 
 # Отдельным шагом, потому что это выход задач 7.1 и 7.2: сервис обязан
