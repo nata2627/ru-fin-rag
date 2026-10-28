@@ -57,6 +57,8 @@ def main() -> None:
     ap.add_argument("--run", default=os.path.join(ROOT, "data", "runs",
                                                   "base__hybrid-rerank.jsonl"),
                     help="выдача, по которой живые вопросы делятся на провалы и остальные")
+    ap.add_argument("--tag", default="",
+                    help="суффикс имен выходных файлов, чтобы не затирать вывод другой выдачи")
     args = ap.parse_args()
 
     chunks = {}
@@ -156,11 +158,14 @@ def main() -> None:
                        "diff": round(d.mean, 4), "lo": round(d.lo, 4),
                        "hi": round(d.hi, 4), "p": round(p, 4)})
 
-    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
-    with open(REPORT, "w", encoding="utf-8") as f:
+    suffix = f"_{args.tag}" if args.tag else ""
+    report = REPORT.replace(".txt", f"{suffix}.txt")
+    result = RESULT.replace(".json", f"{suffix}.json".replace("_", "-", 1))
+    os.makedirs(os.path.dirname(report), exist_ok=True)
+    with open(report, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    os.makedirs(os.path.dirname(RESULT), exist_ok=True)
-    with open(RESULT, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(result), exist_ok=True)
+    with open(result, "w", encoding="utf-8") as f:
         json.dump({"что меряется": "доля различных слов вопроса, встречающихся "
                                    "в объединении его эталонных фрагментов",
                    "подвыборки, написанные моделью": list(MODEL_WRITTEN),
@@ -169,7 +174,7 @@ def main() -> None:
                    "первый найденный против эталона": paired},
                   f, ensure_ascii=False, indent=2)
     say()
-    say(f"файлы: {os.path.relpath(REPORT, ROOT)}, {os.path.relpath(RESULT, ROOT)}")
+    say(f"файлы: {os.path.relpath(report, ROOT)}, {os.path.relpath(result, ROOT)}")
 
 
 if __name__ == "__main__":

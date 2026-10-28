@@ -1,9 +1,14 @@
 # Разбор двадцати провалов: почему поиск не находит ответ на живой вопрос
 
 Разбор 23.10.2026 на маке, карта не нужна. Числа в
-`docs/raw/errors_base__hybrid-rerank_zhivye_svod.txt` и `docs/raw/lexical_gap.txt`, они же
-машинно в `data/results/errors-zhivye.json` и `data/results/lexical-gap.json` (этот каталог
-воспроизводим и в репозиторий не идет). Рабочий лист и читаемая выгрузка двадцати случаев
+`docs/raw/errors_base__hybrid-rerank_zhivye_svod.txt` и `docs/raw/lexical_gap_hybrid-rerank.txt`,
+они же машинно в `data/results/errors-zhivye.json` и `data/results/lexical-gap-hybrid-rerank.json`
+(с 28.10 каталог `data/results` лежит в репозитории). Таблица лексического разрыва ниже
+посчитана по выдаче `base__hybrid-rerank.jsonl` (27 провалов и 115 остальных живых). Файлы
+`lexical_gap.txt` и `lexical-gap.json` без суффикса посчитаны по выдаче E4
+`base__dense-rufin-e4.jsonl` (67 провалов и 75 остальных, документ [07](07-obuchenie.md)),
+это другое деление и другие числа (прогон для E4 записал их поверх вывода для связки);
+к этому документу они не относятся. Рабочий лист и читаемая выгрузка двадцати случаев
 в `docs/raw/errors_base__hybrid-rerank_zhivye.tsv` и
 `docs/raw/errors_base__hybrid-rerank_zhivye.txt`, сам разбор с причинами в
 `docs/raw/razbor_provalov.tsv`. Пересчитываются `scripts/error_analysis.py`

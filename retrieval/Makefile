@@ -352,7 +352,7 @@ razbor-provalov:
 		--razbor docs/raw/razbor_provalov.tsv
 
 lexical-gap:
-	$(PY) scripts/lexical_gap.py --chunks $(CHUNKS)
+	$(PY) scripts/lexical_gap.py --chunks $(CHUNKS) --tag hybrid-rerank
 
 latency:
 	$(PY) scripts/measure_latency.py --chunks $(CHUNKS) --dense $(DENSE) \
