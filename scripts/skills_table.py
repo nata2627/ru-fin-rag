@@ -78,7 +78,7 @@ def строки() -> list[tuple[str, str, str, str]]:
          f"гибрид p50 {ru(hybrid['p50_ms'])} мс, p95 {ru(hybrid['p95_ms'])} мс",
          "`results/latency-local.json`"),
         ("Переранжирование кросс-энкодером",
-         "`src/rufinrag/retrieval/ranking.py`",
+         "`src/rufinrag/retrieval/rerank.py`",
          f"прибавка NDCG@10 {ru(rerank['difference_ndcg10']['mean'], 3)} "
          f"[{ru(rerank['difference_ndcg10']['lo'], 4)}; "
          f"{ru(rerank['difference_ndcg10']['hi'], 3)}]",
@@ -89,8 +89,8 @@ def строки() -> list[tuple[str, str, str, str]]:
          f"numpy {ru(store['stores']['numpy']['p50_ms'])} мс, "
          f"индекс {ru(store['stores']['numpy']['index_mb'], 1)} МБ",
          "`results/vector-store.json`"),
-        ("Квантование векторов под бесплатный тариф",
-         "`scripts/measure_quantization.py`, `src/rufinrag/search.py`",
+        ("Квантование векторов: замер, в сервисе не применяется",
+         "`scripts/measure_quantization.py`",
          f"память {ru(quant['memory']['int8_mb'], 1)} МБ против "
          f"{ru(quant['memory']['float32_mb'], 1)} МБ, перекрытие топ-10 "
          f"{ru(quant['quality']['mean_overlap_top10'], 3)}",
@@ -122,12 +122,12 @@ def строки() -> list[tuple[str, str, str, str]]:
          f"альфа {ru(size['rule']['alpha'])}, мощность {ru(size['rule']['power'])}, "
          f"целевой эффект {ru(size['rule']['offline_target_effect'])}",
          "`results/sample-size.json`"),
-        ("Порог алерта по истории прогонов и проверка деградацией",
+        ("Порог алерта по разбросу доливки и проверка деградацией",
          "`src/rufinrag/monitoring.py`, `scripts/measure_alert_threshold.py`",
-         f"порог {ru(threshold['history']['repeated_value'], 4)} по "
-         f"{threshold['history']['runs']} прогонам, учебная деградация поймана "
-         f"на просадке {ru(drill['first_fired_drop'], 4)}, самая большая "
-         f"незамеченная {ru(drill['largest_silent_drop'], 4)}",
+         f"порог {ru(threshold['threshold'], 3)} по "
+         f"{threshold['delivery_noise']['runs']} прогонам доливки, учебная "
+         f"деградация поймана на просадке {ru(drill['first_fired_drop'], 4)}, "
+         f"самая большая незамеченная {ru(drill['largest_silent_drop'], 4)}",
          "`results/alert-threshold.json`, `results/alert-drill.json`"),
         ("Регламент по расписанию без ее машины",
          "`.github/workflows/nightly.yml`, `dags/`",
