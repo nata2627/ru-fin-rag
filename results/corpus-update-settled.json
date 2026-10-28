@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-27T07:54:57",
+  "status": "ok",
+  "index_acts": 6081,
+  "wanted_acts": 1659,
+  "known_acts": 1555,
+  "skipped_before": 99,
+  "new_acts_in_index": 0,
+  "new_acts_added": 0,
+  "new_chunks": 0,
+  "issues_downloaded": 0,
+  "dropped": {},
+  "seconds": 28.9,
+  "note": "установившийся прогон регламента, заморожен из results/corpus-update.json. Файл заморожен специально: README ссылается на это число, а живой отчет перезаписывается каждой ночью"
+}
