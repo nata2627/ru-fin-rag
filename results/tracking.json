@@ -7,75 +7,20 @@
   "experiment": "ru-fin-rag",
   "reports_total": 44,
   "reports_not_a_run": [
+    "corpus-published.json",
+    "inventory.json",
     "registry.json",
     "regression-baseline.json",
     "tracking.json"
   ],
-  "runs_logged_now": 8,
-  "runs_skipped_as_known": 36,
+  "runs_logged_now": 0,
+  "runs_skipped_as_known": 44,
   "runs_total": 59,
   "store_mb": 0.1,
   "digest_chars": 12,
   "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки (в том числе русские буквы) в подчеркивание",
-  "metric_name_collisions": 6,
+  "metric_name_collisions": 0,
   "registry_version": "72d55732a13c",
-  "logged": [
-    {
-      "report": "acceptance.json",
-      "run_id": "8cb8e08e907645f48b2515381fcd51d6",
-      "metrics": 7,
-      "params": 7,
-      "digest": "126625b38a51"
-    },
-    {
-      "report": "corpus-update-settled.json",
-      "run_id": "48c14aff4d2b4906bf8a470f7be3c18c",
-      "metrics": 9,
-      "params": 3,
-      "digest": "f5501b0cd6dd"
-    },
-    {
-      "report": "corpus-update.json",
-      "run_id": "8c5e16be25c9484fa49545ff387ccf81",
-      "metrics": 9,
-      "params": 2,
-      "digest": "d0662d7847b1"
-    },
-    {
-      "report": "events.json",
-      "run_id": "399691edbcfa4e10a9382f8a05d438e3",
-      "metrics": 5,
-      "params": 3,
-      "digest": "fc4feedd608d"
-    },
-    {
-      "report": "monitoring.json",
-      "run_id": "794e528a423e4629a3cd54abb4ccb4ef",
-      "metrics": 25,
-      "params": 9,
-      "digest": "06d117bff2e6"
-    },
-    {
-      "report": "regression.json",
-      "run_id": "3ac636ebaf9444298a2d6f9d8bb365f0",
-      "metrics": 19,
-      "params": 9,
-      "digest": "4b3bb2883a50"
-    },
-    {
-      "report": "regulation.json",
-      "run_id": "b5249490f8634fb9a32f4562c9987fdc",
-      "metrics": 4,
-      "params": 5,
-      "digest": "e94394c8b815"
-    },
-    {
-      "report": "router.json",
-      "run_id": "e2fdbe627dcc4ebaa957c540c071124e",
-      "metrics": 53,
-      "params": 6,
-      "digest": "d8220e6af8e8"
-    }
-  ],
-  "seconds": 4.0
+  "logged": [],
+  "seconds": 0.8
 }

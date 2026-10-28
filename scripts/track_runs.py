@@ -34,7 +34,16 @@ from rufinrag.registry import DIGEST_CHARS, file_digest, load  # noqa: E402
 
 # Отчеты, которые прогонами не являются: эталон регрессии (это запись о
 # прошлом прогоне), сам реестр и итог этого трекинга.
-NOT_A_RUN = {"registry.json", "tracking.json", "regression-baseline.json"}
+# Прогоном не считается то, что не является отчетом замера: реестр, итог
+# самого трекинга, эталон регрессии (это запись о прошлом прогоне),
+# состояние опубликованных корпусных чисел и опись размеров каталогов.
+NOT_A_RUN = {
+    "registry.json",
+    "tracking.json",
+    "regression-baseline.json",
+    "corpus-published.json",
+    "inventory.json",
+}
 PARAM_CHARS = 250
 # Метрикой считается число, параметром строка. Поля времени в метрики не идут:
 # «дата замера» это не метрика, и в графике MLflow она врет.
@@ -177,7 +186,7 @@ def main() -> int:
         "store_mb": round(size_mb, 1),
         "digest_chars": DIGEST_CHARS,
         "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки "
-                            "(в том числе русские буквы) в подчеркивание",
+        "(в том числе русские буквы) в подчеркивание",
         "metric_name_collisions": collisions,
         "registry_version": registry.get("version"),
         "logged": logged,
