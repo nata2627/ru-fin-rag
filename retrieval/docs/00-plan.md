@@ -91,7 +91,7 @@ ru-fin-retrieval/
 │   ├── generation/               промпты генерации, правила фильтра
 │   ├── training/                 рецепты: stage_a.yaml … stage_e.yaml
 │   └── eval/                     модели основной таблицы, протокол
-├── data/                         состав описан в DATASET_CARD, крупное — на HF
+├── data/                         состав описан в DATASET_CARD, крупное на HF
 │   ├── corpus/                   акты и фрагменты
 │   ├── queries/                  train / dev / test / golden  ← в репозитории
 │   └── runs/                     выдачи конфигураций
@@ -103,7 +103,7 @@ ru-fin-retrieval/
 │   ├── 04-obuchenie.md           рецепт и абляции              [новое]
 │   ├── 05-rezultaty.md           итоговые таблицы              [новое]
 │   ├── DATASET_CARD.md           состав, лицензии, ограничения
-│   ├── MODEL_CARD.md             на чём обучена, где применима, где ломается
+│   ├── MODEL_CARD.md             на чем обучена, где применима, где ломается
 │   ├── ANNOTATION_GUIDE.md       инструкция разметчику: градации 0/1/2
 │   ├── DECISIONS.md              журнал решений с датами и причинами
 │   └── raw/                      сырой вывод прогонов

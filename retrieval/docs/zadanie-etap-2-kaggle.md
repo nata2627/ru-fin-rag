@@ -65,7 +65,7 @@
 from kaggle_secrets import UserSecretsClient
 import os
 os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("HF_TOKEN")
-print("токен подключён, длина:", len(os.environ["HF_TOKEN"]))
+print("токен подключен, длина:", len(os.environ["HF_TOKEN"]))
 ```
 
 Упало или напечатало `ТОКЕНА НЕТ`: **остановиться и вернуться к шагу 2**.
