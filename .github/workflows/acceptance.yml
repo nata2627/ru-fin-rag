@@ -1,0 +1,84 @@
+# Счет приемки автономности: сколько плановых прогонов прошло, сколько из них
+# зеленые и сколько дней держится текущая цепочка.
+#
+# Отдельным прогоном от ночного регламента, и причина здесь не в экономии
+# времени, а в том, что иначе измеритель рушит измеряемое. Счет считается по
+# истории плановых прогонов `nightly`. Поставь его шагом внутрь nightly, и
+# любой его отказ (кончились права на чтение Actions, API ответил 502) красит
+# плановый прогон, то есть сам рвет цепочку, длину которой измеряет. Снаружи
+# его отказ виден прогоном `acceptance` и не стоит проекту четырнадцати дней
+# отсчета заново.
+#
+# Второе следствие вынесения: к моменту запуска ночной прогон уже завершен,
+# значит он попадает в счет сразу. Шагом внутри себя он учесть себя не мог бы:
+# исхода у идущего прогона еще нет.
+name: acceptance
+
+on:
+  # Коммит бота чужих прогонов не запускает (правило GitHub против рекурсии),
+  # поэтому поводом идет завершение самого регламента, а не пуш его результата.
+  workflow_run:
+    workflows: [nightly]
+    types: [completed]
+  workflow_dispatch:
+
+# `actions: read` обязателен: без него `gh run list` отвечает 403. Явный блок
+# permissions ставит все неназванное в none, в том числе чтение истории
+# прогонов, по которой приемка и считается.
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: acceptance
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Ветка, а не коммит события: нужны числа из коммита бота, который сделан
+      # уже после начала ночного прогона.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Record the autonomy acceptance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/record_acceptance.py
+
+      # Счет стоит строкой в таблице навыков README, и таблицу вписывает
+      # скрипт. Руками это место не правится вовсе: число, которое живет в двух
+      # местах, расходится в первую же ночь.
+      - name: Rewrite the skills table
+        run: python scripts/skills_table.py --write
+
+      # Проверка последней, после перезаписи: она обязана читать тот README,
+      # который уйдет в коммит.
+      - name: Verify published numbers
+        run: python scripts/verify_numbers.py
+
+      - name: Commit the acceptance count
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/acceptance.json README.md
+          if git diff --cached --quiet; then
+            echo "нечего коммитить: счет приемки не изменился"
+          else
+            git commit -m "Record the autonomy acceptance count"
+            git pull --rebase --autostash origin main
+            git push
+          fi
