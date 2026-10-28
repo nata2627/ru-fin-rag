@@ -1,0 +1,23 @@
+{
+ "machine": "Darwin arm64, arm",
+ "chunks": "base",
+ "chunk_count": 62594,
+ "latency": {
+  "encode:bge-m3": {
+   "median_ms": 32.8,
+   "p95_ms": 48.7,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  }
+ },
+ "index": {
+  "encoder": {
+   "model": "BAAI/bge-m3",
+   "device": "mps",
+   "half": true,
+   "dim": 1024
+  }
+ },
+ "peak_memory_gb": 0.98
+}

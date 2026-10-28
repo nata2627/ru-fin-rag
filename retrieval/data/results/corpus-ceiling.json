@@ -1,0 +1,20 @@
+{
+  "questions_collected": 1621,
+  "answerable_in_principle": 322,
+  "answerable_upper_bound": 783,
+  "outside_corpus": 1299,
+  "outside_share": 0.8014,
+  "unattributed": 461,
+  "outside_by_kind": {
+    "форма отчетности": 622,
+    "акт не назван ни в разделе, ни в вопросе": 461,
+    "мера поддержки или разъяснение без акта": 137,
+    "федеральный закон": 79
+  },
+  "live_with_named_clauses": 128,
+  "live_clause_missing_in_our_edition": 20,
+  "live_clause_missing_by_act": {
+    "590-П": 20
+  },
+  "acts_in_corpus": 1497
+}

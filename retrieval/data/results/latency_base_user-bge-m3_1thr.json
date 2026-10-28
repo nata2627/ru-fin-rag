@@ -1,0 +1,109 @@
+{
+ "machine": "Darwin arm64, arm",
+ "chunks": "base",
+ "chunk_count": 62594,
+ "latency": {
+  "bm25": {
+   "median_ms": 2.6,
+   "p95_ms": 6.5,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3": {
+   "median_ms": 22.4,
+   "p95_ms": 46.9,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3": {
+   "median_ms": 21.6,
+   "p95_ms": 41.5,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-512": {
+   "median_ms": 9.9,
+   "p95_ms": 14.3,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-512": {
+   "median_ms": 14.9,
+   "p95_ms": 28.7,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-256": {
+   "median_ms": 4.4,
+   "p95_ms": 8.9,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-256": {
+   "median_ms": 10.4,
+   "p95_ms": 24.1,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "dense:user-bge-m3-128": {
+   "median_ms": 1.9,
+   "p95_ms": 3.2,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  },
+  "hybrid:user-bge-m3-128": {
+   "median_ms": 4.3,
+   "p95_ms": 13.8,
+   "queries": 20,
+   "runs": 10,
+   "warmup": 3
+  }
+ },
+ "index": {
+  "bm25": {
+   "build_seconds": 43.1,
+   "size_mb": 43.3,
+   "vocab": 49641
+  },
+  "dense:user-bge-m3": {
+   "disk_mb": 122.3,
+   "dtype_disk": "float16",
+   "memory_mb": 244.5,
+   "dim": 1024,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-512": {
+   "disk_mb": 61.1,
+   "dtype_disk": "float16",
+   "memory_mb": 122.3,
+   "dim": 512,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-256": {
+   "disk_mb": 30.6,
+   "dtype_disk": "float16",
+   "memory_mb": 61.1,
+   "dim": 256,
+   "backend": "faiss"
+  },
+  "dense:user-bge-m3-128": {
+   "disk_mb": 15.3,
+   "dtype_disk": "float16",
+   "memory_mb": 30.6,
+   "dim": 128,
+   "backend": "faiss"
+  }
+ },
+ "faiss_threads": 1,
+ "query_vectors": "data/embeddings/base/user-bge-m3/user-bge-m3-1024-queries.npy",
+ "backend": "faiss",
+ "peak_memory_gb": 0.54
+}

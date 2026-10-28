@@ -1,0 +1,36 @@
+{
+ "machine": "Linux x86_64, x86_64",
+ "chunks": "base",
+ "chunk_count": 62594,
+ "latency": {
+  "hybrid+rerank:user-bge-m3": {
+   "median_ms": 1660.5,
+   "p95_ms": 1768.2,
+   "queries": 10,
+   "runs": 10,
+   "warmup": 3
+  }
+ },
+ "index": {
+  "bm25": {
+   "build_seconds": 10.2,
+   "size_mb": 43.3,
+   "vocab": 49641
+  },
+  "dense:user-bge-m3": {
+   "disk_mb": 122.3,
+   "dtype_disk": "float16",
+   "memory_mb": 244.5,
+   "dim": 1024,
+   "backend": "numpy"
+  },
+  "reranker": {
+   "model": "BAAI/bge-reranker-v2-m3",
+   "device": "cuda",
+   "candidates": 50
+  }
+ },
+ "query_vectors": "data/embeddings/base/user-bge-m3/user-bge-m3-1024-queries.npy",
+ "backend": "numpy",
+ "peak_memory_gb": 4.08
+}
