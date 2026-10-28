@@ -329,7 +329,7 @@ for e in r.get('embeddings', []):
 
 ```python
 import glob, os
-# ищем папку embeddings среди подключённых входов
+# ищем папку embeddings среди подключенных входов
 found = glob.glob('/kaggle/input/*/embeddings')
 print("найдено:", found)
 EMB = found[0] if found else None
