@@ -20,6 +20,10 @@ import pytest
 # строки, похожей на ключ, в репозитории быть не должно даже в тесте.
 МЕТКА_КЛЮЧА = "-----BEGIN " + "OPENSSH PRIVATE KEY" + "-----"
 СКРИПТ = КОРЕНЬ / "scripts" / "check_secrets.sh"
+# Адрес тоже собирается из частей, и ровно по той же причине: целиком в файле он
+# стал бы находкой проверки, запущенной по этому же репозиторию. Домен взят не из
+# RFC 2606, потому что зарезервированные примеры проверка пропускает намеренно.
+АДРЕС = "petrov" + "@" + "yandex.ru"
 
 
 def репозиторий(путь: Path, файлы: dict[str, str]) -> Path:
@@ -61,7 +65,7 @@ def test_chistyi_repozitorii_prohodit(tmp_path: Path) -> None:
         ("src/upload.py", 'TOKEN = "hf_' + "a" * 34 + '"\n', "похожее на секрет"),
         ("ci.yml", "token: ghp_" + "b" * 36 + "\n", "похожее на секрет"),
         ("key.pem", МЕТКА_КЛЮЧА + "\n", "похожее на секрет"),
-        ("docs/people.md", "писать на petrov@example.com\n", "адрес почты"),
+        ("docs/people.md", "писать на " + АДРЕС + "\n", "адрес почты"),
         (".env", "VAST_API_KEY=" + "c" * 40 + "\n", "файл с ключами"),
         (".env.example", "HF_TOKEN=hf_realvalue\n", "содержит значения"),
     ],
@@ -71,6 +75,14 @@ def test_nahodka_ronyaet_proverku(tmp_path: Path, имя: str, содержим�
     итог = прогон(р)
     assert итог.returncode == 1, итог.stdout
     assert ожидание in итог.stderr
+
+
+def test_adres_iz_rfc2606_propuskaetsya(tmp_path: Path) -> None:
+    """Образец на зарезервированном домене это не личные данные, а пример."""
+    р = репозиторий(tmp_path, {"docs/api.md": "ключ запросить у admin@example.com\n"})
+    итог = прогон(р)
+    assert итог.returncode == 0, итог.stderr
+    assert "секретов не найдено" in итог.stdout
 
 
 def test_sekret_iz_istorii_nahoditsya(tmp_path: Path) -> None:
