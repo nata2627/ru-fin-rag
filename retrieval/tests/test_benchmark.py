@@ -84,3 +84,41 @@ def test_разметка_с_четвёртым_столбцом_читаетс�
                     "exp0000\tакт#0001\t2\tпункты 3.1, 3.2 акта 590-П\n",
                     encoding="utf-8")
     assert read_qrels(path) == {"exp0000": {"акт#0001": 2}}
+
+
+def test_pisma_po_porogu():
+    from rufin.benchmark import LETTER_CHARS, letter_subsets
+
+    texts = {"a": "x" * LETTER_CHARS, "b": "x" * (LETTER_CHARS + 1), "c": "коротко"}
+    out = letter_subsets(texts, ["a", "b", "c"])
+    assert out["письма"] == ["b"]
+    assert out["живые без писем"] == ["a", "c"]
+
+
+def test_pisma_v_podvyborkah_i_dokumente():
+    """Письма это ровно живые длиннее порога, «живые» не изменились, а блок
+    документа 18 совпадает с pisma.json."""
+    import json
+    import pathlib
+    import sys
+
+    from rufin.benchmark import LETTER_CHARS
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    subsets = json.loads((root / "data" / "queries" / "podvyborki.json").read_text(encoding="utf-8"))
+    texts = {}
+    with (root / "data" / "queries" / "queries.jsonl").open(encoding="utf-8") as f:
+        for line in f:
+            q = json.loads(line)
+            texts[q["query_id"]] = q["text"]
+    live = subsets["живые"]
+    assert sorted(subsets["письма"]) == sorted(q for q in live if len(texts[q]) > LETTER_CHARS)
+    assert sorted(subsets["письма"] + subsets["живые без писем"]) == sorted(live)
+
+    sys.path.insert(0, str(root / "scripts"))
+    import letters_subset as L
+
+    result = json.loads((root / "data" / "results" / "pisma.json").read_text(encoding="utf-8"))
+    doc = (root / "docs" / "18-nabor-do-i-posle.md").read_text(encoding="utf-8")
+    assert doc.split(L.BLOCK_START, 1)[1].split(L.BLOCK_END, 1)[0].strip() == L.doc_block(result)
+    assert result["письма теста"] == subsets["письма"]

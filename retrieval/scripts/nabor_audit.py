@@ -128,6 +128,8 @@ def main() -> None:
     ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train.jsonl"))
     ap.add_argument("--copy-threshold", type=float, default=None,
                     help="порог copy_share этапа; на 29.10.2026 его нет")
+    ap.add_argument("--subsets", help="podvyborki.json; с задачи 11.3 в нем есть подвыборка «письма», "
+                    "и M7 печатает, сколько писем вынесено в нее")
     ap.add_argument("--out", help="куда писать; по умолчанию data/results/nabor-audit-<тег>.json")
     args = ap.parse_args()
 
@@ -211,10 +213,17 @@ def main() -> None:
     m7 = {"порог длины": LONG_QUERY, "живые все": lengths(all_live),
           "живые в тесте": lengths([queries[q]["text"] for q in live_ids]),
           "синтетика": lengths([queries[q]["text"] for s in SYNTHETIC for q in subsets[s]])}
+    if args.subsets:
+        named = json.load(open(args.subsets, encoding="utf-8"))
+        letters = set(named.get("письма", ()))
+        long_live = {q for q in live_ids if len(queries[q]["text"]) > LONG_QUERY}
+        m7["письма вынесены в свою подвыборку"] = share(len(long_live & letters), len(long_live))
+        m7["живые в тесте без писем"] = lengths([queries[q]["text"] for q in live_ids if q not in letters])
 
     out = {"тег": args.tag, "определения": "docs/18-nabor-do-i-posle.md, раздел «Определения»",
            "аргументы": {"--qrels": os.path.relpath(args.qrels, ROOT), "--train": os.path.relpath(args.train, ROOT),
                          "--queries": os.path.relpath(args.queries, ROOT)}
+           | ({"--subsets": os.path.relpath(args.subsets, ROOT)} if args.subsets else {})
            | ({"--copy-threshold": args.copy_threshold} if args.copy_threshold is not None else {}),
            "входы": {os.path.relpath(p, ROOT): digest(p)
                      for p in (args.qrels, args.queries, args.train, CHUNKS)},

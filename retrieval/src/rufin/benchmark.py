@@ -68,3 +68,19 @@ def read_qrels(path: str) -> dict[str, dict[str, int]]:
 def read_jsonl(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         return [json.loads(l) for l in f if l.strip()]
+
+
+# Живой вопрос длиннее этого числа знаков это письмо с предысторией, а не
+# поисковый запрос (медиана живых 370 знаков, самое длинное 3 067). Порог
+# записан в определении M7 до первого замера, задача 11.3 его только применяет.
+LETTER_CHARS = 600
+LETTERS = "письма"
+LIVE_NO_LETTERS = "живые без писем"
+
+
+def letter_subsets(texts: dict[str, str], live_ids: list[str]) -> dict[str, list[str]]:
+    """Живые вопросы делятся на письма и остальное. Письма не удаляются:
+    это настоящие обращения, но мерить их той же метрикой, что запрос, нечестно,
+    поэтому их число печатается отдельно."""
+    letters = sorted(q for q in live_ids if len(texts[q]) > LETTER_CHARS)
+    return {LETTERS: letters, LIVE_NO_LETTERS: sorted(set(live_ids) - set(letters))}
