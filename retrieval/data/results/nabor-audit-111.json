@@ -1,6 +1,11 @@
 {
  "тег": "111",
  "определения": "docs/18-nabor-do-i-posle.md, раздел «Определения»",
+ "аргументы": {
+  "--qrels": "data/queries/qrels_punkt.tsv",
+  "--train": "data/queries/synthetic_train.jsonl",
+  "--queries": "data/queries/queries.jsonl"
+ },
  "входы": {
   "data/queries/qrels_punkt.tsv": "97e88b9a7e3e",
   "data/queries/queries.jsonl": "758df3479fec",

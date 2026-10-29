@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from rufin import split as S  # noqa: E402
+from rufin.punkt import read_units  # noqa: E402
 from rufin.training.negatives import NegativeRules, detect_scale, pick_all  # noqa: E402
 from rufin.training.pairs import (  # noqa: E402
     acts_of,
@@ -44,6 +45,9 @@ def main() -> None:
                     help="файл подготовки D0; если его нет, проверки по негативам "
                          "пропускаются")
     ap.add_argument("--per-query", type=int, default=2)
+    ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train_noleak.jsonl"),
+                    help="обучающая выборка; с задачи 11.2 это выборка без утечки по фрагментам")
+    ap.add_argument("--qrels-punkt", default=os.path.join(QDIR, "qrels_punkt.tsv"))
     args = ap.parse_args()
 
     отчёт: list[str] = []
@@ -58,7 +62,7 @@ def main() -> None:
         беда += 1
         say(f"   ПЛОХО: {s}")
 
-    train = read_jsonl(os.path.join(QDIR, "synthetic_train.jsonl"))
+    train = read_jsonl(args.train)
     dev = read_jsonl(os.path.join(QDIR, "synthetic_dev.jsonl"))
     test = read_jsonl(os.path.join(QDIR, "synthetic_test.jsonl"))
     split = S.load(os.path.join(QDIR, "split.json"))
@@ -78,6 +82,21 @@ def main() -> None:
             плохо(f"обучение и {имя} делят {len(общие)} актов: {sorted(общие)[:5]}")
         else:
             say(f"   обучение и {имя}: общих актов нет")
+
+    say()
+    say("== утечка по фрагментам ==")
+    say("   эталон теста это все фрагменты единиц qrels_punkt; подвыборка «синтетика» "
+        "собрана до сплита, и проверка по актам ее не видит")
+    if os.path.exists(args.qrels_punkt):
+        эталон = {c for us in read_units(args.qrels_punkt).values()
+                  for u in us.values() if u.score > 0 for c in u.chunks}
+        течет = S.fragment_leaks(train, эталон)
+        if течет:
+            плохо(f"{len(течет)} обучающих вопросов написаны по фрагментам эталона теста: {течет[:3]}")
+        else:
+            say(f"   источники обучения и {len(эталон)} фрагментов эталона теста не пересекаются")
+    else:
+        say("   qrels_punkt.tsv нет: `make punkt-effect`")
 
     say()
     say("== группы сплита ==")

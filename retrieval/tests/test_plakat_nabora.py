@@ -102,10 +102,15 @@ def test_dolya_ryadom_so_znamenatelem(snap):
 
 
 @pytest.mark.data
-def test_snimok_sozdan_skriptom(snap, tmp_path):
+@pytest.mark.parametrize("snapshot", sorted((ROOT / "data" / "results").glob("nabor-audit-*.json")),
+                         ids=lambda p: p.stem)
+def test_snimok_sozdan_skriptom(snapshot, tmp_path):
     if not (ROOT / "data" / "chunks" / "base.jsonl").exists():
         pytest.skip("нарезки нет: `make chunks`")
+    snap = json.loads(snapshot.read_text(encoding="utf-8"))
     out = tmp_path / "audit.json"
-    subprocess.run([sys.executable, str(ROOT / "scripts" / "nabor_audit.py"), "--tag", snap["тег"],
-                    "--out", str(out)], check=True, capture_output=True)
+    cmd = [sys.executable, str(ROOT / "scripts" / "nabor_audit.py"), "--tag", snap["тег"], "--out", str(out)]
+    for key, value in snap["аргументы"].items():
+        cmd += [key, str(ROOT / value) if isinstance(value, str) else str(value)]
+    subprocess.run(cmd, check=True, capture_output=True)
     assert json.loads(out.read_text(encoding="utf-8")) == snap

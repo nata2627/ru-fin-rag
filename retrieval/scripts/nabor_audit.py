@@ -213,6 +213,9 @@ def main() -> None:
           "синтетика": lengths([queries[q]["text"] for s in SYNTHETIC for q in subsets[s]])}
 
     out = {"тег": args.tag, "определения": "docs/18-nabor-do-i-posle.md, раздел «Определения»",
+           "аргументы": {"--qrels": os.path.relpath(args.qrels, ROOT), "--train": os.path.relpath(args.train, ROOT),
+                         "--queries": os.path.relpath(args.queries, ROOT)}
+           | ({"--copy-threshold": args.copy_threshold} if args.copy_threshold is not None else {}),
            "входы": {os.path.relpath(p, ROOT): digest(p)
                      for p in (args.qrels, args.queries, args.train, CHUNKS)},
            "M1 плотность меток": m1, "M2 происхождение позитива": m2, "M3 концентрация теста": m3,
