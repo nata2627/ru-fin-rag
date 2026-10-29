@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import datetime as dt
 import itertools
 import json
 import subprocess
@@ -96,6 +97,9 @@ def main() -> int:
 
     first = green[0]
     report = {
+        # Дата замера нужна строке состояния в README: она говорит «на такое-то
+        # число», и без поля это число пришлось бы ставить рукой.
+        "checked_at": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "started_at": first["createdAt"],
         "first_scheduled_run": first["url"],
         "scheduled_runs_total": len(scheduled),
