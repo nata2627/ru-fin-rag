@@ -52,13 +52,15 @@ BATCH = 25
 SEED = 11
 
 
-def core_pairs() -> list[dict]:
-    return [r for r in read_tsv(POOL) if r["prioritet"] == CORE]
+def core_pairs(pool: str | None = None) -> list[dict]:
+    return [r for r in read_tsv(pool or POOL) if r["prioritet"] == CORE]
 
 
 def prepare(args) -> None:
+    global WORK
+    WORK = args.work
     probed = {(r["query_id"], r["chunk_id"]) for r in read_tsv(PROBA)}
-    pairs = [r for r in core_pairs() if (r["query_id"], r["chunk_id"]) not in probed]
+    pairs = [r for r in core_pairs(args.pool) if (r["query_id"], r["chunk_id"]) not in probed]
     wanted = {r["chunk_id"] for r in pairs}
     chunks = {}
     with open(CHUNKS, encoding="utf-8") as f:
@@ -92,7 +94,8 @@ def prepare(args) -> None:
         w.writerow(["nomer", "batch", "query_id", "chunk_id"])
         for i, r in enumerate(rows):
             w.writerow([r["nomer"], f"{i // BATCH + 1:03d}", r["query_id"], r["chunk_id"]])
-    manifest = {"пар ядра": len(core_pairs()), "из контрольной выборки": len(core_pairs()) - len(rows),
+    manifest = {"пул": os.path.relpath(args.pool, ROOT), "пар ядра": len(core_pairs(args.pool)),
+                "из контрольной выборки": len(core_pairs(args.pool)) - len(rows),
                 "размечать": len(rows), "партий": len(batches), "в партии": BATCH, "семя": SEED,
                 "sha256 инструкции": hashlib.sha256(RUBRIC.encode()).hexdigest()[:16],
                 "sha256 задания": hashlib.sha256(TASK.encode()).hexdigest()[:16]}
@@ -102,6 +105,8 @@ def prepare(args) -> None:
 
 
 def status(args) -> list[str]:
+    global WORK
+    WORK = args.work
     manifest = json.load(open(os.path.join(WORK, "manifest.json"), encoding="utf-8"))
     todo = [f"{b:03d}" for b in range(1, manifest["партий"] + 1)
             if not os.path.exists(os.path.join(WORK, f"batch_{b:03d}.answers.tsv"))]
@@ -325,8 +330,11 @@ def write_block(result: dict) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("prepare")
-    sub.add_parser("status")
+    for name in ("prepare", "status"):
+        p = sub.add_parser(name)
+        p.add_argument("--pool", default=POOL)
+        p.add_argument("--work", default=WORK,
+                       help="папка партий; второй набор живых (задача 11.6) размечается в своей")
     a = sub.add_parser("apply")
     a.add_argument("--usage", help="json с токенами, снятыми с журналов вызовов разметчиков")
     args = ap.parse_args()

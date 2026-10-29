@@ -48,6 +48,7 @@ RUNDIR = os.path.join(ROOT, "data", "runs")
 QDIR = os.path.join(ROOT, "data", "queries")
 CHUNKDIR = os.path.join(ROOT, "data", "chunks")
 REPORT = os.path.join(ROOT, "docs", "raw", "pool_completeness.txt")
+REPORT_EXTRA = os.path.join(ROOT, "docs", "raw", "pool_live_extra.txt")
 
 # Связки, по которым проект делает выводы: лексическая база, гибрид,
 # победитель с переранжированием, лучшая готовая плотная модель и дообученная.
@@ -88,6 +89,9 @@ def main() -> None:
                          "метрика: по ней назначается первый приоритет")
     ap.add_argument("--chunks", default="base")
     ap.add_argument("--out", default=os.path.join(QDIR, "pool_live.tsv"))
+    ap.add_argument("--unlabeled", action="store_true",
+                    help="пул для вопросов подвыборки, у которых разметки нет вовсе "
+                         "(задача 11.6); они в тест не входят")
     args = ap.parse_args()
 
     lines: list[str] = []
@@ -113,7 +117,14 @@ def main() -> None:
     # Запросы подвыборки, у которых есть и разметка, и выдача у всех
     # конфигураций: только на них метрика и считается.
     covered = set.intersection(*(set(run) for run in runs.values()))
-    qids = sorted(q for q in subsets[args.subset] if q in qrels and q in covered)
+    if args.unlabeled:
+        # В podvyborki.json лежат только размеченные запросы, поэтому
+        # неразмеченные живые берутся из полного списка запросов.
+        with open(os.path.join(QDIR, "queries.jsonl"), encoding="utf-8") as f:
+            pool_of = [q["query_id"] for q in map(json.loads, f) if q["podvyborka"] == args.subset]
+        qids = sorted(q for q in pool_of if q not in qrels and q in covered)
+    else:
+        qids = sorted(q for q in subsets[args.subset] if q in qrels and q in covered)
     say(f"нарезка {args.config}, подвыборка «{args.subset}»: запросов {len(qids)}")
     say(f"конфигураций в выдачах: {len(runs)}, глубина {args.depth}")
     missing = sorted(set(CORE) - set(runs))
@@ -233,6 +244,12 @@ def main() -> None:
     # судья берёт из него, и тащить тридцать пять мегабайт в датасет
     # запросов незачем. Текст вопроса стоит в первой строке группы, как
     # и в прежнем листе пула: `gpu_judge.read_pool` раздаёт его группе сам.
+    if args.unlabeled:
+        # Размечается вне Kaggle: лист для карты и копия
+        # инструкции не нужны, и прежние файлы пула живого теста не трогаются.
+        with open(REPORT_EXTRA, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return
     light = os.path.join(os.path.dirname(args.out), "pool_live_kaggle.tsv")
     seen_q: set[str] = set()
     with open(light, "w", encoding="utf-8", newline="") as f:
