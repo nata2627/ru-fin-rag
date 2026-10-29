@@ -86,6 +86,26 @@ def confirmed_pairs() -> tuple[set, set]:
     return judge, human
 
 
+def load_labels(path: str) -> tuple[dict[str, dict[str, int]], dict[tuple[str, str], set[str]]]:
+    """Метки и фрагменты за каждой меткой.
+
+    С задачи 11.1 метка может стоять на пункте (`qrels_punkt.tsv`, столбец
+    `chunk-ids`), и тогда за ней несколько фрагментов. У прежних файлов за
+    меткой ровно один фрагмент, и показатели считаются как раньше.
+    """
+    with open(path, encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+    if "punkt-id" not in header:
+        qrels = read_qrels(path)
+        return qrels, {(q, c): {c} for q, rel in qrels.items() for c in rel}
+    qrels: dict[str, dict[str, int]] = collections.defaultdict(dict)
+    members = {}
+    for r in read_tsv(path):
+        qrels[r["query-id"]][r["punkt-id"]] = int(r["score"])
+        members[(r["query-id"], r["punkt-id"])] = set(r["chunk-ids"].split(","))
+    return dict(qrels), members
+
+
 def density(qrels: dict[str, dict[str, int]], qids: list[str]) -> dict:
     counts = [sum(1 for s in qrels[q].values() if s > 0) for q in qids]
     return {"запросов": len(qids), "меток": sum(counts),
@@ -112,7 +132,7 @@ def main() -> None:
     args = ap.parse_args()
 
     queries = {q["query_id"]: q for q in read_jsonl(args.queries)}
-    qrels = read_qrels(args.qrels)
+    qrels, members = load_labels(args.qrels)
     by_clause = read_qrels(os.path.join(QDIR, "qrels_by_clause.tsv"))
     by_judge = read_qrels(os.path.join(QDIR, "qrels_judge.tsv"))
     train = read_jsonl(args.train)
@@ -135,22 +155,23 @@ def main() -> None:
         judged = humaned = either = 0
         for qid in ids:
             gold = gold_of(queries[qid])
-            for cid, score in qrels[qid].items():
+            for label, score in qrels[qid].items():
                 if score <= 0:
                     continue
-                if cid in gold:
-                    src = SRC_GENERATION if queries[qid]["origin"] == "синтетический" else SRC_CLAUSE
-                elif cid in by_clause.get(qid, {}):
+                inside = members[(qid, label)]
+                if "#п" in label or inside & set(by_clause.get(qid, {})):
                     src = SRC_CLAUSE
-                elif cid in by_judge.get(qid, {}):
+                elif inside & gold:
+                    src = SRC_GENERATION if queries[qid]["origin"] == "синтетический" else SRC_CLAUSE
+                elif inside & set(by_judge.get(qid, {})):
                     src = SRC_JUDGE
                 else:
                     src = SRC_OVERLAP
                 by_source[src] += 1
-                pair = (qid, cid)
-                judged += pair in judge_yes
-                humaned += pair in human_yes
-                either += pair in judge_yes or pair in human_yes
+                pairs = {(qid, c) for c in inside}
+                judged += bool(pairs & judge_yes)
+                humaned += bool(pairs & human_yes)
+                either += bool(pairs & (judge_yes | human_yes))
         total = sum(by_source.values())
         m2[name] = {"позитивов": total,
                     "по происхождению": {k: share(v, total) for k, v in sorted(by_source.items())},
@@ -165,10 +186,13 @@ def main() -> None:
           "метки самого частого акта": share(top_n, sum(acts.values()))}
 
     train_sources = {t["gold_chunk_id"] for t in train}
-    test_gold = {cid for q, rel in qrels.items() for cid, s in rel.items() if s > 0}
+    def fragments(ids) -> set[str]:
+        return {c for q in ids for label, s in qrels[q].items() if s > 0 for c in members[(q, label)]}
+
+    test_gold = fragments(qrels)
     leaked = test_gold & train_sources
     m4 = {"пересечение": share(len(leaked), len(test_gold)),
-          "по подвыборкам": {name: len({c for q in ids for c, s in qrels[q].items() if s > 0} & train_sources)
+          "по подвыборкам": {name: len(fragments(ids) & train_sources)
                              for name, ids in sorted(subsets.items())},
           "фрагменты": sorted(leaked)}
 

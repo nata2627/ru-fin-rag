@@ -34,6 +34,7 @@ spec.loader.exec_module(P)
     "src/rufin/explanations.py",
     "src/rufin/qrels_remap.py",
     "src/rufin/gate.py",
+    "src/rufin/punkt.py",
     "src/rufin/retrieval/rerank.py",
 }
 

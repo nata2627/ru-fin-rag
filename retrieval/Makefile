@@ -28,7 +28,7 @@ JUDGE_B ?= data/queries/judge_32b.tsv
 # Сколько потоков отдать FAISS при замере. Ноль это все ядра машины.
 THREADS ?= 0
 
-.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa priemka judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap pairs-e5 nabor-audit
+.PHONY: help test lint act-numbers token-numbers probe check-split check-bm25 check-alignment remap gate length-effect chunking-effect parent-effect friend-set friend-control morphology export-gpu corpus chunks use-chunks explan queries pool kaggle bench metrics latency errors clean-raw split live manual-task manual-apply judge judge-probe fewshot sample-for-human kappa priemka judge-vote judge-reproduction pool-live judge-candidates pool-coverage act-labels apply-pool act-filter check-bench publish check-train dev-metrics recipe matryoshka latency-matryoshka razbor-provalov lexical-gap pairs-e5 nabor-audit punkt-effect
 
 help:
 	@echo "Проверки (ни данных, ни видеокарты не требуют):"
@@ -237,6 +237,10 @@ pairs-e5:
 
 # Снимок семи показателей набора (S28) и плакат из него. TAG=do до правок,
 # TAG=posle после, плакат с двумя снимками: POSLE=data/results/nabor-audit-posle.json
+# Метки на пунктах и метрики до и после на сохраненных выдачах (задача 11.1).
+punkt-effect:
+	$(PY) scripts/punkt_effect.py
+
 TAG ?= do
 nabor-audit:
 	$(PY) scripts/nabor_audit.py --tag $(TAG)
