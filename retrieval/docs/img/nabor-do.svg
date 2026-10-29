@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1002" viewBox="0 0 1000 1002" role="img" aria-labelledby="t">
+<title id="t">Набор данных: семь показателей, как было и что стало</title>
+<style>
+  .surface { fill: #fcfcfb; }
+  .ink { fill: #0b0b0b; }
+  .ink2 { fill: #52514e; }
+  .muted { fill: #8a8984; }
+  .rule { stroke: #e4e3df; }
+  .track { fill: #dce8f7; }
+  .bar { fill: #2a78d6; }
+  @media (prefers-color-scheme: dark) {
+    .surface { fill: #1a1a19; }
+    .ink { fill: #f0efec; }
+    .ink2 { fill: #c3c2b7; }
+    .muted { fill: #8f8e86; }
+    .rule { stroke: #33332f; }
+    .track { fill: #24364c; }
+    .bar { fill: #3987e5; }
+  }
+  text { font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+</style>
+<rect width="1000" height="1002" class="surface"/>
+<text x="32" y="44" class="ink" font-size="24" font-weight="700">Набор данных: как было и что стало</text>
+<text x="32" y="70" class="ink2" font-size="13">Семь показателей по определениям, записанным до первого замера (docs/18-nabor-do-i-posle.md). Метр показывает долю.</text>
+<text x="32" y="116" class="muted" font-size="12" font-weight="600">ПОКАЗАТЕЛЬ</text>
+<text x="384" y="116" class="muted" font-size="12" font-weight="600">КАК БЫЛО, снимок «do»</text>
+<text x="704" y="116" class="muted" font-size="12" font-weight="600">ЧТО СТАЛО</text>
+<line x1="32" x2="968" y1="132" y2="132" class="rule" stroke-width="1"/>
+<text x="32" y="158" class="ink" font-size="15" font-weight="600">M1. плотность меток</text>
+<text x="32" y="178" class="ink2" font-size="12">запросы ровно с одной меткой</text>
+<text x="384" y="158" class="ink v" font-size="21" font-weight="600">744 из 846 (88%)</text>
+<text x="384" y="176" class="ink2 v" font-size="12">синтетических запросов</text>
+<rect x="384" y="186" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="186" width="211" height="8" rx="4" class="bar"/>
+<text x="384" y="212" class="ink2 v" font-size="11.5">среднее 1,15 на запрос</text>
+<text x="384" y="227" class="ink2 v" font-size="11.5">живые: 3 из 142, среднее 4,26</text>
+<text x="704" y="162" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="250" y2="250" class="rule" stroke-width="1"/>
+<text x="32" y="276" class="ink" font-size="15" font-weight="600">M2. происхождение позитива</text>
+<text x="32" y="296" class="ink2" font-size="12">позитивы, подтвержденные судьей или человеком</text>
+<text x="384" y="276" class="ink v" font-size="21" font-weight="600">0 из 969 (0%)</text>
+<text x="384" y="294" class="ink2 v" font-size="12">позитивов синтетики</text>
+<rect x="384" y="304" width="240" height="8" rx="4" class="track"/>
+<text x="384" y="330" class="ink2 v" font-size="11.5">живые: 244 из 605</text>
+<text x="384" y="345" class="ink2 v" font-size="11.5">остальное: названные пункты и соседи</text>
+<text x="704" y="280" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="368" y2="368" class="rule" stroke-width="1"/>
+<text x="32" y="394" class="ink" font-size="15" font-weight="600">M3. концентрация теста</text>
+<text x="32" y="414" class="ink2" font-size="12">метки живого теста на самый частый акт</text>
+<text x="384" y="394" class="ink v" font-size="21" font-weight="600">399 из 605 (66%)</text>
+<text x="384" y="412" class="ink2 v" font-size="12">меток про 590-П</text>
+<rect x="384" y="422" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="422" width="158" height="8" rx="4" class="bar"/>
+<text x="384" y="448" class="ink2 v" font-size="11.5">актов 48, живых запросов 142</text>
+<text x="704" y="398" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="486" y2="486" class="rule" stroke-width="1"/>
+<text x="32" y="512" class="ink" font-size="15" font-weight="600">M4. утечка</text>
+<text x="32" y="532" class="ink2" font-size="12">эталоны теста среди источников обучающих вопросов</text>
+<text x="384" y="512" class="ink v" font-size="21" font-weight="600">45 из 1 180 (3,8%)</text>
+<text x="384" y="530" class="ink2 v" font-size="12">эталонных фрагментов</text>
+<rect x="384" y="540" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="540" width="9" height="8" rx="4" class="bar"/>
+<text x="384" y="566" class="ink2 v" font-size="11.5">по подвыборкам: «синтетика» 45</text>
+<text x="704" y="516" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="604" y2="604" class="rule" stroke-width="1"/>
+<text x="32" y="630" class="ink" font-size="15" font-weight="600">M5. покрытие корпуса</text>
+<text x="32" y="650" class="ink2" font-size="12">фрагменты, по которым есть обучающий вопрос</text>
+<text x="384" y="630" class="ink v" font-size="21" font-weight="600">6 112 из 62 594 (9,8%)</text>
+<text x="384" y="648" class="ink2 v" font-size="12">фрагментов корпуса</text>
+<rect x="384" y="658" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="658" width="23" height="8" rx="4" class="bar"/>
+<text x="384" y="684" class="ink2 v" font-size="11.5">актов 1 077 из 1 554 (69%), обучающих</text>
+<text x="384" y="699" class="ink2 v" font-size="11.5">вопросов 6 112</text>
+<text x="704" y="634" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="722" y2="722" class="rule" stroke-width="1"/>
+<text x="32" y="748" class="ink" font-size="15" font-weight="600">M6. копирование</text>
+<text x="32" y="768" class="ink2" font-size="12">доля вопроса, списанная из фрагмента одной цепочкой</text>
+<text x="384" y="748" class="ink v" font-size="21" font-weight="600">медиана 0,24</text>
+<text x="384" y="766" class="ink2 v" font-size="12">по 6 112 вопросам</text>
+<rect x="384" y="776" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="776" width="58" height="8" rx="4" class="bar"/>
+<text x="384" y="802" class="ink2 v" font-size="11.5">95-я перцентиль 0,50, максимум 0,60</text>
+<text x="384" y="817" class="ink2 v" font-size="11.5">порога нет</text>
+<text x="704" y="752" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="840" y2="840" class="rule" stroke-width="1"/>
+<text x="32" y="866" class="ink" font-size="15" font-weight="600">M7. длина запроса</text>
+<text x="32" y="886" class="ink2" font-size="12">живые вопросы длиннее 600 знаков</text>
+<text x="384" y="866" class="ink v" font-size="21" font-weight="600">71 из 325 (22%)</text>
+<text x="384" y="884" class="ink2 v" font-size="12">живых вопросов</text>
+<rect x="384" y="894" width="240" height="8" rx="4" class="track"/>
+<rect x="384" y="894" width="52" height="8" rx="4" class="bar"/>
+<text x="384" y="920" class="ink2 v" font-size="11.5">медиана 370, максимум 3 067</text>
+<text x="384" y="935" class="ink2 v" font-size="11.5">в тесте 19 из 142, у синтетики 0 из 846</text>
+<text x="704" y="870" class="muted" font-size="15">еще не измерено</text>
+<line x1="32" x2="968" y1="958" y2="958" class="rule" stroke-width="1"/>
+<text x="32" y="986" class="muted" font-size="11.5">Числа из data/results/nabor-audit-*.json, рисует scripts/nabor_plakat.py. Синтетика и живые вопросы считаются отдельно.</text>
+</svg>
