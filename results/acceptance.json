@@ -1,18 +1,18 @@
 {
-  "checked_at": "2026-10-28T11:37:00Z",
+  "checked_at": "2026-10-29T19:42:18Z",
   "started_at": "2026-10-22T18:33:43Z",
   "first_scheduled_run": "https://github.com/nata2627/ru-fin-rag/actions/runs/39832485547",
-  "scheduled_runs_total": 11,
-  "scheduled_runs_green": 9,
-  "scheduled_runs_red": 2,
-  "streak_green_runs": 8,
-  "streak_started_at": "2026-10-24T07:18:54Z",
-  "streak_days": 4.1,
+  "scheduled_runs_total": 15,
+  "scheduled_runs_green": 12,
+  "scheduled_runs_red": 3,
+  "streak_green_runs": 1,
+  "streak_started_at": "2026-10-29T19:39:24Z",
+  "streak_days": 0.0,
   "days_required": 14,
-  "days_since_first_run": 5.6,
+  "days_since_first_run": 7.0,
   "broken_by": {
-    "run": "https://github.com/nata2627/ru-fin-rag/actions/runs/40002838637",
-    "at": "2026-10-23T18:23:06Z",
+    "run": "https://github.com/nata2627/ru-fin-rag/actions/runs/40842616729",
+    "at": "2026-10-29T08:30:27Z",
     "conclusion": "failure"
   },
   "rule": "четырнадцать календарных дней подряд: плановый прогон проходит без участия человека, коммиты в истории делает только бот, постоянных расходов нет"
