@@ -72,10 +72,16 @@ def gold_of(q: dict) -> set[str]:
     return set(q.get("gold_chunk_ids") or ([q["gold_chunk_id"]] if q.get("gold_chunk_id") else []))
 
 
-def confirmed_pairs() -> tuple[set, set]:
-    """Пары с ненулевой оценкой судьи и с ненулевой оценкой человека."""
+def confirmed_pairs(extra_judge: str | None = None) -> tuple[set, set]:
+    """Пары с ненулевой оценкой судьи и с ненулевой оценкой человека.
+
+    extra_judge: лист разметки ядра (задача 11.5), ответы в двух вопросах.
+    """
     judge = {(r["query_id"], r["chunk_id"]) for r in read_tsv(os.path.join(QDIR, "judge.tsv"))
              if r["otsenka_0_1_2"].strip() in ("1", "2")}
+    if extra_judge:
+        judge |= {(r["query_id"], r["chunk_id"]) for r in read_tsv(extra_judge)
+                  if "да" in (r["otvet1_celikom"], r["otvet2_vmeste"])}
     human = {(r["query_id"], r["chunk_id"]) for r in read_tsv(os.path.join(QDIR, "human_sample.tsv"))
              if r["otsenka_0_1_2"].strip() in ("1", "2")}
     # Вторая ручная выборка размечена двумя вопросами: ответ во фрагменте
@@ -128,6 +134,9 @@ def main() -> None:
     ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train.jsonl"))
     ap.add_argument("--copy-threshold", type=float, default=None,
                     help="порог copy_share этапа; на 29.10.2026 его нет")
+    ap.add_argument("--live-qrels", help="метки живых вопросов поверх --qrels; с задачи 11.5 это "
+                    "уплотненная разметка data/queries/qrels_live_core.tsv")
+    ap.add_argument("--extra-judge", help="лист разметки моделью сверх judge.tsv: data/queries/razmetka_yadro.tsv")
     ap.add_argument("--subsets", help="podvyborki.json; с задачи 11.3 в нем есть подвыборка «письма», "
                     "и M7 печатает, сколько писем вынесено в нее")
     ap.add_argument("--out", help="куда писать; по умолчанию data/results/nabor-audit-<тег>.json")
@@ -135,11 +144,18 @@ def main() -> None:
 
     queries = {q["query_id"]: q for q in read_jsonl(args.queries)}
     qrels, members = load_labels(args.qrels)
+    if args.live_qrels:
+        live_qrels, live_members = load_labels(args.live_qrels)
+        for qid, rel in live_qrels.items():
+            for label in qrels.get(qid, {}):
+                members.pop((qid, label), None)
+            qrels[qid] = rel
+        members.update(live_members)
     by_clause = read_qrels(os.path.join(QDIR, "qrels_by_clause.tsv"))
     by_judge = read_qrels(os.path.join(QDIR, "qrels_judge.tsv"))
     train = read_jsonl(args.train)
     chunks = read_jsonl(CHUNKS)
-    judge_yes, human_yes = confirmed_pairs()
+    judge_yes, human_yes = confirmed_pairs(args.extra_judge)
 
     subsets: dict[str, list[str]] = collections.defaultdict(list)
     for qid in sorted(qrels):
@@ -224,9 +240,12 @@ def main() -> None:
            "аргументы": {"--qrels": os.path.relpath(args.qrels, ROOT), "--train": os.path.relpath(args.train, ROOT),
                          "--queries": os.path.relpath(args.queries, ROOT)}
            | ({"--subsets": os.path.relpath(args.subsets, ROOT)} if args.subsets else {})
+           | ({"--live-qrels": os.path.relpath(args.live_qrels, ROOT)} if args.live_qrels else {})
+           | ({"--extra-judge": os.path.relpath(args.extra_judge, ROOT)} if args.extra_judge else {})
            | ({"--copy-threshold": args.copy_threshold} if args.copy_threshold is not None else {}),
            "входы": {os.path.relpath(p, ROOT): digest(p)
-                     for p in (args.qrels, args.queries, args.train, CHUNKS)},
+                     for p in (args.qrels, args.queries, args.train, CHUNKS)
+                     + tuple(x for x in (args.live_qrels, args.extra_judge, args.subsets) if x)},
            "M1 плотность меток": m1, "M2 происхождение позитива": m2, "M3 концентрация теста": m3,
            "M4 утечка": m4, "M5 покрытие корпуса": m5, "M6 копирование": m6, "M7 длина запроса": m7}
     path = args.out or os.path.join(OUTDIR, f"nabor-audit-{args.tag}.json")
