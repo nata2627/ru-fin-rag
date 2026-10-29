@@ -2,7 +2,9 @@
 """Утечка по фрагментам: убрать из обучения вопросы, чей источник лежит в эталоне теста.
 
 Эталон теста это все фрагменты всех позитивных единиц `qrels_punkt.tsv`
-(задача 11.1): кусок длинного пункта, соседний с эталонным, тоже эталон.
+(задача 11.1): кусок длинного пункта, соседний с эталонным, тоже эталон. С
+задачи 11.5 к нему добавлены позитивы уплотненной разметки живого теста
+`qrels_live_core.tsv`.
 Убирается обучающий вопрос, тест не трогается.
 
 Чистится основная обучающая выборка `synthetic_train.jsonl`, результат
@@ -27,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from rufin import punkt as P  # noqa: E402
 from rufin import split as S  # noqa: E402
+from rufin.benchmark import read_qrels  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 QDIR = os.path.join(ROOT, "data", "queries")
@@ -77,6 +80,8 @@ def main() -> None:
     ap.add_argument("--qrels", default=os.path.join(QDIR, "qrels_punkt.tsv"))
     ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train.jsonl"))
     ap.add_argument("--out", default=os.path.join(QDIR, "synthetic_train_noleak.jsonl"))
+    ap.add_argument("--live-qrels", default=os.path.join(QDIR, "qrels_live_core.tsv"),
+                    help="уплотненная разметка живого теста (задача 11.5): ее фрагменты тоже эталон")
     args = ap.parse_args()
 
     lines: list[str] = []
@@ -87,6 +92,8 @@ def main() -> None:
 
     units = P.read_units(args.qrels)
     test = test_fragments(units)
+    live = read_qrels(args.live_qrels) if os.path.exists(args.live_qrels) else {}
+    test |= {c for rel in live.values() for c, s in rel.items() if s > 0}
     train = read_jsonl(args.train)
     kept, dropped = S.drop_leaked(train, test)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -99,11 +106,14 @@ def main() -> None:
         for q in map(json.loads, f):
             queries[q["query_id"]] = q
     by_subset: collections.Counter = collections.Counter()
-    for qid, us in units.items():
-        if any(u.chunks & set(leaked) for u in us.values() if u.score > 0):
+    leaked_set = set(leaked)
+    for qid in set(units) | set(live):
+        gold = {c for u in units.get(qid, {}).values() if u.score > 0 for c in u.chunks}
+        gold |= {c for c, s in live.get(qid, {}).items() if s > 0}
+        if gold & leaked_set:
             by_subset[queries[qid]["podvyborka"]] += 1
 
-    say(f"фрагментов эталона теста (единицы qrels_punkt): {len(test)}")
+    say(f"фрагментов эталона теста (единицы qrels_punkt и уплотненный живой тест): {len(test)}")
     say(f"{os.path.basename(args.train)}: вопросов {len(train)}, убрано {len(dropped)}, "
         f"осталось {len(kept)} -> {os.path.relpath(args.out, ROOT)}")
     say(f"фрагментов утечки: {len(leaked)}")

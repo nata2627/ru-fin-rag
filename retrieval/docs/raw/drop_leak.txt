@@ -1,12 +1,12 @@
-фрагментов эталона теста (единицы qrels_punkt): 1678
-synthetic_train.jsonl: вопросов 6112, убрано 71, осталось 6041 -> data/queries/synthetic_train_noleak.jsonl
-фрагментов утечки: 71
-запросов теста, задетых утечкой, по подвыборкам: {'синтетика': 49}
+фрагментов эталона теста (единицы qrels_punkt и уплотненный живой тест): 1819
+synthetic_train.jsonl: вопросов 6112, убрано 81, осталось 6031 -> data/queries/synthetic_train_noleak.jsonl
+фрагментов утечки: 81
+запросов теста, задетых утечкой, по подвыборкам: {'синтетика': 49, 'живые': 9}
 
 утечка в прежних обучающих файлах (файлы не менялись):
-   synthetic_train_e4.jsonl             записей   6270, с утечкой   82
-   synthetic_train_e4_filtered.jsonl    записей   6159, с утечкой   75
-   synthetic_train_e5.jsonl             записей   6490, с утечкой  156
-   synthetic_train_e5_filtered.jsonl    записей   5182, с утечкой  106
-   pairs_e5.jsonl                       записей  13257, с утечкой  280
-   негативы train_prepared.jsonl: 1364 из 177248 кандидатов лежат в эталоне теста
+   synthetic_train_e4.jsonl             записей   6270, с утечкой   96
+   synthetic_train_e4_filtered.jsonl    записей   6159, с утечкой   89
+   synthetic_train_e5.jsonl             записей   6490, с утечкой  186
+   synthetic_train_e5_filtered.jsonl    записей   5182, с утечкой  132
+   pairs_e5.jsonl                       записей  13257, с утечкой  333
+   негативы train_prepared.jsonl: 1528 из 177248 кандидатов лежат в эталоне теста
