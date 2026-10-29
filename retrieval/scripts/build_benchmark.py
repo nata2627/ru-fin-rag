@@ -37,7 +37,13 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from rufin import split as S  # noqa: E402
-from rufin.benchmark import read_qrels, write_corpus, write_qrels, write_queries  # noqa: E402
+from rufin.benchmark import (  # noqa: E402
+    letter_subsets,
+    read_qrels,
+    write_corpus,
+    write_qrels,
+    write_queries,
+)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 QDIR = os.path.join(ROOT, "data", "queries")
@@ -188,6 +194,9 @@ def main() -> None:
             подвыборки["заголовочная"].append(q["query_id"])
         if q["podvyborka"] == "живые" and q.get("act") != DOMINANT_ACT:
             подвыборки[f"живые без {DOMINANT_ACT}"].append(q["query_id"])
+
+    подвыборки.update(letter_subsets({q["query_id"]: q["text"] for q in queries},
+                                     подвыборки.get("живые", [])))
 
     os.makedirs(QDIR, exist_ok=True)
     write_qrels(prev_path, qrels)
