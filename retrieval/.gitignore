@@ -70,6 +70,7 @@ logs/
 
 # Задание судье пересобирается скриптом и весит тридцать пять мегабайт
 data/queries/pool_live.tsv
+data/queries/pool_live_extra.tsv
 data/queries/rubric.txt
 
 # чужой набор для контрольного прогона: качается скриптом, в репозиторий не идет
