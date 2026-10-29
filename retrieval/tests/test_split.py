@@ -91,3 +91,51 @@ def test_объединение_групп_совпадает_с_корпусо�
 
 def test_акт_фрагмента_отрезается_по_решётке():
     assert S.act_of_chunk("590-П_28062017#0034") == "590-П_28062017"
+
+
+def test_podlozhennoe_peresechenie_po_fragmentam_lovitsya():
+    """Проверка по фрагментам ловит пересечение, которое проверка по актам
+    пропускает: запрос подвыборки «синтетика» с префиксом syn в нее не входит."""
+    train = [{"query_id": "tr1", "gold_chunk_id": "A#0001"},
+             {"query_id": "tr2", "gold_chunk_id": "B#0001", "gold_chunk_id_2": "A#0007"},
+             {"query_id": "tr3", "gold_chunk_id": "C#0004"}]
+    test = {"A#0007", "A#0001", "Z#0000"}
+    assert S.fragment_leaks(train, test) == [("tr1", "A#0001"), ("tr2", "A#0007")]
+    kept, dropped = S.drop_leaked(train, test)
+    assert [r["query_id"] for r in kept] == ["tr3"]
+    assert [r["query_id"] for r in dropped] == ["tr1", "tr2"]
+
+
+def test_para_fragmentov_tozhe_istochnik():
+    assert S.sources_of({"chunk_id": "A#1", "chunk_id_2": "B#2"}) == {"A#1", "B#2"}
+
+
+@pytest.mark.data
+def test_obuchenie_bez_utechki_po_fragmentam():
+    """Выборка без утечки (задача 11.2) не делит ни одного фрагмента с эталоном
+    теста в единицах «пункт», а убранного ровно столько, сколько записано."""
+    from rufin.punkt import read_units
+
+    qdir = ROOT / "data" / "queries"
+    path = qdir / "synthetic_train_noleak.jsonl"
+    if not path.exists():
+        pytest.skip("выборки без утечки нет: `python3 scripts/drop_leak.py`")
+    эталон = {c for us in read_units(str(qdir / "qrels_punkt.tsv")).values()
+              for u in us.values() if u.score > 0 for c in u.chunks}
+    rows = [json.loads(line) for line in path.open(encoding="utf-8")]
+    assert S.fragment_leaks(rows, эталон) == []
+    итог = json.loads((ROOT / "data" / "results" / "utechka.json").read_text(encoding="utf-8"))
+    assert итог["обучение"]["осталось"] == len(rows)
+    assert len(итог["фрагменты утечки"]) == итог["обучение"]["убрано"]
+
+
+def test_blok_utechki_v_dokumente_iz_fayla():
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import drop_leak as D
+
+    итог = json.loads((ROOT / "data" / "results" / "utechka.json").read_text(encoding="utf-8"))
+    doc = (ROOT / "docs" / "18-nabor-do-i-posle.md").read_text(encoding="utf-8")
+    блок = doc.split(D.BLOCK_START, 1)[1].split(D.BLOCK_END, 1)[0]
+    assert блок.strip() == D.doc_block(итог)

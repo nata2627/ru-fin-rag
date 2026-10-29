@@ -63,3 +63,34 @@ def overlaps(split: dict) -> list[tuple[str, str, str]]:
 def act_of_chunk(chunk_id: str) -> str:
     """Идентификатор акта по идентификатору фрагмента: «акт#номер»."""
     return chunk_id.split("#", 1)[0]
+
+
+# Поля обучающей записи, где лежит фрагмент-источник: вопрос по одной норме,
+# вопрос по двум нормам (E5) и пара фрагментов для генерации (pairs_e5).
+SOURCE_FIELDS = ("gold_chunk_id", "gold_chunk_id_2", "chunk_id", "chunk_id_2")
+
+
+def sources_of(row: dict) -> set[str]:
+    out = {row[f] for f in SOURCE_FIELDS if isinstance(row.get(f), str) and row[f]}
+    return out | set(row.get("gold_chunk_ids") or ())
+
+
+def fragment_leaks(rows: list[dict], test_fragments: set[str]) -> list[tuple[str, str]]:
+    """Обучающие записи, чей фрагмент-источник лежит в эталоне теста.
+
+    Проверка по актам этого не ловит: подвыборка «синтетика» собрана до
+    сплита, и 106 из 150 ее запросов про обучающие акты. Поэтому с задачи
+    11.2 утечка проверяется по фрагментам: (номер записи или query_id, фрагмент).
+    """
+    out = []
+    for i, row in enumerate(rows):
+        for cid in sorted(sources_of(row) & test_fragments):
+            out.append((row.get("query_id", str(i)), cid))
+    return out
+
+
+def drop_leaked(rows: list[dict], test_fragments: set[str]) -> tuple[list[dict], list[dict]]:
+    kept, dropped = [], []
+    for row in rows:
+        (dropped if sources_of(row) & test_fragments else kept).append(row)
+    return kept, dropped
