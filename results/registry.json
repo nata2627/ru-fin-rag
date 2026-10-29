@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-10-28",
+  "built_at": "2026-10-29",
   "machine": "x86_64 Linux 7.0.0-1017-azure",
   "seconds": 7.3,
   "service_version": "0.1.0",
@@ -18,7 +18,7 @@
   "index": {
     "chunks": 62606,
     "vocab": 49643,
-    "measured_at": "2026-10-28"
+    "measured_at": "2026-10-29"
   },
   "artifacts": {
     "data/index/bm25.npz": {
