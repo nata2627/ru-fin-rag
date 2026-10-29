@@ -17,6 +17,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Тесты грузят этот файл по пути, а не как пакет, поэтому соседний скрипт
+# находится только с явной записью его каталога в путь поиска.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import acceptance_line
+
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 sys.path.insert(0, str(ROOT / "src"))
@@ -196,11 +202,12 @@ def checks() -> list[tuple[str, str, str]]:
     out.append(
         ("ссылка на первый плановый прогон", "acceptance.json", acceptance["first_scheduled_run"])
     )
-    if acceptance["broken_by"]:
-        # Прогон, который порвал цепочку, назван в README по ссылке. Проверка
-        # держит README и файл вместе: иначе рассказ про приемку легко оставить
-        # прежним, когда счет уже другой.
-        out.append(("прогон, порвавший цепочку", "acceptance.json", acceptance["broken_by"]["run"]))
+    # Состояние приемки стоит в README одной строкой, и переписывает ее прогон
+    # перед сверкой (`scripts/acceptance_line.py --write`). Сверяем строку
+    # целиком: 29.10.2026 отдельная проверка ссылки на порвавший прогон уронила
+    # и плановый прогон, и прогон приемки, потому что файл уже назвал новый
+    # разрыв, а текст рядом остался прежним.
+    out.append(("строка состояния приемки", "acceptance.json", acceptance_line.строка()))
     out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
     out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
     out.append(
@@ -320,10 +327,6 @@ def checks() -> list[tuple[str, str, str]]:
     )
     out.append(
         ("фрагментов в корпусе", "corpus.json", f"{corpus['chunks']:,} фрагмента".replace(",", " "))
-    )
-    index_report = load("index.json")
-    out.append(
-        ("сборка индекса", "index.json", f"сборка {ru(index_report['build_seconds'], 1)} с")
     )
 
     # Таблицы памяти и нагрузки целиком. До 28.10.2026 из таблицы нагрузки
