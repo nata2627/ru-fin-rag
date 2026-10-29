@@ -22,6 +22,8 @@ import nabor_plakat as P  # noqa: E402
 
 SNAPSHOT = ROOT / "data" / "results" / "nabor-audit-do.json"
 POSTER = ROOT / "docs" / "img" / "nabor-do.svg"
+SNAPSHOT_POSLE = ROOT / "data" / "results" / "nabor-audit-posle.json"
+POSTER_BOTH = ROOT / "docs" / "img" / "nabor-do-i-posle.svg"
 DOC = ROOT / "docs" / "18-nabor-do-i-posle.md"
 
 # Число, не приклеенное к букве или дефису: «590-П», «95-я», «M1» и «S28» это
@@ -83,10 +85,22 @@ def test_kazhdoe_chislo_plakata_est_v_snimke(snap):
     assert strangers(values, snap) == []
 
 
-def test_tablica_dokumenta_iz_snimka(snap):
+@pytest.fixture(scope="module")
+def posle() -> dict:
+    return json.loads(SNAPSHOT_POSLE.read_text(encoding="utf-8"))
+
+
+def test_plakat_do_i_posle_iz_dvuh_snimkov(snap, posle):
+    svg = POSTER_BOTH.read_text(encoding="utf-8")
+    assert svg == P.svg(snap, posle)
+    assert P.NOT_MEASURED not in svg
+
+
+def test_tablica_dokumenta_iz_dvuh_snimkov(snap, posle):
     table = doc_table(DOC.read_text(encoding="utf-8"))
-    assert table.strip() == P.table(snap, None)
-    assert strangers(table, snap) == []
+    assert table.strip() == P.table(snap, posle)
+    ok = allowed(snap) | allowed(posle)
+    assert [n for n in NUMBER.findall(table) if n not in ok] == []
 
 
 def test_podmena_chisla_lovitsya(snap):
