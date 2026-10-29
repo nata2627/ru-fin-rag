@@ -65,6 +65,13 @@ jobs:
       - name: Rewrite the skills table
         run: python scripts/skills_table.py --write
 
+      # Состояние приемки тоже живет в README строкой, и ее меняет этот же
+      # прогон: 29.10.2026 ссылка на прогон, порвавший цепочку, осталась в
+      # тексте прежней, файл назвал новый разрыв, и сверка уронила и плановый
+      # прогон, и прогон приемки.
+      - name: Rewrite the acceptance state line
+        run: python scripts/acceptance_line.py --write
+
       # Проверка последней, после перезаписи: она обязана читать тот README,
       # который уйдет в коммит.
       - name: Verify published numbers
