@@ -1,7 +1,7 @@
 {
   "built_at": "2026-10-30",
   "machine": "x86_64 Linux 7.0.0-1017-azure",
-  "seconds": 4.7,
+  "seconds": 7.9,
   "service_version": "0.1.0",
   "catalog_version": 1,
   "default_config": "hybrid",
