@@ -2,8 +2,8 @@
   "measured_at": "2026-10-30",
   "chunks": 62606,
   "vocab": 49643,
-  "read_seconds": 4.6,
-  "build_seconds": 11.2,
+  "read_seconds": 7.9,
+  "build_seconds": 18.3,
   "memory_mb": 43.3,
   "index_file_mb": 11.4,
   "texts_file_mb": 22.6
