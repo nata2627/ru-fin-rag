@@ -1,12 +1,12 @@
 {
-  "measured_at": "2026-10-29",
+  "measured_at": "2026-10-30",
   "machine": "x86_64 Linux 7.0.0-1017-azure",
   "config": "bm25",
   "corpus_version": "chunks62606-acts1555",
   "chunks": 62606,
   "queries_scored": 991,
   "queries_total": 1182,
-  "seconds": 7.5,
+  "seconds": 4.9,
   "metrics": {
     "Recall@1": 0.368,
     "Recall@5": 0.6491,
