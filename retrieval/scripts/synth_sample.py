@@ -1,30 +1,21 @@
 """Source fragments for the stage 12 synthetic set.
 
 A fragment is drawn uniformly from the corpus, so acts come in proportion to their size,
-and an act stops contributing after --per-act fragments. Gold fragments of every test
-(live core, live extra, punkt units, all 1 002 live questions of stage 12) are never drawn:
-a training question written from a test answer is the leak stage 11 removed.
+and an act stops contributing after --per-act fragments. Gold fragments of every test and
+every piece of their punkts (rufin.leak) are never drawn: a training question written from
+a test answer is the leak stage 11 removed.
 """
 import argparse
-import csv
 import json
 import random
+import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-QUERIES = ROOT / "data" / "queries"
+sys.path.insert(0, str(ROOT / "src"))
 
-
-def test_gold() -> set[str]:
-    gold = set()
-    for name in ("qrels_live_core.tsv", "qrels_live_extra.tsv", "qrels_live12.tsv"):
-        with open(QUERIES / name, encoding="utf-8") as f:
-            gold |= {r["corpus-id"] for r in csv.DictReader(f, delimiter="\t")}
-    with open(QUERIES / "qrels_punkt.tsv", encoding="utf-8") as f:
-        for r in csv.DictReader(f, delimiter="\t"):
-            gold |= set(r["chunk-ids"].split(","))
-    return gold
+from rufin.leak import forbidden_chunks  # noqa: E402
 
 
 def main() -> None:
@@ -37,7 +28,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
 
-    gold = test_gold()
+    gold = forbidden_chunks()
     taken = set()
     if a.exclude and a.exclude.exists():
         taken = {json.loads(l)["chunk_id"] for l in open(a.exclude, encoding="utf-8")}
