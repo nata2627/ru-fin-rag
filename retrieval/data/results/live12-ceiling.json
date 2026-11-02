@@ -1,0 +1,16 @@
+{
+ "dev": {
+  "вопросов": 224,
+  "hybrid": 0.5203,
+  "hybrid-rerank": 0.6971,
+  "oracle top-50 hybrid": 0.9647,
+  "oracle top-50 hybrid-rerank": 0.9645
+ },
+ "test": {
+  "вопросов": 674,
+  "hybrid": 0.5211,
+  "hybrid-rerank": 0.6687,
+  "oracle top-50 hybrid": 0.9474,
+  "oracle top-50 hybrid-rerank": 0.948
+ }
+}
