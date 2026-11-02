@@ -69,7 +69,7 @@ def prepare(args) -> None:
             if c["chunk_id"] in wanted:
                 chunks[c["chunk_id"]] = c
     queries = {}
-    with open(os.path.join(QDIR, "queries.jsonl"), encoding="utf-8") as f:
+    with open(args.queries, encoding="utf-8") as f:
         for q in map(json.loads, f):
             queries[q["query_id"]] = q["text"]
     pairs.sort(key=lambda r: (r["query_id"], r["chunk_id"]))
@@ -335,6 +335,7 @@ def main() -> None:
         p.add_argument("--pool", default=POOL)
         p.add_argument("--work", default=WORK,
                        help="папка партий; второй набор живых (задача 11.6) размечается в своей")
+        p.add_argument("--queries", default=os.path.join(QDIR, "queries.jsonl"))
     a = sub.add_parser("apply")
     a.add_argument("--usage", help="json с токенами, снятыми с журналов вызовов разметчиков")
     args = ap.parse_args()
