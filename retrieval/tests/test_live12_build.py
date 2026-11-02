@@ -81,3 +81,17 @@ def test_nepolnaya_razmetka_padaet(tmp_path):
         L.gather(sheets=(), works=(str(work),), optional=())
     _, report, incomplete, todo = L.gather(sheets=(), works=(str(work),), optional=(), allow_partial=True)
     assert todo == 2 and incomplete == {"q1", "q2"}
+
+
+def test_gruppa_08_ne_rezhetsya():
+    base = "кредитная организация формирует резерв ссуде заемщика третьей категории качества сроком"
+    rows = [{**question(f"q{i:03d}", 100 + i), "text": f"{base} {tail}"}
+            for i, tail in enumerate(("января", "марта"))]
+    rows += [question(f"r{i:03d}", i, act=("A", "B")[i % 2]) for i in range(40)]
+    for r in rows[2:]:
+        r["text"] = f"вопрос номер {r['query_id']} отдельный"
+    for r, g in zip(rows, L.near_groups(rows)):
+        r["group"] = g
+    assert rows[0]["group"] == rows[1]["group"]
+    split = L.split_dev_test(rows)
+    assert split["q000"] == split["q001"]
