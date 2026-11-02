@@ -95,8 +95,9 @@ def test_granica_po_cifram_ne_cepliaet_1_555_vnutri_51_555(площадка):
     old["acts"] = 1555
     text = "словарь 51 555 до стеммера, в корпусе 1 555 акта, еще 1555 акта.\n"
     new = dict(old, acts=1560)
+    y, m, d = old["measured_at"].split("-")
     updated, counts = C.rewrite(
-        text + "62 606 фрагмента, словарь индекса 49 643, 22,7 МиБ, На 23.10.2026 в корпусе.\n",
+        text + f"62 606 фрагмента, словарь индекса 49 643, 22,7 МиБ, На {d}.{m}.{y} в корпусе.\n",
         old,
         new,
     )
