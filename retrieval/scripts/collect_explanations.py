@@ -38,6 +38,8 @@ INDEX = "https://www.cbr.ru/explan/"
 SITE = "https://www.cbr.ru"
 
 _SECTION = re.compile(r'href="(/explan/[^"#?]+/)"')
+# Оглавления внутри раздела: подразделы, разъяснения микрофинансового рынка, вкладки.
+_SUBSECTION = re.compile(r'href="(/(?:microfinance/)?explan/[^"#]+/(?:\?tab\.current=[\w-]+)?)"')
 _H1 = re.compile(r"<h1[^>]*>(.*?)</h1>", re.S)
 _BLOCK = re.compile(
     r'<div class="dropdown dropdown_container general-question".*?<h2[^>]*>(.*?)</h2>(.*?)'
@@ -63,15 +65,21 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pause", type=float, default=1.2)
     ap.add_argument("--limit", type=int, default=0, help="ограничить число разделов")
+    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--report", default=REPORT)
+    ap.add_argument("--html-dir", default=None,
+                    help="сохранить страницы разделов, где вопросы не нашлись")
     args = ap.parse_args()
+    out, report = args.out, args.report
 
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    os.makedirs(os.path.dirname(report), exist_ok=True)
     client = Client(pause=args.pause)
 
     sections = sorted(set(_SECTION.findall(client.get(INDEX).text)))
     if args.limit:
         sections = sections[:args.limit]
+    seen = set(sections)
 
     lines: list[str] = []
 
@@ -83,8 +91,11 @@ def main() -> None:
     say()
 
     records: list[dict] = []
-    for n, path in enumerate(sections, 1):
-        url = SITE + path
+    n = 0
+    while n < len(sections):
+        path = sections[n]
+        n += 1
+        url = SITE + path.replace("&amp;", "&")
         try:
             page = client.get(url).text
         except Exception as e:  # noqa: BLE001
@@ -106,13 +117,36 @@ def main() -> None:
                     "section": title, "acts": acts, "url": url,
                 })
                 found += 1
+        if not found:
+            # Часть разделов сверстана плоским списком вопросов без блоков тем:
+            # прежний разбор находил в них ноль и терял около тысячи вопросов.
+            for q_raw in _QUESTION.findall(page):
+                text = clean(q_raw)
+                if len(text) < MIN_LEN:
+                    continue
+                records.append({
+                    "text": text, "topic": "", "clauses": [],
+                    "section": title, "acts": acts, "url": url,
+                })
+                found += 1
         if found:
             say(f"   {path:<52} {found:>4} вопросов"
                 + (f", акт {', '.join(acts)}" if acts else ""))
+        else:
+            # Раньше пустой раздел молча пропускался, и 48 из 87 так и остались непроверенными.
+            subs = [s for s in sorted(set(_SUBSECTION.findall(page))) if s not in seen]
+            seen.update(subs)
+            sections.extend(subs)
+            say(f"   {path:<52}    0 вопросов, {len(page)} байт, подразделов {len(subs)}")
+            if args.html_dir:
+                os.makedirs(args.html_dir, exist_ok=True)
+                name = path.strip("/").replace("/", "__") + ".html"
+                with open(os.path.join(args.html_dir, name), "w", encoding="utf-8") as f:
+                    f.write(page)
         if n % 20 == 0:
             say(f"   ... пройдено {n}/{len(sections)}, собрано {len(records)}")
 
-    with open(OUT, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
@@ -126,9 +160,9 @@ def main() -> None:
         import statistics
         say(f"длина вопроса: медиана {statistics.median(len(r['text']) for r in records):.0f} "
             f"символов")
-    say(f"файл: {os.path.relpath(OUT, ROOT)}")
+    say(f"файл: {os.path.relpath(out, ROOT)}")
 
-    with open(REPORT, "w", encoding="utf-8") as f:
+    with open(report, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
