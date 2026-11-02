@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from rufin.explanations import body_of  # noqa: E402
+from rufin.leak import forbidden_chunks  # noqa: E402
 from rufin.queryfilter import copy_score, po_russki  # noqa: E402
 
 LIVE12 = ROOT / "data" / "interim" / "live12"
@@ -56,6 +57,13 @@ def style_examples(seed: int) -> list[str]:
     return out
 
 
+def pick_second(first: dict, chunks: dict, by_act: dict, forbidden: frozenset, rng: random.Random) -> str | None:
+    """A far fragment of the same act; the forbidden check matters here as much as for the first."""
+    others = [c for c in by_act[first["act_id"]] if abs(chunks[c]["position"] - first["position"]) > 2
+              and len(chunks[c]["text"]) >= 300 and c not in forbidden]
+    return rng.choice(others) if others else None
+
+
 def prepare(a) -> None:
     frags = [json.loads(l) for l in open(a.fragments, encoding="utf-8")]
     chunks = {}
@@ -68,17 +76,14 @@ def prepare(a) -> None:
     names = list(STYLES)
     weights = [STYLES[n][0] for n in names]
     examples = style_examples(a.seed)
+    forbidden = forbidden_chunks()
     tasks = []
     for n, f in enumerate(frags, start=1):
         style = rng.choices(names, weights)[0]
         second = None
         if style == "две нормы":
-            pos = chunks[f["chunk_id"]]["position"]
-            others = [c for c in by_act[f["act_id"]] if abs(chunks[c]["position"] - pos) > 2
-                      and len(chunks[c]["text"]) >= 300]
-            if others:
-                second = rng.choice(others)
-            else:
+            second = pick_second(chunks[f["chunk_id"]], chunks, by_act, forbidden, rng)
+            if second is None:
                 style = "ситуация"
         tasks.append({"nomer": n, "style": style, "chunk_id": f["chunk_id"], "chunk_id_2": second,
                       "name_act": rng.random() < NAME_ACT_SHARE})
