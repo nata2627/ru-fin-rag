@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import live12_build as L  # noqa: E402
+
 from rufin import punkt as P  # noqa: E402
 from rufin.benchmark import read_qrels  # noqa: E402
 
