@@ -35,6 +35,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 sys.path.insert(0, os.path.dirname(__file__))
 
+import live12_candidates as C  # noqa: E402
 import razmetka_yadro as Y  # noqa: E402
 
 from rufin import gate as G  # noqa: E402
@@ -68,6 +69,10 @@ SEED = 12
 # Rarer acts merge into one bucket: with a quarter going to dev, a stratum of
 # three questions would get zero or one dev question by rounding alone.
 MIN_ACT = 8
+# Candidates were grouped at 0.9, and a check found pairs at 0.8 that differ by a date or a
+# figure on both sides of the split (exp0356 and exp0495). The set is regrouped here at 0.8,
+# so the question selection made on the 0.9 groups stays as it was.
+DUP = 0.8
 OTHER_ACTS = "прочие"
 DEV, TEST, NO_ANSWER, UNLABELED = "dev", "test", "нет ответа", "не размечен"
 
@@ -187,6 +192,23 @@ def is_letter(text: str) -> bool:
 def stratum(q: dict, common_acts: set[str]) -> tuple[str, str, str]:
     act = q.get("act_id") or "-"
     return ("прежний" if q["old"] else "новый", q.get("route") or "-", act if act in common_acts else OTHER_ACTS)
+
+
+def near_groups(rows: list[dict], threshold: float = DUP) -> list[int]:
+    """Union of the candidate groups and word Jaccard groups at the threshold, as row indices."""
+    parent = list(range(len(rows)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    first: dict[object, int] = {}
+    for i, (r, g) in enumerate(zip(rows, C.groups([r["text"] for r in rows], threshold))):
+        for key in (("candidate", r["group"]), ("text", g)):
+            parent[find(i)] = find(first.setdefault(key, i))
+    return [find(i) for i in range(len(rows))]
 
 
 def split_dev_test(rows: list[dict], seed: int = SEED, dev_share: float = DEV_SHARE,
@@ -324,8 +346,8 @@ def main() -> None:
     P.write_units(OUT_PUNKT, units)
 
     queries = [{"query_id": q["query_id"], "text": q["text"], "route": q.get("route"), "act_id": q.get("act_id"),
-                "group": q["group"], "old": q["query_id"] in old_ids, "letter": is_letter(q["text"]),
-                "без590": q.get("act_id") != DOMINANT_ACT} for q in raw]
+                "group": g, "old": q["query_id"] in old_ids, "letter": is_letter(q["text"]),
+                "без590": q.get("act_id") != DOMINANT_ACT} for q, g in zip(raw, near_groups(raw))]
     split = assign(queries, qrels, incomplete)
     with open(OUT_QUERIES, "w", encoding="utf-8") as f:
         for q in queries:
@@ -378,7 +400,7 @@ def main() -> None:
               "связки пропущены": skipped,
               "таблица": table,
               "разрешающая способность на тесте": resolution,
-              "сплит": {"доля dev": DEV_SHARE, "семя": SEED, "акт реже": MIN_ACT,
+              "сплит": {"доля dev": DEV_SHARE, "семя": SEED, "акт реже": MIN_ACT, "порог дублей": DUP,
                         "слой": "прежний или новый, маршрут, акт"}}
     with open(RESULT, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=1)
