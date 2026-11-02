@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import live12_build as L  # noqa: E402
+
 from rufin.explanations import body_of  # noqa: E402
 
 LIVE12 = ROOT / "data" / "interim" / "live12"
