@@ -34,9 +34,9 @@ STYLES = {
     "две нормы": (0.15, """Ниже два фрагмента. Сформулируй вопрос практика в двух-четырех предложениях, для ответа
 на который нужны ОБА фрагмента: по одному из них ответить нельзя. Пункты не называй."""),
 }
-# The first probe (no terms, no act numbers) went to 0.496 of words shared with the
-# positives against 0.683 for live questions: practitioners write the act's terms as they
-# are, and 302 of 1 002 live questions name the act. So terms are allowed, whole phrases
+# The first probe (no terms, no act numbers) shared 0.423 of its words with the best
+# single positive against 0.597 for live questions (synth12_gate.py): practitioners write
+# the act's terms as they are, and 302 of 1 002 live questions name the act. So terms are allowed, whole phrases
 # still are not, and a third of the tasks may name the act.
 COMMON = """Требования: по-русски; термины акта (названия счетов, показателей, форм, видов операций)
 употребляй как есть, но целые фразы из фрагмента не переписывай; конкретно, чтобы ответ находился
