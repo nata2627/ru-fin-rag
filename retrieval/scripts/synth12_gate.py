@@ -3,8 +3,10 @@
 Six earlier runs trained on questions that shared 0.750 of their words with the answer,
 while live questions share 0.578, and the gate stood only at the output. Here the same
 measures are taken on the live set and on the synthetic one, and the synthetic set passes
-only if it sits inside the live range. Rules, fixed before the first measurement:
-  word share with positives: synthetic mean at most live mean + 0.05;
+only if it sits inside the live range. Word share is taken against the best single
+positive: over the union of positives it grows with their number (0.527 at one, 0.78 at
+ten), so sets with different positive counts would not compare. Rules:
+  word share with the best positive: synthetic mean at most live mean + 0.05;
   positives per question: between half and double of the live median;
   source fragment accepted by the labeler: at least 0.70 of questions (else the
   generator wrote questions the source does not answer).
@@ -43,7 +45,7 @@ def profile(texts: dict[str, str], qrels: dict[str, dict[str, int]], chunks: dic
     ids = [q for q in texts if qrels.get(q)]
     return {
         "вопросов": len(texts), "с позитивом": len(ids),
-        "доля слов вопроса в позитивах": mean_ci([share(texts[q], [chunks[c] for c in qrels[q]], True) for q in ids]),
+        "доля слов вопроса, лучший позитив": mean_ci([max(share(texts[q], [chunks[c]], True) for c in qrels[q]) for q in ids]),
         "позитивов на вопрос, медиана": statistics.median(len(qrels[q]) for q in ids),
         "списано из позитива, медиана": round(statistics.median(
             max(copy_score(texts[q], chunks[c])[1] for c in qrels[q]) for q in ids), 3),
@@ -81,8 +83,8 @@ def main() -> None:
     p_synth = profile(kept, synth_qrels, chunks)
     lo_pos, hi_pos = p_live["позитивов на вопрос, медиана"] / 2, p_live["позитивов на вопрос, медиана"] * 2
     checks = {
-        "доля слов": p_synth["доля слов вопроса в позитивах"]["среднее"]
-        <= p_live["доля слов вопроса в позитивах"]["среднее"] + LIVE_MARGIN,
+        "доля слов": p_synth["доля слов вопроса, лучший позитив"]["среднее"]
+        <= p_live["доля слов вопроса, лучший позитив"]["среднее"] + LIVE_MARGIN,
         "позитивов на вопрос": lo_pos <= p_synth["позитивов на вопрос, медиана"] <= hi_pos,
         "исходный фрагмент принят": len(source_ok) / len(synth) >= MIN_SOURCE_OK,
     }
