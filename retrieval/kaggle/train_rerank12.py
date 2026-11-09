@@ -40,6 +40,7 @@ from transformers import (  # noqa: E402
 )
 
 PROBE = False
+LIVE_ONLY = False
 LR = 1e-5
 EPOCHS = 2
 HARD_NEG = 5
@@ -107,6 +108,8 @@ def main():
     dev_q = {q["query_id"]: q["text"] for q in read_jsonl(find("dev_queries.jsonl"))}
     dev_h = {r["query_id"]: r["ranked"][:TOP] for r in read_jsonl(find("dev_hybrid.jsonl"))}
     units = P.read_units(find("dev_punkt.tsv"))
+    if LIVE_ONLY:
+        train = [r for r in train if r["query_id"].startswith("trl")]
     if PROBE:
         train = train[:96]
         dev_q = dict(list(sorted(dev_q.items()))[:40])

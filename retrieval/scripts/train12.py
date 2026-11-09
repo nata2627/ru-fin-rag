@@ -15,6 +15,7 @@ import argparse
 import gzip
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -35,7 +36,11 @@ QDIR = os.path.join(ROOT, "data", "queries")
 TRAIN = os.path.join(ROOT, "data", "interim", "live12", "train", "live_synth.jsonl")
 PKG = os.path.join(ROOT, "data", "interim", "live12", "kaggle_train12")
 SLUG = "ru-fin-train12"
-KERNELS = {"probe": f"{SLUG}-probe", "full": f"{SLUG}-k"}
+KERNELS = {"probe": f"{SLUG}-probe", "full": f"{SLUG}-k", "live": f"{SLUG}-live", "lr3": f"{SLUG}-lr3"}
+# After the full run lost to the base model (09.11): live questions only, and the
+# same set at a lower rate for one epoch. One change per kernel against "full".
+VARIANTS = {"probe": {"PROBE": "True"}, "full": {}, "live": {"LIVE_ONLY": "True"},
+            "lr3": {"LR": "3e-6", "EPOCHS": "1"}}
 CODE = "train_rerank12.py"
 RESULT = os.path.join(ROOT, "data", "results", "train12.json")
 
@@ -73,13 +78,17 @@ def pack() -> None:
         json.dump({"title": SLUG, "id": f"{KAGGLE_USER}/{SLUG}", "licenses": [{"name": "CC0-1.0"}]}, f, indent=1)
 
     code = open(os.path.join(ROOT, "kaggle", CODE), encoding="utf-8").read()
-    if code.count("PROBE = False\n") != 1:
-        raise SystemExit(f"kaggle/{CODE}: the PROBE constant is not where the packer expects it")
+    for const in ("PROBE = False", "LIVE_ONLY = False", "LR = 1e-5", "EPOCHS = 2"):
+        if code.count(const + "\n") != 1:
+            raise SystemExit(f"kaggle/{CODE}: {const} is not where the packer expects it")
     for mode, kslug in KERNELS.items():
         kern = os.path.join(PKG, mode)
         os.makedirs(kern)
         with open(os.path.join(kern, CODE), "w", encoding="utf-8") as f:
-            f.write(code.replace("PROBE = False\n", f"PROBE = {mode == 'probe'}\n"))
+            body = code
+            for name, value in VARIANTS[mode].items():
+                body = re.sub(rf"^{name} = .*$", f"{name} = {value}", body, count=1, flags=re.M)
+            f.write(body)
         # Empty machine_shape is the T4 x2 node: fp16 autocast needs Turing, P100 has no fp16 tensor cores.
         with open(os.path.join(kern, "kernel-metadata.json"), "w", encoding="utf-8") as f:
             json.dump({"id": f"{KAGGLE_USER}/{kslug}", "title": kslug.replace("-", " "),
@@ -97,8 +106,8 @@ def pack() -> None:
               f"python3 scripts/kaggle_run.py fetch {kslug} --dest data/kaggle_out/{kslug}")
 
 
-def score() -> None:
-    out = os.path.join(ROOT, "data", "kaggle_out", KERNELS["full"])
+def score(mode: str) -> None:
+    out = os.path.join(ROOT, "data", "kaggle_out", KERNELS[mode])
     evals = read_jsonl(os.path.join(out, "evals.jsonl"))
     best = max(evals, key=lambda e: e["dev_ndcg10"])
     dev = dev_queries()
@@ -110,7 +119,7 @@ def score() -> None:
     b = np.array([P.metrics(base[q], units[q])["NDCG@10"] for q in ids])
     d, p = M.paired_diff_ci(a, b)
     letters = [i for i, q in enumerate(sorted(dev, key=lambda q: q["query_id"])) if q["letter"]]
-    result = {"задача": "12.15", "обучение": "live_synth.jsonl, решение 32",
+    result = {"задача": "12.15", "ядро": KERNELS[mode], "обучение": {"live_synth.jsonl, решение 32": VARIANTS[mode]},
               "метрика": "NDCG@10 по пунктам на dev сплита 12.8; dev же выбирал шаг, оценка оптимистична",
               "оценки по шагам": evals, "лучший шаг": best["step"],
               "dev": {"вопросов": len(ids), "кандидат": round(float(a.mean()), 4),
@@ -119,7 +128,7 @@ def score() -> None:
                                   "p": round(p, 4)}},
               "dev письма": {"вопросов": len(letters), "кандидат": round(float(a[letters].mean()), 4),
                              "hybrid-rerank": round(float(b[letters].mean()), 4)}}
-    with open(RESULT, "w", encoding="utf-8") as f:
+    with open(RESULT if mode == "full" else RESULT.replace(".json", f"-{mode}.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=1)
         f.write("\n")
     print(f"best step {best['step']}: dev {a.mean():.4f} vs hybrid-rerank {b.mean():.4f}, "
@@ -129,7 +138,9 @@ def score() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("pack", "score"))
-    {"pack": pack, "score": score}[ap.parse_args().cmd]()
+    ap.add_argument("--mode", choices=tuple(KERNELS), default="full", help="which kernel to score")
+    args = ap.parse_args()
+    pack() if args.cmd == "pack" else score(args.mode)
 
 
 if __name__ == "__main__":
