@@ -5,6 +5,8 @@ import json
 import pathlib
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -19,6 +21,8 @@ def sheet() -> dict[tuple[str, str], int]:
 
 
 def test_list_pokryvaet_vse_yadro():
+    if not (pathlib.Path(Y.POOL).exists() and pathlib.Path(Y.SHEET).exists()):
+        pytest.skip("пула или листа ядра нет, они вне git")
     core = {(r["query_id"], r["chunk_id"]) for r in Y.core_pairs()}
     assert set(sheet()) == core
 
