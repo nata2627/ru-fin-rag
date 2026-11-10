@@ -29,8 +29,8 @@ def test_otvet_vne_shkaly_padaet(tmp_path):
 
 def test_partii_slepye(tmp_path):
     """В партиях нет ни одного поля ответа человека."""
-    if not R.os.path.exists(R.HUMAN):
-        pytest.skip("контрольной разметки нет")
+    if not (R.os.path.exists(R.HUMAN) and R.os.path.exists(R.POOL)):
+        pytest.skip("контрольной разметки или пула нет")
     R.prepare(type("A", (), {"dir": str(tmp_path), "batch": 25})())
     rows = R.read_tsv(R.HUMAN)
     text = "".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("batch_*.prompt.txt"))

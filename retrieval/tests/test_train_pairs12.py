@@ -31,6 +31,8 @@ def test_zapret_i_vopros_bez_pozitiva():
 
 @pytest.mark.data
 def test_nastoyashchie_pary():
+    if not (LIVE12 / "train" / "live_synth.jsonl").exists():
+        pytest.skip("обучающих пар этапа 12 нет, они вне git")
     bad = forbidden_chunks()
     ids = lambda name: {json.loads(l)["query_id"] for l in open(LIVE12 / name, encoding="utf-8")}  # noqa: E731
     dropped = (ids("synth_q.jsonl") - ids("synth_q_clean.jsonl")) | (ids("train_live.jsonl") - ids("train_live_clean.jsonl"))
