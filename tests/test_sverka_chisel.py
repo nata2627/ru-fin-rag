@@ -47,3 +47,16 @@ def test_vse_proverki_readme_shodyatsya():
         (что, где, ждем) for что, где, ждем in проверок if not V.стоит_в_тексте(ждем, readme)
     ]
     assert расхождения == []
+
+
+def test_kartochka_modeli_sveryaetsya(tmp_path, monkeypatch):
+    # A stale number in the HuggingFace model card must fail the check the same
+    # way a stale README does: the card leaves the repository on publication.
+    card = (ROOT / "retrieval/docs/MODEL_CARD_EN.md").read_text(encoding="utf-8")
+    assert "0.6791" in card
+    (tmp_path / "card.md").write_text(card.replace("0.6791", "0.6800"), encoding="utf-8")
+    monkeypatch.setattr(V, "ROOT", tmp_path)
+    monkeypatch.setattr(V, "ТЕКСТЫ_ЭТАПА_12", {"card.md": ("en", ("dev",))})
+    assert any("0.6791" in p for p in V.etap12_texts())
+    (tmp_path / "card.md").write_text(card, encoding="utf-8")
+    assert V.etap12_texts() == []

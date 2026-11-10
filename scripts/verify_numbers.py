@@ -25,6 +25,7 @@ import acceptance_line
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
+RESULTS_A = ROOT / "retrieval" / "data" / "results"
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -1450,7 +1451,76 @@ def checks() -> list[tuple[str, str, str]]:
             f"{по_происхождению['ручной']} написаны руками",
         )
     )
+    out.extend(etap12("ru", ("лист", "вопросов")))
     return out
+
+
+def load_a(name: str) -> dict:
+    return json.loads((RESULTS_A / name).read_text(encoding="utf-8"))
+
+
+def etap12(lang: str, extra: tuple[str, ...] = ()) -> list[tuple[str, str, str]]:
+    """Числа дообучения переранжировщика (этап 12): README, отчет и карточки модели.
+
+    Английская карточка пишет числа через точку, поэтому язык передается сюда, а
+    не правится в тексте. `extra` добавляет числа, которых нет в каждом тексте.
+    """
+    def num(value: float, digits: int = 4) -> str:
+        text = f"{value:.{digits}f}"
+        return text if lang == "en" else text.replace(".", ",")
+
+    def diff(d: dict) -> str:
+        text = f"{d['среднее']:+.4f} [{d['lo']:+.4f}; {d['hi']:+.4f}]"
+        return text if lang == "en" else text.replace(".", ",")
+
+    gate = load_a("gate12.json")
+    live = load_a("live12.json")
+    human = load_a("human-live12.json")
+    cand = load_a("train12-live10x2.json")
+    весь, без_утечки = gate["весь тест"], gate["без вопросов с утечкой 12.16"]
+    тест = next(r for r in live["таблица"] if r["подвыборка"] == "живые тест")
+    лист = human["весь лист"]
+    каппа = лист["каппа"]
+    порог = float(re.search(r"\+([\d.]+)", gate["правило"]).group(1))
+    out = [
+        ("разница кандидата на тесте", "gate12.json", diff(весь["разница"])),
+        ("кандидат на тесте", "gate12.json", num(весь["кандидат"])),
+        ("эталон на тесте", "gate12.json", num(весь["hybrid-rerank"])),
+        ("тестовых вопросов", "gate12.json", f"{весь['вопросов']}"),
+        ("порог приемки", "gate12.json", f"+{num(порог, 3)}"),
+        ("bm25 на тесте", "live12.json", num(тест["bm25"])),
+        ("hybrid на тесте", "live12.json", num(тест["hybrid"])),
+        ("каппа листа", "human-live12.json",
+         f"{num(каппа['значение'], 3)} [{num(каппа['lo'], 3)}; {num(каппа['hi'], 3)}]"),
+    ]
+    дополнительные = {
+        "без утечки": ("разница без утечки", "gate12.json", diff(без_утечки["разница"])),
+        "dev": ("dev кандидата", "train12-live10x2.json", num(cand["dev"]["кандидат"])),
+        "лист": ("совпало на листе", "human-live12.json",
+                 f"{лист['совпало']['числитель']} из {лист['совпало']['знаменатель']}"),
+        "вопросов": ("живых вопросов этапа 12", "live12.json",
+                     f"{live['вопросов']['вопросов']:,}".replace(",", " ")),
+    }
+    return out + [дополнительные[key] for key in extra]
+
+
+# Отчет этапа 12 и карточки модели сверяются тем же способом, что README, иначе
+# карточка на HuggingFace могла бы разойтись с репозиторием.
+ТЕКСТЫ_ЭТАПА_12 = {
+    "retrieval/docs/19-pereranzhirovshchik.md": ("ru", ("без утечки", "dev", "лист", "вопросов")),
+    "retrieval/docs/MODEL_CARD.md": ("ru", ("без утечки", "dev", "лист")),
+    "retrieval/docs/MODEL_CARD_EN.md": ("en", ("без утечки", "dev")),
+}
+
+
+def etap12_texts() -> list[str]:
+    problems = []
+    for path, (lang, extra) in ТЕКСТЫ_ЭТАПА_12.items():
+        text = " ".join((ROOT / path).read_text(encoding="utf-8").split())
+        for what, source, expected in etap12(lang, extra):
+            if not стоит_в_тексте(expected, text):
+                problems.append(f"  {path}: {what}, в {source} стоит {expected}")
+    return problems
 
 
 def состав_nabora() -> tuple[int, dict[str, int]]:
@@ -1569,6 +1639,11 @@ def main() -> int:
     problems = dag_report_fresh()
     if problems:
         print("отчет регламента разошелся с замерами:", file=sys.stderr)
+        print("\n".join(problems), file=sys.stderr)
+        return 1
+    problems = etap12_texts()
+    if problems:
+        print("отчет или карточка модели разошлись с замерами:", file=sys.stderr)
         print("\n".join(problems), file=sys.stderr)
         return 1
     problems = dashboard_values()
