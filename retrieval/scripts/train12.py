@@ -37,7 +37,8 @@ TRAIN = os.path.join(ROOT, "data", "interim", "live12", "train", "live_synth.jso
 PKG = os.path.join(ROOT, "data", "interim", "live12", "kaggle_train12")
 SLUG = "ru-fin-train12"
 KERNELS = {"probe": f"{SLUG}-probe", "full": f"{SLUG}-k", "live": f"{SLUG}-live", "lr3": f"{SLUG}-lr3",
-           "live10": f"{SLUG}-live10", "live10x2": f"{SLUG}-live10x2"}
+           "live10": f"{SLUG}-live10", "live10x2": f"{SLUG}-live10x2",
+           "curve30": f"{SLUG}-curve30", "curve60": f"{SLUG}-curve60", "curve123": f"{SLUG}-curve123"}
 # After the full run lost to the base model (09.11): live questions only, and the
 # same set at a lower rate for one epoch. One change per kernel against "full".
 VARIANTS = {"probe": {"PROBE": "True"}, "full": {}, "live": {"LIVE_ONLY": "True"},
@@ -45,7 +46,10 @@ VARIANTS = {"probe": {"PROBE": "True"}, "full": {}, "live": {"LIVE_ONLY": "True"
             # Live only won and was still rising at its last step: ten epochs with one
             # evaluation each, at the same rate and at double the rate.
             "live10": {"LIVE_ONLY": "True", "EPOCHS": "10", "EVALS_PER_EPOCH": "1"},
-            "live10x2": {"LIVE_ONLY": "True", "EPOCHS": "10", "EVALS_PER_EPOCH": "1", "LR": "2e-5"}}
+            "live10x2": {"LIVE_ONLY": "True", "EPOCHS": "10", "EVALS_PER_EPOCH": "1", "LR": "2e-5"},
+            # Learning curve on nested subsets of the live questions, one recipe for all three.
+            **{f"curve{n}": {"LIVE_ONLY": "True", "LIVE_LIMIT": str(n), "EPOCHS": "2", "EVALS_PER_EPOCH": "1",
+                             "LR": "2e-5"} for n in (30, 60, 123)}}
 CODE = "train_rerank12.py"
 RESULT = os.path.join(ROOT, "data", "results", "train12.json")
 
@@ -83,7 +87,8 @@ def pack() -> None:
         json.dump({"title": SLUG, "id": f"{KAGGLE_USER}/{SLUG}", "licenses": [{"name": "CC0-1.0"}]}, f, indent=1)
 
     code = open(os.path.join(ROOT, "kaggle", CODE), encoding="utf-8").read()
-    for const in ("PROBE = False", "LIVE_ONLY = False", "LR = 1e-5", "EPOCHS = 2", "EVALS_PER_EPOCH = 2"):
+    for const in ("PROBE = False", "LIVE_ONLY = False", "LR = 1e-5", "EPOCHS = 2", "EVALS_PER_EPOCH = 2",
+                  "LIVE_LIMIT = 0"):
         if code.count(const + "\n") != 1:
             raise SystemExit(f"kaggle/{CODE}: {const} is not where the packer expects it")
     for mode, kslug in KERNELS.items():
