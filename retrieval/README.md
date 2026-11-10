@@ -24,8 +24,6 @@
 0,42255 NDCG@10 у `multilingual-e5-small` против 0,42064 у нашего кода на тех же 691 запросах
 разделения `test`, расхождение 0,0019 ([mteb_task/README.md](mteb_task/README.md)).
 
-Куда проект идет и почему именно туда: [docs/00-plan.md](docs/00-plan.md).
-Почему принято каждое решение: [docs/DECISIONS.md](docs/DECISIONS.md).
 Из чего состоит набор: [docs/DATASET_CARD.md](docs/DATASET_CARD.md),
 по какой инструкции он размечен: [docs/ANNOTATION_GUIDE.md](docs/ANNOTATION_GUIDE.md).
 

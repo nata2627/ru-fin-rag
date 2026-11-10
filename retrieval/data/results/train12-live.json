@@ -2,7 +2,8 @@
  "задача": "12.15",
  "ядро": "ru-fin-train12-live",
  "обучение": {
-  "live_synth.jsonl, решение 32": {
+  "файл": "live_synth.jsonl",
+  "отличия от полного прогона": {
    "LIVE_ONLY": "True"
   }
  },

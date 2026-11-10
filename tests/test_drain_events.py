@@ -123,7 +123,7 @@ def test_dump_gives_the_lines_the_service_wrote(service):
 
 
 def test_dump_carries_nothing_but_the_query_the_answer_and_technical_fields(service):
-    """Решение 12: ни заголовков, ни адресов, ни куки, даже если клиент их прислал."""
+    """Журнал публичен: ни заголовков, ни адресов, ни куки, даже если клиент их прислал."""
     client, _ = service
     client.post(
         "/search",

@@ -86,7 +86,7 @@ def test_service_answers_over_http(event_dir_outside_the_repo):
 
         # Подпроцесс наследует RUFINRAG_EVENT_DIR из tests/conftest.py, поэтому
         # событие прогона лежит в каталоге pytest, а не в data/events
-        # репозитория, куда едут события сервиса (DECISIONS, решение 12).
+        # репозитория, куда едут события сервиса.
         logged = "".join(
             path.read_text(encoding="utf-8")
             for path in event_dir_outside_the_repo.glob("queries-*.jsonl")

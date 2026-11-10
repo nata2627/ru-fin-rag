@@ -2,7 +2,7 @@
 # нельзя (TASK, раздел «Ограничения»). `docker compose --profile search up`
 # поднимает поиск, `--profile vectors` добавляет Qdrant, `--profile logs`
 # добавляет ClickHouse. Бесплатный хостинг после сдачи работает без compose:
-# там только образ сервиса (DECISIONS, решение 8).
+# там только образ сервиса.
 services:
   api:
     profiles: ["search"]
