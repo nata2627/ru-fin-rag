@@ -29,7 +29,9 @@ OUT = "/kaggle/working"
 
 
 def find(name):
-    hits = glob.glob(f"/kaggle/input/**/{name}", recursive=True)
+    # Kaggle unpacks .gz files of a dataset, so the plain name is looked up too.
+    hits = (glob.glob(f"/kaggle/input/**/{name}", recursive=True)
+            or glob.glob(f"/kaggle/input/**/{name.removesuffix('.gz')}", recursive=True))
     if not hits:
         raise SystemExit(f"not found among inputs: {name}")
     return hits[0]
