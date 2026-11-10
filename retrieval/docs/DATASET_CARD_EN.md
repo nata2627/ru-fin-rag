@@ -135,6 +135,14 @@ number.
 
 ### Live questions
 
+**What changed after publication (2026-11-10).** The files on this page are the 991-query set
+as published on 2026-10-25, and every number in this section describes it. Later the
+clarifications section was collected again and the live questions became a separate test: 1 002
+questions, all labeled by a language model, dev 224, test 674. It lives in the repository
+(`data/queries/live12.jsonl`, `data/queries/qrels_live12_punkt.tsv`) and is not part of the
+files here; the report is `docs/19-pereranzhirovshchik.md` (in Russian). The note below about
+183 unannotated questions holds for the published set.
+
 The Bank of Russia publishes answers to questions from supervised organisations
 (`cbr.ru/explan/`). **1621** were collected. **322** of them attach to acts in the corpus,
 across **29 acts**; the rest are about federal laws, reporting forms and letters whose
