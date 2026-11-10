@@ -41,6 +41,7 @@ from transformers import (  # noqa: E402
 
 PROBE = False
 LIVE_ONLY = False
+LIVE_LIMIT = 0
 LR = 1e-5
 EPOCHS = 2
 HARD_NEG = 5
@@ -110,6 +111,11 @@ def main():
     units = P.read_units(find("dev_punkt.tsv"))
     if LIVE_ONLY:
         train = [r for r in train if r["query_id"].startswith("trl")]
+    if LIVE_LIMIT:
+        # Nested subsets for the learning curve: one seeded order, the first N of it.
+        train = sorted(train, key=lambda r: r["query_id"])
+        random.Random(SEED).shuffle(train)
+        train = train[:LIVE_LIMIT]
     if PROBE:
         train = train[:96]
         dev_q = dict(list(sorted(dev_q.items()))[:40])
