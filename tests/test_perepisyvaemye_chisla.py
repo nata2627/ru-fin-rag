@@ -19,6 +19,7 @@ import importlib.util
 import json
 import pathlib
 import subprocess
+import sys
 
 import pytest
 
@@ -99,7 +100,7 @@ def test_stroka_sostoyaniya_v_readme_sovpadaet_s_zamerom() -> None:
 def test_povtornaya_zapis_nichego_ne_menyaet() -> None:
     было = (КОРЕНЬ / "README.md").read_text(encoding="utf-8")
     вывод = subprocess.run(
-        [".venv/bin/python", "scripts/acceptance_line.py", "--write"],
+        [sys.executable, "scripts/acceptance_line.py", "--write"],
         cwd=КОРЕНЬ,
         capture_output=True,
         text=True,
