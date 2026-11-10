@@ -47,9 +47,11 @@ QDIR = Y.QDIR
 LIVE12 = os.path.join(ROOT, "data", "interim", "live12")
 QUERIES = os.path.join(LIVE12, "live_all.jsonl")
 SHEETS = (os.path.join(QDIR, "razmetka_yadro.tsv"), os.path.join(QDIR, "razmetka_extra.tsv"))
-WORKS = tuple(os.path.join(LIVE12, n) for n in ("razmetka_tail", "razmetka_main", "razmetka_unseen", "razmetka_rr"))
+# razmetka_top10: pairs a trained candidate brought into its dev and test top ten (task 12.16).
+WORKS = tuple(os.path.join(LIVE12, n)
+              for n in ("razmetka_tail", "razmetka_main", "razmetka_unseen", "razmetka_rr", "razmetka_top10"))
 # The hybrid-rerank pair folder appears only after the Kaggle run.
-OPTIONAL_WORKS = (os.path.join(LIVE12, "razmetka_rr"),)
+OPTIONAL_WORKS = (os.path.join(LIVE12, "razmetka_rr"), os.path.join(LIVE12, "razmetka_top10"))
 CORE_MODEL_ONLY = os.path.join(QDIR, "qrels_live_core_model_only.tsv")
 RUN_DIRS = (os.path.join(ROOT, "data", "runs"), os.path.join(LIVE12, "runs"))
 CHUNKS = Y.CHUNKS
