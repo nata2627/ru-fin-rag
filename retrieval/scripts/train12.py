@@ -124,7 +124,7 @@ def score(mode: str) -> None:
     b = np.array([P.metrics(base[q], units[q])["NDCG@10"] for q in ids])
     d, p = M.paired_diff_ci(a, b)
     letters = [i for i, q in enumerate(sorted(dev, key=lambda q: q["query_id"])) if q["letter"]]
-    result = {"задача": "12.15", "ядро": KERNELS[mode], "обучение": {"live_synth.jsonl, решение 32": VARIANTS[mode]},
+    result = {"задача": "12.15", "ядро": KERNELS[mode], "обучение": {"файл": "live_synth.jsonl", "отличия от полного прогона": VARIANTS[mode]},
               "метрика": "NDCG@10 по пунктам на dev сплита 12.8; dev же выбирал шаг, оценка оптимистична",
               "оценки по шагам": evals, "лучший шаг": best["step"],
               "dev": {"вопросов": len(ids), "кандидат": round(float(a.mean()), 4),

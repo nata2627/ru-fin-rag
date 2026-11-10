@@ -41,7 +41,7 @@ from rufinrag.config import load_catalog  # noqa: E402
 from rufinrag.search import SearchService  # noqa: E402
 
 OUT_FILE = ROOT / "results/answer-quality.json"
-# Часть А внутри репозитория папкой `retrieval` (решение 22).
+# Часть А внутри репозитория папкой `retrieval`.
 DEFAULT_PART_A = Path(__file__).resolve().parents[1] / "retrieval"
 HUMAN_SHEET = "data/queries/human_sample_new.tsv"
 JUDGE_REPORT = "data/results/judge_acceptance.json"

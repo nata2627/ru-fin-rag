@@ -101,7 +101,7 @@ def test_hybrid_reproduces_reference_run(full):
         top1 += mine[0] == theirs[0]
         composition += set(mine) == set(theirs)
     # Порог из замера: на 200 запросах верхний результат гибрида совпал 196 раз,
-    # состав десятки 193 раза (`results/reproducibility.json`). До решения 16
+    # состав десятки 193 раза (`results/reproducibility.json`). До стеммера
     # было 199 и 194: ничьих у лексической ступени стало больше, потому что
     # после снятия формы слова у разных фрагментов чаще совпадает набор основ
     assert top1 >= len(ids) - 2, f"верхний результат гибрида разошелся {len(ids) - top1} раз"
