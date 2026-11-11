@@ -80,7 +80,7 @@ curl -s -X POST https://ru-fin-rag.onrender.com/search \
 | Роутер на инструментах, отрицательный результат | [`src/rufinrag/router.py`](src/rufinrag/router.py) | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | [`results/router.json`](results/router.json) |
 | Граф ссылок между актами, отрицательный результат | [`src/rufinrag/graph.py`](src/rufinrag/graph.py) | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | [`results/graph-expansion.json`](results/graph-expansion.json) |
 | Воспроизводимость выдачи от прогона к прогону | [`scripts/check_reproducibility.py`](scripts/check_reproducibility.py) | состав топ-10 совпал у 199 из 200 запросов | [`results/reproducibility.json`](results/reproducibility.json) |
-| Приемка автономности по факту, а не по обещанию | [`scripts/record_acceptance.py`](scripts/record_acceptance.py) | прогонов 39, зеленых 36, нужно 14 дней | [`results/acceptance.json`](results/acceptance.json) |
+| Приемка автономности по факту, а не по обещанию | [`scripts/record_acceptance.py`](scripts/record_acceptance.py) | прогонов 40, зеленых 37, нужно 14 дней | [`results/acceptance.json`](results/acceptance.json) |
 
 Качество самого поиска измерено исследованием в папке [retrieval](retrieval/): 991
 размеченный запрос, шесть энкодеров, пять связок, доверительные интервалы и
@@ -1160,7 +1160,7 @@ disabling network access for user 'default'`. В `docker-compose.yml` перем
 в истории делал только бот, постоянных расходов не возникло. Руками запущенные прогоны
 (`workflow_dispatch`) в эти дни не считаются: они проверяют код, а не расписание.
 
-**Состояние приемки на 10.11.2026: плановых прогонов 39, зеленых 36, цепочка 25 прогонов и 12,1 дня из 14.** Последний разрыв цепочки: [прогон 40842616729](https://github.com/nata2627/ru-fin-rag/actions/runs/40842616729), 29.10.2026.
+**Состояние приемки на 11.11.2026: плановых прогонов 40, зеленых 37, цепочка 26 прогонов и 12,6 дня из 14.** Последний разрыв цепочки: [прогон 40842616729](https://github.com/nata2627/ru-fin-rag/actions/runs/40842616729), 29.10.2026.
 
 Отсчет пошел 22.10.2026 с первого зеленого прогона по расписанию:
 [прогон 39832485547](https://github.com/nata2627/ru-fin-rag/actions/runs/39832485547), событие
