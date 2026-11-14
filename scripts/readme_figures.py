@@ -48,11 +48,15 @@ def spaced(value: int) -> str:
 
 
 def number(source: str, *path: str | int) -> dict:
-    """Значение из файла результата вместе с тем, откуда оно взято."""
+    """Значение из файла результата вместе с тем, откуда оно взято.
+
+    Путь пишется через косую черту: с точками «rufin.Recall@50.mean» поиск
+    секретов принимает за адрес почты.
+    """
     value = json.loads((ROOT / source).read_text(encoding="utf-8"))
     for step in path:
         value = value[step]
-    return {"value": value, "source": source, "key": ".".join(str(p) for p in path)}
+    return {"value": value, "source": source, "key": "/".join(str(p) for p in path)}
 
 
 def interval(source: str, *path: str | int, names: tuple[str, str, str]) -> dict:
@@ -63,7 +67,7 @@ def interval(source: str, *path: str | int, names: tuple[str, str, str]) -> dict
         "lo": number(source, *path, lo)["value"],
         "hi": number(source, *path, hi)["value"],
         "source": source,
-        "key": ".".join(str(p) for p in path),
+        "key": "/".join(str(p) for p in path),
     }
 
 

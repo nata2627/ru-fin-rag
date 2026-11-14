@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Строка состояния приемки в README, написанная прогоном, а не рукой.
+"""Строка состояния приемки в docs/regulation.md, написанная прогоном, а не рукой.
 
 29.10.2026 плановый прогон покраснел, а за ним и прогон приемки, оба на сверке
 чисел: `record_acceptance.py` записал в `results/acceptance.json` новый прогон,
-порвавший цепочку, а README называл прежний. Это тот же дефект, что и с таблицей
+порвавший цепочку, а текст называл прежний. Это тот же дефект, что и с таблицей
 навыков: число, которое прогон меняет сам, стояло в тексте руками.
 
 Поэтому состояние приемки живет одной строкой, и переписывает ее прогон перед
@@ -20,7 +20,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-README = ROOT / "README.md"
+TEXT = ROOT / "docs" / "regulation.md"
 НАЧАЛО = "**Состояние приемки"
 
 
@@ -59,7 +59,7 @@ def вписать(текст: str, новая: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--write", action="store_true", help="вписать строку в README")
+    ap.add_argument("--write", action="store_true", help="вписать строку в docs/regulation.md")
     args = ap.parse_args()
     if not args.write:
         print(строка())
@@ -69,17 +69,17 @@ def main() -> None:
 
 def main_bez_argumentov() -> None:
     новая = строка()
-    текст = README.read_text(encoding="utf-8")
+    текст = TEXT.read_text(encoding="utf-8")
     if НАЧАЛО not in текст:
         raise SystemExit(
-            "в README нет строки состояния приемки: ее переписали руками, "
+            "в docs/regulation.md нет строки состояния приемки: ее переписали руками, "
             "и генератор больше не держит эти числа"
         )
     обновлен = вписать(текст, новая)
     if обновлен == текст:
         print("строка состояния приемки уже совпадает с замером")
         return
-    README.write_text(обновлен, encoding="utf-8")
+    TEXT.write_text(обновлен, encoding="utf-8")
     print("строка состояния приемки переписана по замеру")
 
 

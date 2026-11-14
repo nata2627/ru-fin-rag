@@ -56,6 +56,7 @@ def test_zapis_priemki_edet_v_kommit() -> None:
     ]
     assert "results/acceptance.json" in добавление
     assert "README.md" in добавление
+    assert "docs/regulation.md" in добавление
 
 
 def test_proverka_chisel_idet_posle_perezapisey() -> None:
@@ -99,11 +100,12 @@ def test_tekushchii_schet_v_readme_ne_dublirutsya() -> None:
     # состояния, которую 29.10.2026 стал переписывать прогон приемки
     # (`scripts/acceptance_line.py`). Руками это число не ставится нигде, иначе
     # оно разойдется с файлом в первую же ночь, как и случилось 29.10.
-    строка_состояния = [s for s in readme.splitlines() if s.startswith("**Состояние приемки")]
+    тексты = readme + "\n" + (КОРЕНЬ / "docs/regulation.md").read_text(encoding="utf-8")
+    строка_состояния = [s for s in тексты.splitlines() if s.startswith("**Состояние приемки")]
     assert len(строка_состояния) == 1
     прочее = [
         s
-        for s in readme.splitlines()
+        for s in тексты.splitlines()
         if not s.startswith("**Состояние приемки")
         and (re.search(r"\bв цепочке\s+\d", s) or re.search(r"\d[,.]\d\s+дня из", s))
     ]

@@ -93,13 +93,12 @@ def test_generatory_zovutsya_do_sverki() -> None:
             assert текст.index(г) < сверка, f"{прогон}: {г} стоит после сверки чисел"
 
 
-def test_stroka_sostoyaniya_v_readme_sovpadaet_s_zamerom() -> None:
-    readme = (КОРЕНЬ / "README.md").read_text(encoding="utf-8")
-    assert L.строка() in readme
+def test_stroka_sostoyaniya_sovpadaet_s_zamerom() -> None:
+    assert L.строка() in L.TEXT.read_text(encoding="utf-8")
 
 
 def test_povtornaya_zapis_nichego_ne_menyaet() -> None:
-    было = (КОРЕНЬ / "README.md").read_text(encoding="utf-8")
+    было = L.TEXT.read_text(encoding="utf-8")
     вывод = subprocess.run(
         [sys.executable, "scripts/acceptance_line.py", "--write"],
         cwd=КОРЕНЬ,
@@ -107,22 +106,22 @@ def test_povtornaya_zapis_nichego_ne_menyaet() -> None:
         text=True,
         check=True,
     )
-    стало = (КОРЕНЬ / "README.md").read_text(encoding="utf-8")
-    assert стало == было, "запись при неизменившемся замере тронула README"
+    стало = L.TEXT.read_text(encoding="utf-8")
+    assert стало == было, "запись при неизменившемся замере тронула текст"
     assert "уже совпадает" in вывод.stdout
 
 
 def test_bez_yakorya_skript_padaet(tmp_path: pathlib.Path) -> None:
     """Текст переписали руками, значит генератор больше не держит эти числа."""
-    подмена = tmp_path / "README.md"
-    подмена.write_text("README без строки состояния\n", encoding="utf-8")
-    старый = L.README
+    подмена = tmp_path / "regulation.md"
+    подмена.write_text("текст без строки состояния\n", encoding="utf-8")
+    старый = L.TEXT
     try:
-        L.README = подмена
+        L.TEXT = подмена
         with pytest.raises(SystemExit) as отказ:
             L.main_bez_argumentov()
     finally:
-        L.README = старый
+        L.TEXT = старый
     assert "переписали руками" in str(отказ.value)
 
 

@@ -65,15 +65,15 @@ jobs:
       - name: Rewrite the skills table
         run: python scripts/skills_table.py --write
 
-      # Состояние приемки тоже живет в README строкой, и ее меняет этот же
+      # Состояние приемки живет строкой в docs/regulation.md, и ее меняет этот же
       # прогон: 29.10.2026 ссылка на прогон, порвавший цепочку, осталась в
       # тексте прежней, файл назвал новый разрыв, и сверка уронила и плановый
       # прогон, и прогон приемки.
       - name: Rewrite the acceptance state line
         run: python scripts/acceptance_line.py --write
 
-      # Проверка последней, после перезаписи: она обязана читать тот README,
-      # который уйдет в коммит.
+      # Проверка последней, после перезаписи: она обязана читать те тексты,
+      # которые уйдут в коммит.
       - name: Verify published numbers
         run: python scripts/verify_numbers.py
 
@@ -81,7 +81,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results/acceptance.json README.md
+          git add results/acceptance.json README.md docs/regulation.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: счет приемки не изменился"
           else

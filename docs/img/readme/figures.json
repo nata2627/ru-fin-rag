@@ -8,12 +8,12 @@
           {
             "value": 62594,
             "source": "results/render-rehearsal.json",
-            "key": "health.chunks"
+            "key": "health/chunks"
           },
           {
             "value": 1554,
             "source": "results/render-rehearsal.json",
-            "key": "health.corpus_version"
+            "key": "health/corpus_version"
           }
         ]
       },
@@ -24,12 +24,12 @@
           {
             "value": 0.7096,
             "source": "results/rerank-quality.json",
-            "key": "runs.hybrid-rerank, связка сервиса.ndcg10.mean"
+            "key": "runs/hybrid-rerank, связка сервиса/ndcg10/mean"
           },
           {
             "value": 0.5711,
             "source": "results/rerank-quality-bm25.json",
-            "key": "runs.bm25, связка сервиса.ndcg10.mean"
+            "key": "runs/bm25, связка сервиса/ndcg10/mean"
           },
           {
             "value": 991,
@@ -89,12 +89,12 @@
           "lo": 0.6882,
           "hi": 0.73,
           "source": "results/rerank-quality.json",
-          "key": "runs.hybrid-rerank, связка сервиса.ndcg10"
+          "key": "runs/hybrid-rerank, связка сервиса/ndcg10"
         },
         "p50_ms": {
           "value": 43944.78,
           "source": "results/latency-local.json",
-          "key": "configs.hybrid-rerank.p50_ms"
+          "key": "configs/hybrid-rerank/p50_ms"
         },
         "text": "0,710",
         "latency_text": "43,9 с"
@@ -107,12 +107,12 @@
           "lo": 0.6693,
           "hi": 0.7133,
           "source": "results/rerank-quality-bm25.json",
-          "key": "runs.bm25-rerank, связка сервиса.ndcg10"
+          "key": "runs/bm25-rerank, связка сервиса/ndcg10"
         },
         "p50_ms": {
           "value": 43924.04,
           "source": "results/latency-local.json",
-          "key": "configs.bm25-rerank.p50_ms"
+          "key": "configs/bm25-rerank/p50_ms"
         },
         "text": "0,692",
         "latency_text": "43,9 с"
@@ -125,12 +125,12 @@
           "lo": 0.5892766682947709,
           "hi": 0.635890286548624,
           "source": "retrieval/data/results/base.json",
-          "key": "metrics.hybrid-rufin.NDCG@10"
+          "key": "metrics/hybrid-rufin/NDCG@10"
         },
         "p50_ms": {
           "value": 92.17,
           "source": "results/latency-local.json",
-          "key": "configs.hybrid.p50_ms"
+          "key": "configs/hybrid/p50_ms"
         },
         "text": "0,613",
         "latency_text": "92,2 мс"
@@ -143,12 +143,12 @@
           "lo": 0.5471512068156467,
           "hi": 0.5952677598861303,
           "source": "retrieval/data/results/base.json",
-          "key": "metrics.bm25.NDCG@10"
+          "key": "metrics/bm25/NDCG@10"
         },
         "p50_ms": {
           "value": 1.54,
           "source": "results/latency-local.json",
-          "key": "configs.bm25.p50_ms"
+          "key": "configs/bm25/p50_ms"
         },
         "text": "0,571",
         "latency_text": "1,54 мс"
@@ -161,12 +161,12 @@
           "lo": 0.5229934867576705,
           "hi": 0.5719459099821672,
           "source": "retrieval/data/results/base.json",
-          "key": "metrics.dense-rufin.NDCG@10"
+          "key": "metrics/dense-rufin/NDCG@10"
         },
         "p50_ms": {
           "value": 87.86,
           "source": "results/latency-local.json",
-          "key": "configs.dense.p50_ms"
+          "key": "configs/dense/p50_ms"
         },
         "text": "0,548",
         "latency_text": "87,9 мс"
@@ -180,7 +180,7 @@
     "ceiling": {
       "value": 0.8632,
       "source": "retrieval/data/results/depth-ceiling.json",
-      "key": "groups.все размеченные.configs.hybrid-rufin.Recall@50.mean",
+      "key": "groups/все размеченные/configs/hybrid-rufin/Recall@50/mean",
       "text": "потолок кросс-энкодера:\nв первых 50 кандидатах\nгибрида лежит 0,863\nэталонных фрагментов\n(Recall@50, до стеммера)"
     }
   },
@@ -208,7 +208,7 @@
           "lo": 0.067,
           "hi": 0.1065,
           "source": "retrieval/data/results/morphology.json",
-          "key": "прибавка.12.NDCG@10"
+          "key": "прибавка/12/NDCG@10"
         },
         "text": "+0,087 [+0,067; +0,106]"
       },
@@ -220,7 +220,7 @@
           "lo": 0.0054,
           "hi": 0.02,
           "source": "retrieval/data/results/gate12.json",
-          "key": "весь тест.разница"
+          "key": "весь тест/разница"
         },
         "text": "+0,0127 [+0,0054; +0,0200]"
       },
@@ -232,7 +232,7 @@
           "lo": -0.0014,
           "hi": 0.0018,
           "source": "results/graph-expansion.json",
-          "key": "variants.reserve.difference_ndcg10.hybrid.all"
+          "key": "variants/reserve/difference_ndcg10/hybrid/all"
         },
         "text": "+0,0001 [−0,0014; +0,0018]"
       },
@@ -244,7 +244,7 @@
           "lo": -0.1438,
           "hi": -0.1166,
           "source": "results/graph-expansion.json",
-          "key": "variants.fusion.difference_ndcg10.hybrid.all"
+          "key": "variants/fusion/difference_ndcg10/hybrid/all"
         },
         "text": "−0,130 [−0,144; −0,117]"
       }
@@ -257,7 +257,7 @@
     "live_queries": {
       "value": 674,
       "source": "retrieval/data/results/gate12.json",
-      "key": "весь тест.вопросов"
+      "key": "весь тест/вопросов"
     },
     "threshold": {
       "value": 0.025,
@@ -380,7 +380,7 @@
       {
         "value": 26,
         "source": "results/acceptance-passed.json",
-        "key": "commits.bot"
+        "key": "commits/bot"
       },
       {
         "value": 14,
@@ -398,7 +398,7 @@
         "mb": {
           "value": 215.0,
           "source": "results/memory.json",
-          "key": "configs.bm25.peak_mb"
+          "key": "configs/bm25/peak_mb"
         },
         "unit": "МБ",
         "fits": true,
@@ -420,7 +420,7 @@
         "mb": {
           "value": 826.3,
           "source": "results/vector-store-container.json",
-          "key": "stores.qdrant.container_memory"
+          "key": "stores/qdrant/container_memory"
         },
         "unit": "МиБ",
         "plot_mb": 866.4,
@@ -432,7 +432,7 @@
         "mb": {
           "value": 1111.8,
           "source": "results/memory.json",
-          "key": "configs.hybrid.peak_mb"
+          "key": "configs/hybrid/peak_mb"
         },
         "unit": "МБ",
         "fits": false,
