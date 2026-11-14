@@ -14,9 +14,9 @@
     "tracking.json",
     "uptime.json"
   ],
-  "runs_logged_now": 6,
-  "runs_skipped_as_known": 39,
-  "runs_total": 75,
+  "runs_logged_now": 3,
+  "runs_skipped_as_known": 42,
+  "runs_total": 78,
   "store_mb": 0.2,
   "digest_chars": 12,
   "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки (в том числе русские буквы) в подчеркивание",
@@ -24,47 +24,26 @@
   "registry_version": "72d55732a13c",
   "logged": [
     {
-      "report": "alert-threshold.json",
-      "run_id": "d34086f155874b3e8d0eef2c20a39d08",
-      "metrics": 37,
-      "params": 15,
-      "digest": "e5c95ec43e03"
-    },
-    {
-      "report": "answer-quality.json",
-      "run_id": "b8a3006329ab4806a3eb3c692dfcdfe7",
-      "metrics": 413,
-      "params": 21,
-      "digest": "8137bde6e32d"
-    },
-    {
-      "report": "answer.json",
-      "run_id": "4b34fa1c570d48bebaf13cec16d7d863",
-      "metrics": 115,
-      "params": 12,
-      "digest": "6cc38341acfe"
-    },
-    {
-      "report": "monitoring-thresholds.json",
-      "run_id": "4dfa1afd532c40c8812e3adc7c1b6340",
-      "metrics": 100,
-      "params": 13,
-      "digest": "e1c19d9602dd"
+      "report": "acceptance-passed.json",
+      "run_id": "68d3ea73b9ec42d0a66e5b58db4c33b7",
+      "metrics": 6,
+      "params": 5,
+      "digest": "8d4eeb360ebb"
     },
     {
       "report": "router.json",
-      "run_id": "32bd6932ea6544ce8b4cb91548f590c5",
+      "run_id": "99d3a5ba193e48c9b01dbd97d0ca9928",
       "metrics": 53,
       "params": 6,
-      "digest": "6e4b395230d9"
+      "digest": "49d9f6a083e3"
     },
     {
       "report": "sample-size.json",
-      "run_id": "0f8d1491e24f4d8cbb406af0ffbb4ae5",
+      "run_id": "794e66c7091b47f1aa5aa7625e7d3eb3",
       "metrics": 42,
       "params": 20,
-      "digest": "11f53f44e567"
+      "digest": "3297f4b718fb"
     }
   ],
-  "seconds": 1.1
+  "seconds": 1.0
 }
