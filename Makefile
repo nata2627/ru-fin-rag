@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: help venv venv-dense venv-dbt check check-retrieval check-all lint test fmt serve answer-threshold vectors graph graph-expansion warehouse mart dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
+.PHONY: help venv venv-dense venv-dbt check check-retrieval check-all lint test fmt serve answer-threshold vectors graph graph-expansion warehouse mart figures dashboard dag dag-drill dag-report alert monitoring monitoring-thresholds monitoring-drill sample-size drain logs-up logs-down clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 20
@@ -89,6 +89,9 @@ warehouse: ## сверить режимы витрины: файлы через 
 
 mart: ## собрать витрину dbt в ClickHouse и сверить ее вывод с бесплатным режимом
 	$(PY) scripts/build_mart.py
+
+figures: ## перерисовать картинки README из файлов результатов (нужна группа figures)
+	$(PY) scripts/readme_figures.py
 
 dashboard: ## собрать страницу дашборда по журналу репозитория в site/
 	$(PY) scripts/build_dashboard.py

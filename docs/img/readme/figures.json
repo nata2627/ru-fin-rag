@@ -1,0 +1,449 @@
+{
+  "key_numbers": {
+    "tiles": [
+      {
+        "big": "62 594",
+        "text": "фрагмента из 1554 актов\nБанка России в наборе",
+        "numbers": [
+          {
+            "value": 62594,
+            "source": "results/render-rehearsal.json",
+            "key": "health.chunks"
+          },
+          {
+            "value": 1554,
+            "source": "results/render-rehearsal.json",
+            "key": "health.corpus_version"
+          }
+        ]
+      },
+      {
+        "big": "0,710",
+        "text": "NDCG@10 лучшей связки\nна 991 запросе, у BM25 0,571",
+        "numbers": [
+          {
+            "value": 0.7096,
+            "source": "results/rerank-quality.json",
+            "key": "runs.hybrid-rerank, связка сервиса.ndcg10.mean"
+          },
+          {
+            "value": 0.5711,
+            "source": "results/rerank-quality-bm25.json",
+            "key": "runs.bm25, связка сервиса.ndcg10.mean"
+          },
+          {
+            "value": 991,
+            "source": "results/rerank-quality.json",
+            "key": "queries_scored"
+          }
+        ]
+      },
+      {
+        "big": "28 из 28",
+        "text": "ночных прогонов зеленые,\n14 суток без рук",
+        "numbers": [
+          {
+            "value": 28,
+            "source": "results/acceptance-passed.json",
+            "key": "scheduled_runs_green"
+          },
+          {
+            "value": 28,
+            "source": "results/acceptance-passed.json",
+            "key": "scheduled_runs"
+          },
+          {
+            "value": 14,
+            "source": "results/acceptance-passed.json",
+            "key": "days_required"
+          }
+        ]
+      },
+      {
+        "big": "278 МБ",
+        "text": "пик памяти сервиса при\n512 МБ бесплатного тарифа",
+        "numbers": [
+          {
+            "value": 278.4,
+            "source": "results/render-rehearsal.json",
+            "key": "peak_memory_mb"
+          },
+          {
+            "value": 512,
+            "source": "results/render-rehearsal.json",
+            "key": "memory_limit"
+          }
+        ]
+      }
+    ]
+  },
+  "quality": {
+    "title": "Кросс-энкодер дает лучшее качество, но стоит 44 секунды на запрос",
+    "subtitle": "NDCG@10 на 991 размеченном запросе, линия: 95% интервал бутстрэпа; рядом p50 одного запроса на процессоре мака",
+    "rows": [
+      {
+        "config": "hybrid-rerank",
+        "label": "гибрид + кросс-энкодер",
+        "ndcg10": {
+          "value": 0.7096,
+          "lo": 0.6882,
+          "hi": 0.73,
+          "source": "results/rerank-quality.json",
+          "key": "runs.hybrid-rerank, связка сервиса.ndcg10"
+        },
+        "p50_ms": {
+          "value": 43944.78,
+          "source": "results/latency-local.json",
+          "key": "configs.hybrid-rerank.p50_ms"
+        },
+        "text": "0,710",
+        "latency_text": "43,9 с"
+      },
+      {
+        "config": "bm25-rerank",
+        "label": "BM25 + кросс-энкодер",
+        "ndcg10": {
+          "value": 0.6916,
+          "lo": 0.6693,
+          "hi": 0.7133,
+          "source": "results/rerank-quality-bm25.json",
+          "key": "runs.bm25-rerank, связка сервиса.ndcg10"
+        },
+        "p50_ms": {
+          "value": 43924.04,
+          "source": "results/latency-local.json",
+          "key": "configs.bm25-rerank.p50_ms"
+        },
+        "text": "0,692",
+        "latency_text": "43,9 с"
+      },
+      {
+        "config": "hybrid",
+        "label": "гибрид, слияние по рангам",
+        "ndcg10": {
+          "value": 0.6125588973473273,
+          "lo": 0.5892766682947709,
+          "hi": 0.635890286548624,
+          "source": "retrieval/data/results/base.json",
+          "key": "metrics.hybrid-rufin.NDCG@10"
+        },
+        "p50_ms": {
+          "value": 92.17,
+          "source": "results/latency-local.json",
+          "key": "configs.hybrid.p50_ms"
+        },
+        "text": "0,613",
+        "latency_text": "92,2 мс"
+      },
+      {
+        "config": "bm25",
+        "label": "BM25 со стеммером",
+        "ndcg10": {
+          "value": 0.571129359992718,
+          "lo": 0.5471512068156467,
+          "hi": 0.5952677598861303,
+          "source": "retrieval/data/results/base.json",
+          "key": "metrics.bm25.NDCG@10"
+        },
+        "p50_ms": {
+          "value": 1.54,
+          "source": "results/latency-local.json",
+          "key": "configs.bm25.p50_ms"
+        },
+        "text": "0,571",
+        "latency_text": "1,54 мс"
+      },
+      {
+        "config": "dense",
+        "label": "плотный поиск",
+        "ndcg10": {
+          "value": 0.5475841629670652,
+          "lo": 0.5229934867576705,
+          "hi": 0.5719459099821672,
+          "source": "retrieval/data/results/base.json",
+          "key": "metrics.dense-rufin.NDCG@10"
+        },
+        "p50_ms": {
+          "value": 87.86,
+          "source": "results/latency-local.json",
+          "key": "configs.dense.p50_ms"
+        },
+        "text": "0,548",
+        "latency_text": "87,9 мс"
+      }
+    ],
+    "queries": {
+      "value": 991,
+      "source": "results/rerank-quality.json",
+      "key": "queries_scored"
+    },
+    "ceiling": {
+      "value": 0.8632,
+      "source": "retrieval/data/results/depth-ceiling.json",
+      "key": "groups.все размеченные.configs.hybrid-rufin.Recall@50.mean",
+      "text": "потолок кросс-энкодера:\nв первых 50 кандидатах\nгибрида лежит 0,863\nэталонных фрагментов\n(Recall@50, до стеммера)"
+    }
+  },
+  "negative": {
+    "title": "Что прибавило качество, а что проверено и в сервис не вошло",
+    "subtitle": "Разница NDCG@10 с 95% интервалом парного бутстрэпа, 991 размеченный запрос, если не сказано иное",
+    "rows": [
+      {
+        "label": "кросс-энкодер поверх гибрида",
+        "kept": true,
+        "delta": {
+          "value": 0.097,
+          "lo": 0.0776,
+          "hi": 0.116,
+          "source": "results/rerank-quality.json",
+          "key": "difference_ndcg10"
+        },
+        "text": "+0,097 [+0,078; +0,116]"
+      },
+      {
+        "label": "стеммер в лексической ступени",
+        "kept": true,
+        "delta": {
+          "value": 0.0868,
+          "lo": 0.067,
+          "hi": 0.1065,
+          "source": "retrieval/data/results/morphology.json",
+          "key": "прибавка.12.NDCG@10"
+        },
+        "text": "+0,087 [+0,067; +0,106]"
+      },
+      {
+        "label": "дообученный переранжировщик\n(674 живых вопроса)",
+        "kept": false,
+        "delta": {
+          "value": 0.0127,
+          "lo": 0.0054,
+          "hi": 0.02,
+          "source": "retrieval/data/results/gate12.json",
+          "key": "весь тест.разница"
+        },
+        "text": "+0,0127 [+0,0054; +0,0200]"
+      },
+      {
+        "label": "граф ссылок: соседи в запас выдачи",
+        "kept": false,
+        "delta": {
+          "value": 0.0001,
+          "lo": -0.0014,
+          "hi": 0.0018,
+          "source": "results/graph-expansion.json",
+          "key": "variants.reserve.difference_ndcg10.hybrid.all"
+        },
+        "text": "+0,0001 [−0,0014; +0,0018]"
+      },
+      {
+        "label": "граф ссылок: слияние с выдачей",
+        "kept": false,
+        "delta": {
+          "value": -0.1301,
+          "lo": -0.1438,
+          "hi": -0.1166,
+          "source": "results/graph-expansion.json",
+          "key": "variants.fusion.difference_ndcg10.hybrid.all"
+        },
+        "text": "−0,130 [−0,144; −0,117]"
+      }
+    ],
+    "queries": {
+      "value": 991,
+      "source": "results/rerank-quality.json",
+      "key": "queries_scored"
+    },
+    "live_queries": {
+      "value": 674,
+      "source": "retrieval/data/results/gate12.json",
+      "key": "весь тест.вопросов"
+    },
+    "threshold": {
+      "value": 0.025,
+      "source": "retrieval/data/results/gate12.json",
+      "key": "правило",
+      "text": "порог +0,025, записан до обучения"
+    }
+  },
+  "autonomy": {
+    "title": "14 суток без рук: 28 плановых прогонов из 28 зеленые",
+    "subtitle": "Окно приемки автономности 29.10-12.11.2026, квадрат это плановый прогон; коммитов бота 26, запусков руками 0",
+    "days": [
+      {
+        "date": "2026-10-29",
+        "runs": 1,
+        "source": "results/acceptance-passed.json",
+        "key": "days.0.runs"
+      },
+      {
+        "date": "2026-10-30",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.1.runs"
+      },
+      {
+        "date": "2026-10-31",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.2.runs"
+      },
+      {
+        "date": "2026-11-01",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.3.runs"
+      },
+      {
+        "date": "2026-11-02",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.4.runs"
+      },
+      {
+        "date": "2026-11-03",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.5.runs"
+      },
+      {
+        "date": "2026-11-04",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.6.runs"
+      },
+      {
+        "date": "2026-11-05",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.7.runs"
+      },
+      {
+        "date": "2026-11-06",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.8.runs"
+      },
+      {
+        "date": "2026-11-07",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.9.runs"
+      },
+      {
+        "date": "2026-11-08",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.10.runs"
+      },
+      {
+        "date": "2026-11-09",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.11.runs"
+      },
+      {
+        "date": "2026-11-10",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.12.runs"
+      },
+      {
+        "date": "2026-11-11",
+        "runs": 2,
+        "source": "results/acceptance-passed.json",
+        "key": "days.13.runs"
+      },
+      {
+        "date": "2026-11-12",
+        "runs": 1,
+        "source": "results/acceptance-passed.json",
+        "key": "days.14.runs"
+      }
+    ],
+    "numbers": [
+      {
+        "value": 28,
+        "source": "results/acceptance-passed.json",
+        "key": "scheduled_runs"
+      },
+      {
+        "value": 28,
+        "source": "results/acceptance-passed.json",
+        "key": "scheduled_runs_green"
+      },
+      {
+        "value": 0,
+        "source": "results/acceptance-passed.json",
+        "key": "manual_runs"
+      },
+      {
+        "value": 26,
+        "source": "results/acceptance-passed.json",
+        "key": "commits.bot"
+      },
+      {
+        "value": 14,
+        "source": "results/acceptance-passed.json",
+        "key": "days_required"
+      }
+    ]
+  },
+  "memory": {
+    "title": "В бесплатные 512 МБ влезает только лексический режим",
+    "subtitle": "Пик памяти процесса или контейнера, замеры 21-22.10.2026",
+    "rows": [
+      {
+        "label": "сервис, лексический режим",
+        "mb": {
+          "value": 215.0,
+          "source": "results/memory.json",
+          "key": "configs.bm25.peak_mb"
+        },
+        "unit": "МБ",
+        "fits": true,
+        "text": "215,0 МБ"
+      },
+      {
+        "label": "он же в контейнере с потолком 512 МБ",
+        "mb": {
+          "value": 278.4,
+          "source": "results/render-rehearsal.json",
+          "key": "peak_memory_mb"
+        },
+        "unit": "МБ",
+        "fits": true,
+        "text": "278,4 МБ"
+      },
+      {
+        "label": "контейнер Qdrant рядом с сервисом",
+        "mb": {
+          "value": 826.3,
+          "source": "results/vector-store-container.json",
+          "key": "stores.qdrant.container_memory"
+        },
+        "unit": "МиБ",
+        "plot_mb": 866.4,
+        "fits": false,
+        "text": "826,3 МиБ"
+      },
+      {
+        "label": "сервис с плотной ступенью",
+        "mb": {
+          "value": 1111.8,
+          "source": "results/memory.json",
+          "key": "configs.hybrid.peak_mb"
+        },
+        "unit": "МБ",
+        "fits": false,
+        "text": "1111,8 МБ"
+      }
+    ],
+    "limit": {
+      "value": 512,
+      "source": "results/render-rehearsal.json",
+      "key": "memory_limit",
+      "text": "тариф 512 МБ"
+    }
+  }
+}
