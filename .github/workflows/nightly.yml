@@ -181,7 +181,8 @@ jobs:
             results/corpus-update.json results/regression.json results/regulation.json \
             results/monitoring.json results/dag.md results/registry.json \
             results/corpus.json results/index.json results/corpus-published.json \
-            data/events results/events.json results/uptime.json README.md
+            data/events results/events.json results/uptime.json README.md \
+            docs/measurements.md docs/running.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else

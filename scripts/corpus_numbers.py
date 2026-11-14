@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Корпусные числа в README: фрагменты, акты, словарь индекса, размер, дата снимка.
+"""Корпусные числа в README и docs: фрагменты, акты, словарь индекса, размер, дата снимка.
 
 Зачем. Ночной прогон докачивает акты и пересобирает индекс, поэтому
 `results/corpus.json` и `results/index.json` меняются, а `verify_numbers.py`
@@ -21,7 +21,10 @@
 Форма записи сохраняется: «1555» остается без пробела, «62 606» с пробелом
 (или с переносом строки, который стоял), размер с запятой.
 
-Если ожидаемого токена в README нет, скрипт падает: текст переписали руками
+Длинные разделы лежат в `docs/`, поэтому переписываются все файлы из TEXTS, а
+число обязано стоять хотя бы в одном из них.
+
+Если ожидаемого токена в текстах нет, скрипт падает: текст переписали руками
 и генератор больше не держит это число. Тихо пропустить это нельзя, иначе
 число устарело бы, а сверка осталась зеленой на старом месте.
 
@@ -43,12 +46,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 README = ROOT / "README.md"
+# Тексты, в которых стоят корпусные числа: остальные файлы docs их не называют.
+TEXTS = (README, ROOT / "docs" / "measurements.md", ROOT / "docs" / "running.md")
+# Склейка текстов на время замены: в самих файлах такого символа нет.
+SEAM = "\n\x00\n"
 STATE = RESULTS / "corpus-published.json"
 
 # Что читает скрипт и что он пишет: ночной прогон обязан положить в `git add`
 # все, что пишется, иначе перебазирование падает на чужих правках.
 READS = ("results/corpus.json", "results/index.json")
-WRITES = ("README.md", "results/corpus-published.json")
+WRITES = (
+    "README.md",
+    "docs/measurements.md",
+    "docs/running.md",
+    "results/corpus-published.json",
+)
 
 
 def ru_date(iso: str) -> str:
@@ -151,10 +163,10 @@ def rewrite(readme: str, old: dict, new: dict) -> tuple[str, dict[str, int]]:
     return readme, counts
 
 
-def run(readme_path: Path, state_path: Path, write: bool) -> int:
+def run(paths: tuple[Path, ...], state_path: Path, write: bool) -> int:
     new = current()
     old = json.loads(state_path.read_text(encoding="utf-8"))
-    text = readme_path.read_text(encoding="utf-8")
+    text = SEAM.join(p.read_text(encoding="utf-8") for p in paths)
     updated, counts = rewrite(text, old, new)
     changed = {k: (old[k], new[k]) for k in FIELDS if old[k] != new[k]}
     if not write:
@@ -162,8 +174,9 @@ def run(readme_path: Path, state_path: Path, write: bool) -> int:
         for field, (was, now) in changed.items():
             print(f"  {field}: {was} -> {now}, вхождений {counts[field]}")
         return 0
-    if updated != text:
-        readme_path.write_text(updated, encoding="utf-8")
+    for path, was, now in zip(paths, text.split(SEAM), updated.split(SEAM), strict=True):
+        if now != was:
+            path.write_text(now, encoding="utf-8")
     # Состояние пишется после README: упавшая замена не должна оставить
     # состояние, которое уже не про текст.
     state_path.write_text(json.dumps(new, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -171,10 +184,10 @@ def run(readme_path: Path, state_path: Path, write: bool) -> int:
     return 0
 
 
-def init(readme_path: Path, state_path: Path) -> int:
-    """Завести состояние по текущим файлам. Токены обязаны уже стоять в README."""
+def init(paths: tuple[Path, ...], state_path: Path) -> int:
+    """Завести состояние по текущим файлам. Токены обязаны уже стоять в текстах."""
     new = current()
-    text = readme_path.read_text(encoding="utf-8")
+    text = SEAM.join(p.read_text(encoding="utf-8") for p in paths)
     rewrite(text, new, new)
     state_path.write_text(json.dumps(new, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"состояние записано: {state_path.name}")
@@ -187,8 +200,8 @@ def main() -> int:
     ap.add_argument("--init", action="store_true", help="завести состояние по текущим файлам")
     args = ap.parse_args()
     if args.init:
-        return init(README, STATE)
-    return run(README, STATE, args.write)
+        return init(TEXTS, STATE)
+    return run(TEXTS, STATE, args.write)
 
 
 if __name__ == "__main__":

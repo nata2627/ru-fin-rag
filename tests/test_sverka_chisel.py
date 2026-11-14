@@ -40,7 +40,7 @@ def test_chislo_stoit_celikom(ожидается, текст, есть):
 
 def test_vse_proverki_readme_shodyatsya():
     """Тот же прогон, что в check: 192 проверки и ни одного расхождения."""
-    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    readme = V.public_text()
     проверок = V.checks()
     assert len(проверок) > 100
     расхождения = [

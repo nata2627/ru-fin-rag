@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import acceptance_line
 import acceptance_table
+import readme_figures
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -1627,19 +1628,39 @@ def dag_report_fresh() -> list[str]:
     return ["  results/dag.md разошелся с отчетами прогонов: пересобрать `make dag-report`"]
 
 
+# README короткий, длинные разделы лежат в docs: число обязано стоять хотя бы в
+# одном из этих файлов. Рабочие выдержки экспериментов сюда не входят.
+PUBLIC_TEXTS = (
+    "README.md",
+    "docs/measurements.md",
+    "docs/logging.md",
+    "docs/regulation.md",
+    "docs/answer.md",
+    "docs/negative.md",
+    "docs/limitations.md",
+    "docs/running.md",
+)
+
+
+def public_text() -> str:
+    return " ".join(
+        " ".join((ROOT / name).read_text(encoding="utf-8").split()) for name in PUBLIC_TEXTS
+    )
+
+
 def main() -> int:
     # Переносы строк убираются: ожидаемая запись длиннее строки README попадала
     # бы в проверку разорванной, и проверка зависела бы от того, где встал
     # перенос, а не от числа.
-    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    readme = public_text()
     missing = []
     for what, source, expected in checks():
         if not стоит_в_тексте(expected, readme):
             missing.append((what, source, expected))
     if missing:
-        print("README расходится с замерами:", file=sys.stderr)
+        print("README и docs расходятся с замерами:", file=sys.stderr)
         for what, source, expected in missing:
-            print(f"  {what}: в {source} стоит {expected}, в README такого нет", file=sys.stderr)
+            print(f"  {what}: в {source} стоит {expected}, в текстах такого нет", file=sys.stderr)
         return 1
     problems = skills_rows(readme)
     if problems:
@@ -1656,13 +1677,20 @@ def main() -> int:
         print("отчет или карточка модели разошлись с замерами:", file=sys.stderr)
         print("\n".join(problems), file=sys.stderr)
         return 1
+    # Картинки README ночной прогон не перерисовывает, поэтому их числа берутся
+    # только из замороженных файлов и сверяются по манифесту.
+    problems = readme_figures.stale()
+    if problems:
+        print("картинки README разошлись с замерами:", file=sys.stderr)
+        print("\n".join(f"  {p}" for p in problems), file=sys.stderr)
+        return 1
     problems = dashboard_values()
     if problems:
         print("страница дашборда разошлась с витриной:", file=sys.stderr)
         print("\n".join(problems), file=sys.stderr)
         return 1
     print(
-        f"числа README сошлись с замерами, проверок {len(checks())}, "
+        f"числа README и docs сошлись с замерами, проверок {len(checks())}, "
         f"строк таблицы навыков {len(skills_table.строки())}; "
         f"страница дашборда пересобрана, чисел {len(load('dashboard.json')['values'])}"
     )

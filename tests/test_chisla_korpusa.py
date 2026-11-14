@@ -43,10 +43,16 @@ def площадка(tmp_path, monkeypatch):
     results.mkdir()
     for name in ("corpus.json", "index.json", "corpus-published.json"):
         shutil.copy(ROOT / "results" / name, results / name)
-    readme = tmp_path / "README.md"
-    shutil.copy(ROOT / "README.md", readme)
+    (tmp_path / "docs").mkdir()
+    texts = tuple(tmp_path / p.relative_to(ROOT) for p in C.TEXTS)
+    for src, dst in zip(C.TEXTS, texts, strict=True):
+        shutil.copy(src, dst)
     monkeypatch.setattr(C, "RESULTS", results)
-    return readme, results
+    return texts, results
+
+
+def _текст(texts) -> str:
+    return C.SEAM.join(p.read_text(encoding="utf-8") for p in texts)
 
 
 def _вырасти(results: Path) -> None:
@@ -60,21 +66,21 @@ def _вырасти(results: Path) -> None:
 
 def test_zapis_bez_izmeneniy_nichego_ne_menyaet(площадка):
     """Ночь без докачки не должна давать правок README: иначе коммит каждую ночь."""
-    readme, results = площадка
-    before = readme.read_text(encoding="utf-8")
+    texts, results = площадка
+    before = _текст(texts)
     state = (results / "corpus-published.json").read_text(encoding="utf-8")
-    C.run(readme, results / "corpus-published.json", write=True)
-    assert readme.read_text(encoding="utf-8") == before
+    C.run(texts, results / "corpus-published.json", write=True)
+    assert _текст(texts) == before
     assert (results / "corpus-published.json").read_text(encoding="utf-8") == state
 
 
 def test_vyrosshiy_korpus_perepisan_i_chuzhie_chisla_celi(площадка):
     """Замена берет только свои числа: 62 594, 51 555, 85 399 и 991 стоят рядом."""
-    readme, results = площадка
-    before = readme.read_text(encoding="utf-8")
+    texts, results = площадка
+    before = _текст(texts)
     _вырасти(results)
-    C.run(readme, results / "corpus-published.json", write=True)
-    after = readme.read_text(encoding="utf-8")
+    C.run(texts, results / "corpus-published.json", write=True)
+    after = _текст(texts)
     for токен in ЧУЖИЕ:
         assert len(re.findall(rf"(?<![\d]){re.escape(токен)}(?!\d)", after)) == len(
             re.findall(rf"(?<![\d]){re.escape(токен)}(?!\d)", before)
@@ -90,7 +96,7 @@ def test_vyrosshiy_korpus_perepisan_i_chuzhie_chisla_celi(площадка):
 
 def test_granica_po_cifram_ne_cepliaet_1_555_vnutri_51_555(площадка):
     """«1 555» внутри «51 555» не токен: граница по цифрам, форма записи сохраняется."""
-    readme, results = площадка
+    _, results = площадка
     old = json.loads((results / "corpus-published.json").read_text(encoding="utf-8"))
     old["acts"] = 1555
     text = "словарь 51 555 до стеммера, в корпусе 1 555 акта, еще 1555 акта.\n"
@@ -108,10 +114,10 @@ def test_granica_po_cifram_ne_cepliaet_1_555_vnutri_51_555(площадка):
 
 def test_posle_zapisi_sverka_shoditsya(площадка, monkeypatch):
     """Фразы, которые ищет verify_numbers про корпус и индекс, находятся в новом README."""
-    readme, results = площадка
+    texts, results = площадка
     _вырасти(results)
-    C.run(readme, results / "corpus-published.json", write=True)
-    текст = " ".join(readme.read_text(encoding="utf-8").split())
+    C.run(texts, results / "corpus-published.json", write=True)
+    текст = " ".join(_текст(texts).split())
     real_load = V.load
     monkeypatch.setattr(
         V,
@@ -128,12 +134,13 @@ def test_posle_zapisi_sverka_shoditsya(площадка, monkeypatch):
 
 def test_net_starogo_tokena_padaet(площадка):
     """Текст переписали руками: молча пропустить нельзя, число устареет при зеленой сверке."""
-    readme, results = площадка
-    text = readme.read_text(encoding="utf-8").replace("словарь индекса 49 643", "словарь 49 643")
-    readme.write_text(text, encoding="utf-8")
+    texts, results = площадка
+    for path in texts:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("словарь индекса 49 643", "словарь 49 643"), encoding="utf-8")
     _вырасти(results)
     with pytest.raises(SystemExit) as err:
-        C.run(readme, results / "corpus-published.json", write=True)
+        C.run(texts, results / "corpus-published.json", write=True)
     assert "vocab" in str(err.value) and "переписали руками" in str(err.value)
     # упавшая замена не оставляет состояние, которое уже не про текст
     state = json.loads((results / "corpus-published.json").read_text(encoding="utf-8"))
@@ -142,7 +149,7 @@ def test_net_starogo_tokena_padaet(площадка):
 
 def test_sostoyanie_sovpadaet_s_readme_repozitoriya():
     """Состояние в репозитории говорит правду о README: иначе ночной прогон упадет в первую ночь."""
-    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    text = C.SEAM.join(p.read_text(encoding="utf-8") for p in C.TEXTS)
     state = json.loads((ROOT / "results/corpus-published.json").read_text(encoding="utf-8"))
     C.rewrite(text, state, state)
 
