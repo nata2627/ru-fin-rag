@@ -1,11 +1,11 @@
 {
-  "tracked_at": "2026-10-28",
+  "tracked_at": "2026-11-14",
   "mlflow": "2.19.0",
   "package": "mlflow-skinny",
   "store": "logs/mlruns",
   "store_in_git": false,
   "experiment": "ru-fin-rag",
-  "reports_total": 44,
+  "reports_total": 45,
   "reports_not_a_run": [
     "corpus-published.json",
     "inventory.json",
@@ -13,14 +13,85 @@
     "regression-baseline.json",
     "tracking.json"
   ],
-  "runs_logged_now": 0,
-  "runs_skipped_as_known": 44,
-  "runs_total": 59,
+  "runs_logged_now": 10,
+  "runs_skipped_as_known": 35,
+  "runs_total": 69,
   "store_mb": 0.1,
   "digest_chars": 12,
   "metric_name_rule": "@ переходит в _at_, остальные недопустимые знаки (в том числе русские буквы) в подчеркивание",
   "metric_name_collisions": 0,
   "registry_version": "72d55732a13c",
-  "logged": [],
-  "seconds": 0.8
+  "logged": [
+    {
+      "report": "acceptance-passed.json",
+      "run_id": "810378910e904821b23fbac768c822eb",
+      "metrics": 6,
+      "params": 5,
+      "digest": "a29940e6ba17"
+    },
+    {
+      "report": "acceptance.json",
+      "run_id": "0e4f7c9e92dc44b3aabb232a1510b14e",
+      "metrics": 7,
+      "params": 8,
+      "digest": "7ed68c4fdeb8"
+    },
+    {
+      "report": "corpus-update.json",
+      "run_id": "6dd306e4ac184ebcb32e01033f2e61cb",
+      "metrics": 9,
+      "params": 2,
+      "digest": "b449bc2f5f22"
+    },
+    {
+      "report": "corpus.json",
+      "run_id": "156f8bb6b0b44c309b21fa8410757448",
+      "metrics": 4,
+      "params": 2,
+      "digest": "71a57a15f68d"
+    },
+    {
+      "report": "events.json",
+      "run_id": "cf0feb5927a2474aba26d29526f370d9",
+      "metrics": 5,
+      "params": 3,
+      "digest": "e7c83b540352"
+    },
+    {
+      "report": "index.json",
+      "run_id": "b7f0b95d6f4144208b791c9480abf539",
+      "metrics": 7,
+      "params": 1,
+      "digest": "4496605fd0c7"
+    },
+    {
+      "report": "latency-local.json",
+      "run_id": "4b9398d8619348b493383b2c40ed594a",
+      "metrics": 53,
+      "params": 19,
+      "digest": "916f3da0d091"
+    },
+    {
+      "report": "monitoring.json",
+      "run_id": "139ee98322294d2b94b2613d5e1ad18a",
+      "metrics": 25,
+      "params": 9,
+      "digest": "eb3dee94202f"
+    },
+    {
+      "report": "regression.json",
+      "run_id": "183957fd01724e03baa2ae8e942400b7",
+      "metrics": 19,
+      "params": 9,
+      "digest": "4eeba286a437"
+    },
+    {
+      "report": "regulation.json",
+      "run_id": "461e6166b46b43879ec6d975ed87b595",
+      "metrics": 4,
+      "params": 5,
+      "digest": "365fc1416730"
+    }
+  ],
+  "seconds": 1.0
 }

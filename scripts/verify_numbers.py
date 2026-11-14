@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import acceptance_line
+import acceptance_table
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -209,6 +210,15 @@ def checks() -> list[tuple[str, str, str]]:
     # и плановый прогон, и прогон приемки, потому что файл уже назвал новый
     # разрыв, а текст рядом остался прежним.
     out.append(("строка состояния приемки", "acceptance.json", acceptance_line.строка()))
+    # Итог приемки берется из замороженного файла: живой `acceptance.json`
+    # прогон переписывает каждый день, и окно в четырнадцать суток из него уже
+    # не восстановить.
+    passed = load("acceptance-passed.json")
+    out.append(("итог приемки", "acceptance-passed.json", acceptance_table.summary(passed)))
+    out.extend(
+        (f"приемка, день {row.split(' | ')[0][2:]}", "acceptance-passed.json", row)
+        for row in acceptance_table.rows(passed)
+    )
     out.append(("задержка на хостинге p50", "latency-hosted.json", f"{ru(hosted['p50_ms'], 1)} мс"))
     out.append(("задержка на хостинге p95", "latency-hosted.json", f"{ru(hosted['p95_ms'], 1)} мс"))
     out.append(

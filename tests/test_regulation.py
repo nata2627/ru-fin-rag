@@ -25,6 +25,7 @@ def load(name: str):
 
 heartbeat = load("record_heartbeat")
 acceptance = load("record_acceptance")
+passed = load("acceptance_table")
 
 REGRESSION = {"corpus_version": "chunks62594-acts1554", "metrics": {"NDCG@10": 0.4839}}
 
@@ -35,6 +36,7 @@ def run(created: str, conclusion: str, event: str = "schedule") -> dict:
         "conclusion": conclusion,
         "event": event,
         "url": f"https://github.com/nata2627/ru-fin-rag/actions/runs/{created[8:10]}",
+        "databaseId": int(created[8:10]),
     }
 
 
@@ -113,3 +115,27 @@ def test_heartbeat_counts_refusals_in_a_row_and_forgets_them_after_contact():
     assert state["source_unavailable_runs"] == 0
     assert state["last_source_contact"] == "2026-10-24T14:20:00Z"
     assert state["runs"] == 3
+
+
+def test_acceptance_window_is_fourteen_days_from_the_streak_start():
+    """Итог считает ровно четырнадцать суток, а цепочка живет дольше.
+
+    Прогон на пятнадцатые сутки и ручной запуск внутри окна в число плановых не
+    идут, красный прогон до цепочки окно не открывает.
+    """
+    runs = [
+        run("2026-10-29T08:30:00Z", "failure"),
+        run("2026-10-29T19:39:00Z", "success"),
+        run("2026-11-05T09:00:00Z", "success", event="workflow_dispatch"),
+        run("2026-11-12T09:51:00Z", "success"),
+        run("2026-11-12T21:28:00Z", "success"),
+    ]
+    report = passed.window(runs)
+    assert report["window_start"] == "2026-10-29T19:39:00Z"
+    assert report["window_end"] == "2026-11-12T19:39:00Z"
+    assert report["scheduled_runs"] == report["scheduled_runs_green"] == 2
+    assert report["manual_runs"] == 1
+    assert [d["date"] for d in report["days"]] == ["2026-10-29", "2026-11-12"]
+    assert passed.rows(report)[0] == (
+        "| 29.10.2026 | 1 | [29](https://github.com/nata2627/ru-fin-rag/actions/runs/29) |"
+    )

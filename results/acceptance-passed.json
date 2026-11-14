@@ -1,0 +1,205 @@
+{
+  "window_start": "2026-10-29T19:39:24Z",
+  "window_end": "2026-11-12T19:39:24Z",
+  "days_required": 14,
+  "scheduled_runs": 28,
+  "scheduled_runs_green": 28,
+  "manual_runs": 0,
+  "days": [
+    {
+      "date": "2026-10-29",
+      "runs": [
+        {
+          "id": 40942051256,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/40942051256"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "runs": [
+        {
+          "id": 41028045152,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41028045152"
+        },
+        {
+          "id": 41114995609,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41114995609"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "runs": [
+        {
+          "id": 41184684543,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41184684543"
+        },
+        {
+          "id": 41230097740,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41230097740"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "runs": [
+        {
+          "id": 41292520922,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41292520922"
+        },
+        {
+          "id": 41339192691,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41339192691"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "runs": [
+        {
+          "id": 41421431091,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41421431091"
+        },
+        {
+          "id": 41540188571,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41540188571"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "runs": [
+        {
+          "id": 41612136971,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41612136971"
+        },
+        {
+          "id": 41713163945,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41713163945"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-04",
+      "runs": [
+        {
+          "id": 41805909536,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41805909536"
+        },
+        {
+          "id": 41910256457,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/41910256457"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "runs": [
+        {
+          "id": 42002929034,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42002929034"
+        },
+        {
+          "id": 42109486044,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42109486044"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "runs": [
+        {
+          "id": 42195090178,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42195090178"
+        },
+        {
+          "id": 42288472526,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42288472526"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "runs": [
+        {
+          "id": 42357084494,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42357084494"
+        },
+        {
+          "id": 42403105236,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42403105236"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-08",
+      "runs": [
+        {
+          "id": 42465377536,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42465377536"
+        },
+        {
+          "id": 42511959354,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42511959354"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-09",
+      "runs": [
+        {
+          "id": 42596399593,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42596399593"
+        },
+        {
+          "id": 42720506117,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42720506117"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-10",
+      "runs": [
+        {
+          "id": 42794360043,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42794360043"
+        },
+        {
+          "id": 42899159221,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42899159221"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "runs": [
+        {
+          "id": 42995406503,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/42995406503"
+        },
+        {
+          "id": 43103013011,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/43103013011"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-12",
+      "runs": [
+        {
+          "id": 43195152407,
+          "url": "https://github.com/nata2627/ru-fin-rag/actions/runs/43195152407"
+        }
+      ]
+    }
+  ],
+  "commits": {
+    "bot": 26,
+    "not_bot": 38,
+    "not_bot_touching_workflow": [
+      "26047bb"
+    ]
+  },
+  "rule": "четырнадцать календарных дней подряд: плановый прогон проходит без участия человека, коммиты в истории делает только бот, постоянных расходов нет"
+}
