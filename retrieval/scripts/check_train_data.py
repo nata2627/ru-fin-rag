@@ -46,7 +46,7 @@ def main() -> None:
                          "пропускаются")
     ap.add_argument("--per-query", type=int, default=2)
     ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train_noleak.jsonl"),
-                    help="обучающая выборка; с задачи 11.2 это выборка без утечки по фрагментам")
+                    help="обучающая выборка; с шага 2 этапа 11 она без утечки по фрагментам")
     ap.add_argument("--qrels-punkt", default=os.path.join(QDIR, "qrels_punkt.tsv"))
     args = ap.parse_args()
 

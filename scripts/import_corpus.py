@@ -104,7 +104,7 @@ def main() -> int:
     print(f"векторы {vectors_dst} {vectors_dst.stat().st_size / 1e6:.1f} МБ")
 
     # Веса модели запроса. В репозиторий они не едут: 470 МБ больше предела
-    # файла в git, и чем их заменить на хостинге, решается в задаче 2.4.
+    # файла в git, и чем их заменить на хостинге, решается при переносе на хостинг.
     model_src = args.part_a / "data/weights/d-matryoshka"
     model_dst = args.data / "models/rufin"
     if model_src.exists():

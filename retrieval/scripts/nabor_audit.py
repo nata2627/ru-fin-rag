@@ -75,7 +75,7 @@ def gold_of(q: dict) -> set[str]:
 def confirmed_pairs(extra_judge: str | None = None) -> tuple[set, set]:
     """Пары с ненулевой оценкой судьи и с ненулевой оценкой человека.
 
-    extra_judge: лист разметки ядра (задача 11.5), ответы в двух вопросах.
+    extra_judge: лист разметки ядра, ответы в двух вопросах.
     """
     judge = {(r["query_id"], r["chunk_id"]) for r in read_tsv(os.path.join(QDIR, "judge.tsv"))
              if r["otsenka_0_1_2"].strip() in ("1", "2")}
@@ -95,7 +95,7 @@ def confirmed_pairs(extra_judge: str | None = None) -> tuple[set, set]:
 def load_labels(path: str) -> tuple[dict[str, dict[str, int]], dict[tuple[str, str], set[str]]]:
     """Метки и фрагменты за каждой меткой.
 
-    С задачи 11.1 метка может стоять на пункте (`qrels_punkt.tsv`, столбец
+    С шага 1 этапа 11 метка может стоять на пункте (`qrels_punkt.tsv`, столбец
     `chunk-ids`), и тогда за ней несколько фрагментов. У прежних файлов за
     меткой ровно один фрагмент, и показатели считаются как раньше.
     """
@@ -134,10 +134,10 @@ def main() -> None:
     ap.add_argument("--train", default=os.path.join(QDIR, "synthetic_train.jsonl"))
     ap.add_argument("--copy-threshold", type=float, default=None,
                     help="порог copy_share этапа; на 29.10.2026 его нет")
-    ap.add_argument("--live-qrels", help="метки живых вопросов поверх --qrels; с задачи 11.5 это "
+    ap.add_argument("--live-qrels", help="метки живых вопросов поверх --qrels; теперь это "
                     "уплотненная разметка data/queries/qrels_live_core.tsv")
     ap.add_argument("--extra-judge", help="лист разметки моделью сверх judge.tsv: data/queries/razmetka_yadro.tsv")
-    ap.add_argument("--subsets", help="podvyborki.json; с задачи 11.3 в нем есть подвыборка «письма», "
+    ap.add_argument("--subsets", help="podvyborki.json; в нем есть подвыборка «письма», "
                     "и M7 печатает, сколько писем вынесено в нее")
     ap.add_argument("--out", help="куда писать; по умолчанию data/results/nabor-audit-<тег>.json")
     args = ap.parse_args()

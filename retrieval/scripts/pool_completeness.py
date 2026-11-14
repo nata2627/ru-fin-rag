@@ -91,7 +91,7 @@ def main() -> None:
     ap.add_argument("--out", default=os.path.join(QDIR, "pool_live.tsv"))
     ap.add_argument("--unlabeled", action="store_true",
                     help="пул для вопросов подвыборки, у которых разметки нет вовсе "
-                         "(задача 11.6); они в тест не входят")
+                         "(второй набор живых); они в тест не входят")
     args = ap.parse_args()
 
     lines: list[str] = []

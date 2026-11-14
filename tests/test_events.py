@@ -207,7 +207,7 @@ def test_default_event_dir_is_the_service_data_dir(monkeypatch):
 def test_the_test_run_writes_events_outside_the_repo(event_dir_outside_the_repo):
     """Обратная сторона предыдущего теста: прогон тестов в дерево не пишет.
 
-    Один раз уже написал: сверка задачи 4.1 нашла в data/events 77 событий
+    Один раз уже написал: сверка журнала запросов нашла в data/events 77 событий
     тестов. Каталог ставит tests/conftest.py на весь прогон, поэтому правило
     держится и на тестах, которые поднимают сервис подпроцессом.
     """

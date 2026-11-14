@@ -330,7 +330,7 @@ def write_throughput(pool: list[dict], directory: Path, threads: int, total: int
         "events_per_second": round(log.written / seconds, 1),
         "mean_us_per_event": round(seconds / log.written * 1e6, 2),
         # Загрузка машины рядом с числом: мак общий, и на нем в это время шла
-        # параллельная работа. Без этой колонки разброс между повторами необъясним.
+        # другая работа. Без этой колонки разброс между повторами необъясним.
         "load_average_1m": round(os.getloadavg()[0], 2),
     }
 

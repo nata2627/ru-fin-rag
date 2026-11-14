@@ -125,7 +125,7 @@ def test_support_feature_is_the_one_the_monitor_counts():
 
 
 def test_query_without_support_is_refused_without_citations(service):
-    """Выход задачи 7.1: без опоры сервис отказывает, а не выдумывает."""
+    """Без опоры сервис отказывает, а не выдумывает."""
     answer = without_support(service).answer(IN_CORPUS, top=10)
     assert answer.answered is False
     assert answer.citations == ()

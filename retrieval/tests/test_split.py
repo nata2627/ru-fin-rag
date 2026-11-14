@@ -112,7 +112,7 @@ def test_para_fragmentov_tozhe_istochnik():
 
 @pytest.mark.data
 def test_obuchenie_bez_utechki_po_fragmentam():
-    """Выборка без утечки (задача 11.2) не делит ни одного фрагмента с эталоном
+    """Выборка без утечки не делит ни одного фрагмента с эталоном
     теста в единицах «пункт», а убранного ровно столько, сколько записано."""
     from rufin.punkt import read_units
 

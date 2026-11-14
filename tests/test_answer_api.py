@@ -1,4 +1,4 @@
-"""Ручка `/answer` в двух режимах (SPEC, раздел 5; PLAN, задачи 7.1 и 7.2).
+"""Ручка `/answer` в двух режимах.
 
 Сервис поднимается лексическим: плотная часть тянет torch и весы модели, а
 контракт ручки от них не зависит. Генеративный режим получает подставную
@@ -107,7 +107,7 @@ def test_excerpts_mode_answers_with_citations(client):
 
 
 def test_query_without_support_gets_a_refusal_not_an_answer(client, no_support):
-    """Выход задачи 7.1: отказ приходит ответом 200 с числами, а не выдумкой."""
+    """Отказ приходит ответом 200 с числами, а не выдумкой."""
     response = client.post("/answer", json={"query": IN_CORPUS})
     assert response.status_code == 200
     body = response.json()
@@ -127,7 +127,7 @@ def test_generate_mode_is_a_honest_503_without_a_key(client):
 
 
 def test_generate_mode_answers_from_the_found_fragments(client, model):
-    """Выход задачи 7.2: сервис отвечает в обоих режимах."""
+    """Сервис отвечает в обоих режимах."""
     model.append(json.dumps({"answer": "Резерв формируется по Положению 590-П.", "used": [1, 2]}))
     body = client.post("/answer", json={"query": IN_CORPUS, "mode": GENERATE, "top": 5}).json()
     assert body["answered"] is True
