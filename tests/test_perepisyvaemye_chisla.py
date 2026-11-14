@@ -46,6 +46,7 @@ L = _модуль("acceptance_line")
     "monitoring.json": "nightly.yml, шаг Monitor",
     "registry.json": "nightly.yml, шаг Rebuild the version registry",
     "events.json": "nightly.yml, шаг Drain the query log",
+    "uptime.json": "nightly.yml, шаг Probe the live link",
     "acceptance.json": "acceptance.yml, шаг Record the autonomy acceptance",
 }
 

@@ -43,6 +43,7 @@ NOT_A_RUN = {
     "regression-baseline.json",
     "corpus-published.json",
     "inventory.json",
+    "uptime.json",
 }
 PARAM_CHARS = 250
 # Метрикой считается число, параметром строка. Поля времени в метрики не идут:

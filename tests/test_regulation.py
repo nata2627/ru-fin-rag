@@ -26,6 +26,7 @@ def load(name: str):
 heartbeat = load("record_heartbeat")
 acceptance = load("record_acceptance")
 passed = load("acceptance_table")
+uptime = load("probe_service")
 
 REGRESSION = {"corpus_version": "chunks62594-acts1554", "metrics": {"NDCG@10": 0.4839}}
 
@@ -139,3 +140,14 @@ def test_acceptance_window_is_fourteen_days_from_the_streak_start():
     assert passed.rows(report)[0] == (
         "| 29.10.2026 | 1 | [29](https://github.com/nata2627/ru-fin-rag/actions/runs/29) |"
     )
+
+
+def test_uptime_count_adds_every_check_and_only_answered_ones_as_ok():
+    """Знаменатель растет на каждой проверке, а молчание подряд сбрасывает ответ."""
+    silent = {"at": "2026-11-14T02:17:00Z", "ok": False}
+    state = uptime.record({}, silent)
+    state = uptime.record(state, {"at": "2026-11-14T14:17:00Z", "ok": False})
+    assert (state["checks_total"], state["checks_ok"], state["silent_in_a_row"]) == (2, 0, 2)
+    state = uptime.record(state, {"at": "2026-11-15T02:17:00Z", "ok": True})
+    assert (state["checks_total"], state["checks_ok"], state["silent_in_a_row"]) == (3, 1, 0)
+    assert state["since"] == "2026-11-14T02:17:00Z"

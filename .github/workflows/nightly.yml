@@ -92,6 +92,15 @@ jobs:
           RUFINRAG_DISABLE_DENSE: "1"
         run: python scripts/run_regression.py --config bm25
 
+      # Живая ссылка проверяется здесь, потому что больше ее не проверяет никто:
+      # деплой на хостинге числится живым и тогда, когда сервис не просыпается.
+      # Шаг стоит перед выгрузкой журнала, чтобы время до ответа было временем
+      # пробуждения, как у человека, открывшего ссылку. Молчание прогон не
+      # роняет: оно уходит в issue шагом ниже, счет лежит в results/uptime.json.
+      - name: Probe the live link
+        id: probe
+        run: python scripts/probe_service.py
+
       # Журнал запросов живет на эфемерном диске хостинга и пропадает вместе с
       # контейнером, а сам сервис коммитить в репозиторий не может: для этого
       # нужен был бы токен со сроком, который однажды истечет. Поэтому строки
@@ -172,7 +181,7 @@ jobs:
             results/corpus-update.json results/regression.json results/regulation.json \
             results/monitoring.json results/dag.md results/registry.json \
             results/corpus.json results/index.json results/corpus-published.json \
-            data/events results/events.json README.md
+            data/events results/events.json results/uptime.json README.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
           else
@@ -190,21 +199,23 @@ jobs:
             git push
           fi
 
-      # Срабатывает на поломке, на отказе cbr.ru и на алерте мониторинга. Два
-      # последних случая прогон не роняют, но и молчать о них нельзя: issue это
+      # Срабатывает на поломке, на отказе cbr.ru, на алерте мониторинга и на
+      # молчании живой ссылки. Три последних случая прогон не роняют, но и молчать о них нельзя: issue это
       # единственный канал, в котором они видны без чтения логов.
       #
       # Второго issue от нового алерта не появляется: открытый issue с той же
       # меткой ищется до всего остального, и, если он есть, текст уходит
-      # комментарием в него. Метка одна на все три случая нарочно, иначе две
+      # комментарием в него. Метка одна на все случаи нарочно, иначе две
       # метки дали бы два issue про одну ночь.
-      - name: Open an issue when the run breaks, cbr.ru refuses or monitoring alerts
+      - name: Open an issue when the run breaks, cbr.ru refuses, monitoring alerts or the link is silent
         if: >-
           failure() || cancelled()
           || steps.corpus.outputs.status == 'source_unavailable'
           || steps.monitoring.outputs.alert == 'fired'
+          || steps.probe.outputs.status == 'silent'
         uses: actions/github-script@v7
         env:
+          PROBE_STATUS: ${{ steps.probe.outputs.status }}
           SOURCE_STATUS: ${{ steps.corpus.outputs.status }}
           MONITORING_ALERT: ${{ steps.monitoring.outputs.alert }}
           JOB_STATUS: ${{ job.status }}
@@ -215,6 +226,7 @@ jobs:
             const refused = process.env.SOURCE_STATUS === 'source_unavailable'
             const alerted = process.env.MONITORING_ALERT === 'fired'
             const broken = process.env.JOB_STATUS !== 'success'
+            const silent = process.env.PROBE_STATUS === 'silent'
             const open = await github.rest.issues.listForRepo({
               owner: context.repo.owner, repo: context.repo.repo,
               state: 'open', labels: marker,
@@ -312,15 +324,34 @@ jobs:
               '',
               'Прогон можно запустить руками: вкладка Actions, workflow nightly, кнопка Run workflow.',
             ]
+            const uptime = read('results/uptime.json')
+            const silentBody = [
+              'Живая ссылка не ответила на проверку из ночного прогона. Сам прогон от этого не',
+              'краснеет: корпус, индекс и регрессия посчитаны как обычно.',
+              '',
+              `Ссылка: ${uptime.last?.url || 'не записана'}`,
+              `Ошибка: \`${uptime.last?.note || 'не записана'}\`, ждали`
+                + ` ${uptime.last?.seconds_to_answer ?? '?'} с, попыток ${uptime.last?.attempts ?? '?'}.`,
+              `Проверок подряд без ответа: ${uptime.silent_in_a_row ?? '?'}; всего ответов`
+                + ` ${uptime.checks_ok ?? '?'} из ${uptime.checks_total ?? '?'} проверок.`,
+              `Лог: ${url}`,
+              '',
+              'Что смотреть: панель хостинга, события деплоя и лог процесса. Одна такая проверка',
+              'бывает и от сети раннера, несколько подряд значит, что сервис не просыпается.',
+            ]
+            const only = (lines) => (silent && !broken ? [...lines, '', ...silentBody] : lines)
             const body = [
-              ...(broken ? brokenBody : refused ? refusedBody : alertBody),
+              ...(broken ? brokenBody : refused ? only(refusedBody)
+                : alerted ? only(alertBody) : silentBody),
               ...monitoringLines,
             ].join('\n')
             const title = broken
               ? 'Ночной прогон упал'
               : refused
                 ? 'Ночной прогон зеленый, cbr.ru не отдал перечень'
-                : 'Ночной прогон зеленый, сработал алерт мониторинга'
+                : alerted
+                  ? 'Ночной прогон зеленый, сработал алерт мониторинга'
+                  : 'Ночной прогон зеленый, живая ссылка не ответила'
             if (open.data.length) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo,
