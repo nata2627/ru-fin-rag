@@ -49,15 +49,15 @@
 
 ```mermaid
 flowchart LR
-    V[Вестник Банка России] -->|ночью| N[прогон GitHub Actions]
-    N --> C[(корпус и индекс)]
-    C --> S[сервис FastAPI на Render]
-    S --> Q["/search, /answer, /route"]
-    S --> J[(журнал запросов)]
-    J --> D[витрина dbt]
-    D --> P[дашборд GitHub Pages]
-    N --> R[регрессия качества и мониторинг]
-    R -->|порог пробит| I[issue]
+    V["Вестник<br>Банка России"] -->|" ночью "| N["прогон<br>GitHub Actions"]
+    N --> C[("корпус<br>и индекс")]
+    C --> S["сервис FastAPI<br>на Render"]
+    S --> Q["/search<br>/answer<br>/route"]
+    S --> J[("журнал<br>запросов")]
+    J --> D["витрина<br>dbt"]
+    D --> P["дашборд<br>GitHub Pages"]
+    N --> R["регрессия качества<br>и мониторинг"]
+    R -->|" порог<br>пробит "| I["issue"]
 ```
 
 | Слой | Что делает | Подробно |
@@ -82,23 +82,23 @@ Airflow, Docker, locust, MLflow, GitHub Actions, GitHub Pages, Render.
 
 | Навык | Где в коде | Чем подтвержден | Где посчитано |
 |---|---|---|---|
-| Лексический поиск BM25 со снятием формы слова | [`src/rufinrag/retrieval/bm25.py`](src/rufinrag/retrieval/bm25.py), [`text.py`](src/rufinrag/retrieval/text.py) | p50 1,54 мс, p95 2,68 мс на маке | [`results/latency-local.json`](results/latency-local.json) |
-| Плотный поиск и гибрид через RRF | [`src/rufinrag/retrieval/dense.py`](src/rufinrag/retrieval/dense.py), [`fusion.py`](src/rufinrag/retrieval/fusion.py) | гибрид p50 92,17 мс, p95 202,62 мс | [`results/latency-local.json`](results/latency-local.json) |
-| Переранжирование кросс-энкодером | [`src/rufinrag/retrieval/rerank.py`](src/rufinrag/retrieval/rerank.py) | прибавка NDCG@10 0,097 [0,0776; 0,116] | [`results/rerank-quality.json`](results/rerank-quality.json) |
-| Выбор векторного хранилища по замеру | [`scripts/compare_vector_stores.py`](scripts/compare_vector_stores.py), [`src/rufinrag/retrieval/dense.py`](src/rufinrag/retrieval/dense.py) | faiss p50 2,08 мс против numpy 3,13 мс, индекс 91,7 МБ | [`results/vector-store.json`](results/vector-store.json) |
-| Квантование векторов: замер, в сервисе не применяется | [`scripts/measure_quantization.py`](scripts/measure_quantization.py) | память 22,9 МБ против 91,7 МБ, перекрытие топ-10 0,995 | [`results/quantization.json`](results/quantization.json) |
-| Сервис на FastAPI на бесплатном хостинге | [`src/rufinrag/api.py`](src/rufinrag/api.py) | p50 470,6 мс, p95 669,3 мс по открытой ссылке | [`results/latency-hosted.json`](results/latency-hosted.json) |
-| Журнал запросов и витрина на ClickHouse в двух режимах | [`src/rufinrag/warehouse.py`](src/rufinrag/warehouse.py), [`events.py`](src/rufinrag/events.py) | 253 строк журнала: 200 запросов и 53 отзывов, оба режима сошлись | [`results/warehouse.json`](results/warehouse.json) |
-| Модели витрины на dbt | [`dbt/models/`](dbt/models/) | 8 моделей собираются за 3,8 с | [`results/dbt.json`](results/dbt.json) |
-| Онлайн сравнение связок и перестановочный тест | [`src/rufinrag/interleaving.py`](src/rufinrag/interleaving.py), [`scripts/compare_configs.py`](scripts/compare_configs.py) | 0,6126 против 0,5711, разница 0,0414 | [`results/compare-configs.json`](results/compare-configs.json) |
-| Правило размера выборки и остановки, записанное до данных | [`scripts/plan_sample_size.py`](scripts/plan_sample_size.py), [`src/rufinrag/interleaving.py`](src/rufinrag/interleaving.py) | альфа 0,05, мощность 0,80, целевой эффект 0,02 | [`results/sample-size.json`](results/sample-size.json) |
-| Порог алерта по разбросу доливки и проверка деградацией | [`src/rufinrag/monitoring.py`](src/rufinrag/monitoring.py), [`scripts/measure_alert_threshold.py`](scripts/measure_alert_threshold.py) | порог 0,020 по 40 прогонам доливки, учебная деградация поймана на просадке 0,0216, самая большая незамеченная 0,0108 | [`results/alert-threshold.json`](results/alert-threshold.json), [`results/alert-drill.json`](results/alert-drill.json) |
-| Регламент по расписанию без ее машины | [`.github/workflows/nightly.yml`](.github/workflows/nightly.yml), [`dags/`](dags/) | 48 прогонов, следимая метрика 0,5712 | [`results/regulation.json`](results/regulation.json) |
-| Ответ с цитатами и отказ без опоры | [`src/rufinrag/answer.py`](src/rufinrag/answer.py), [`generation.py`](src/rufinrag/generation.py) | ссылка на релевантный фрагмент 731 из 976, отказов 15 из 991 | [`results/answer-quality.json`](results/answer-quality.json) |
-| Роутер на инструментах, отрицательный результат | [`src/rufinrag/router.py`](src/rufinrag/router.py) | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | [`results/router.json`](results/router.json) |
-| Граф ссылок между актами, отрицательный результат | [`src/rufinrag/graph.py`](src/rufinrag/graph.py) | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | [`results/graph-expansion.json`](results/graph-expansion.json) |
-| Воспроизводимость выдачи от прогона к прогону | [`scripts/check_reproducibility.py`](scripts/check_reproducibility.py) | состав топ-10 совпал у 199 из 200 запросов | [`results/reproducibility.json`](results/reproducibility.json) |
-| Приемка автономности по факту, а не по обещанию | [`scripts/record_acceptance.py`](scripts/record_acceptance.py) | прогонов 48, зеленых 45, нужно 14 дней | [`results/acceptance.json`](results/acceptance.json) |
+| Лексический поиск BM25 со снятием формы слова | [`bm25.py`](src/rufinrag/retrieval/bm25.py), [`text.py`](src/rufinrag/retrieval/text.py) | p50 1,54 мс, p95 2,68 мс на маке | [`latency-local.json`](results/latency-local.json) |
+| Плотный поиск и гибрид через RRF | [`dense.py`](src/rufinrag/retrieval/dense.py), [`fusion.py`](src/rufinrag/retrieval/fusion.py) | гибрид p50 92,17 мс, p95 202,62 мс | [`latency-local.json`](results/latency-local.json) |
+| Переранжирование кросс-энкодером | [`rerank.py`](src/rufinrag/retrieval/rerank.py) | прибавка NDCG@10 0,097 [0,0776; 0,116] | [`rerank-quality.json`](results/rerank-quality.json) |
+| Выбор векторного хранилища по замеру | [`compare_vector_stores.py`](scripts/compare_vector_stores.py), [`dense.py`](src/rufinrag/retrieval/dense.py) | faiss p50 2,08 мс против numpy 3,13 мс, индекс 91,7 МБ | [`vector-store.json`](results/vector-store.json) |
+| Квантование векторов: замер, в сервисе не применяется | [`measure_quantization.py`](scripts/measure_quantization.py) | память 22,9 МБ против 91,7 МБ, перекрытие топ-10 0,995 | [`quantization.json`](results/quantization.json) |
+| Сервис на FastAPI на бесплатном хостинге | [`api.py`](src/rufinrag/api.py) | p50 470,6 мс, p95 669,3 мс по открытой ссылке | [`latency-hosted.json`](results/latency-hosted.json) |
+| Журнал запросов и витрина на ClickHouse в двух режимах | [`warehouse.py`](src/rufinrag/warehouse.py), [`events.py`](src/rufinrag/events.py) | 253 строк журнала: 200 запросов и 53 отзывов, оба режима сошлись | [`warehouse.json`](results/warehouse.json) |
+| Модели витрины на dbt | [`models/`](dbt/models/) | 8 моделей собираются за 3,8 с | [`dbt.json`](results/dbt.json) |
+| Онлайн сравнение связок и перестановочный тест | [`interleaving.py`](src/rufinrag/interleaving.py), [`compare_configs.py`](scripts/compare_configs.py) | 0,6126 против 0,5711, разница 0,0414 | [`compare-configs.json`](results/compare-configs.json) |
+| Правило размера выборки и остановки, записанное до данных | [`plan_sample_size.py`](scripts/plan_sample_size.py), [`interleaving.py`](src/rufinrag/interleaving.py) | альфа 0,05, мощность 0,80, целевой эффект 0,02 | [`sample-size.json`](results/sample-size.json) |
+| Порог алерта по разбросу доливки и проверка деградацией | [`monitoring.py`](src/rufinrag/monitoring.py), [`measure_alert_threshold.py`](scripts/measure_alert_threshold.py) | порог 0,020 по 40 прогонам доливки, учебная деградация поймана на просадке 0,0216, самая большая незамеченная 0,0108 | [`alert-threshold.json`](results/alert-threshold.json), [`alert-drill.json`](results/alert-drill.json) |
+| Регламент по расписанию без ее машины | [`nightly.yml`](.github/workflows/nightly.yml), [`dags/`](dags/) | 48 прогонов, следимая метрика 0,5712 | [`regulation.json`](results/regulation.json) |
+| Ответ с цитатами и отказ без опоры | [`answer.py`](src/rufinrag/answer.py), [`generation.py`](src/rufinrag/generation.py) | ссылка на релевантный фрагмент 731 из 976, отказов 15 из 991 | [`answer-quality.json`](results/answer-quality.json) |
+| Роутер на инструментах, отрицательный результат | [`router.py`](src/rufinrag/router.py) | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | [`router.json`](results/router.json) |
+| Граф ссылок между актами, отрицательный результат | [`graph.py`](src/rufinrag/graph.py) | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | [`graph-expansion.json`](results/graph-expansion.json) |
+| Воспроизводимость выдачи от прогона к прогону | [`check_reproducibility.py`](scripts/check_reproducibility.py) | состав топ-10 совпал у 199 из 200 запросов | [`reproducibility.json`](results/reproducibility.json) |
+| Приемка автономности по факту, а не по обещанию | [`record_acceptance.py`](scripts/record_acceptance.py) | прогонов 48, зеленых 45, нужно 14 дней | [`acceptance.json`](results/acceptance.json) |
 
 Чего проект не закрывает (временные ряды, A/B на пользователях, распределенная обработка,
 рекомендательные системы) и почему, сказано в [`docs/limitations.md`](docs/limitations.md).
