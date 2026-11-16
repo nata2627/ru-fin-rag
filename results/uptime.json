@@ -1,14 +1,14 @@
 {
   "since": "2026-11-14T19:13:39Z",
-  "checks_total": 3,
+  "checks_total": 4,
   "checks_ok": 3,
-  "silent_in_a_row": 0,
+  "silent_in_a_row": 1,
   "last": {
-    "at": "2026-11-15T19:49:42Z",
+    "at": "2026-11-16T09:53:13Z",
     "url": "https://ru-fin-rag.onrender.com",
-    "ok": true,
-    "attempts": 1,
-    "seconds_to_answer": 0.2,
-    "note": "status ok"
+    "ok": false,
+    "attempts": 2,
+    "seconds_to_answer": 240.1,
+    "note": "TimeoutError: The read operation timed out"
   }
 }
