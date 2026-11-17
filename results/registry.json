@@ -1,7 +1,7 @@
 {
   "built_at": "2026-11-17",
-  "machine": "x86_64 Linux 7.0.0-1016-aws",
-  "seconds": 5.4,
+  "machine": "x86_64 Linux 7.0.0-1019-azure",
+  "seconds": 7.0,
   "service_version": "0.1.0",
   "catalog_version": 1,
   "default_config": "hybrid",

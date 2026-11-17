@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-17T10:45:46",
+  "checked_at": "2026-11-17T22:26:53",
   "status": "ok",
   "index_acts": 6081,
   "wanted_acts": 1659,
@@ -10,5 +10,5 @@
   "new_chunks": 0,
   "issues_downloaded": 0,
   "dropped": {},
-  "seconds": 44.1
+  "seconds": 29.5
 }
