@@ -1,0 +1,63 @@
+# Выгрузка журнала запросов каждый час, отдельно от ночного регламента.
+#
+# Журнал живет на эфемерном диске хостинга и пропадает при каждом перезапуске
+# контейнера: после сна и после передеплоя на каждый коммит бота. Ночной прогон
+# забирает его дважды в сутки, и до 19.11.2026 в 8 из 9 выгрузок между ними был
+# перезапуск, то есть дневной запрос почти всегда пропадал раньше, чем его
+# забирали. Час короче типичной жизни контейнера.
+#
+# Коммит только при новых строках в data/events: выгрузка без новых событий
+# ничего не меняет, кроме счетчиков results/events.json, и коммит ради них
+# каждый час передеплоивал бы сервис впустую. Поэтому счетчик выгрузок в этом
+# файле считает только те выгрузки, что уехали в репозиторий.
+#
+# Минуты не стоят ничего: для публичного репозитория стандартные раннеры
+# GitHub Actions бесплатны. Скрипт выгрузки на стандартной библиотеке, пакеты
+# не ставятся.
+name: drain
+
+on:
+  schedule:
+    # Не в начале часа: там у GitHub пик очереди расписаний.
+    - cron: "41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Шаг не роняет прогон ни при одном внешнем отказе (scripts/drain_events.py).
+      - name: Drain the query log
+        env:
+          RUFINRAG_SERVICE_URL: https://ru-fin-rag.onrender.com
+          RUFINRAG_EVENTS_TOKEN: ${{ secrets.RUFINRAG_EVENTS_TOKEN }}
+        run: python scripts/drain_events.py
+
+      - name: Commit new events
+        run: |
+          git add data/events
+          if git diff --cached --quiet; then
+            echo "новых событий нет"
+            exit 0
+          fi
+          git add results/events.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Hourly query log drain"
+          # Ветка могла уехать вперед: ночной прогон и человек пушат в тот же main.
+          git pull --rebase --autostash origin main
+          git push
