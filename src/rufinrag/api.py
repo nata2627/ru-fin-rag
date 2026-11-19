@@ -22,7 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
-from . import __version__, events, registry
+from . import __version__, events, page, registry
 from .answer import EXCERPTS, GENERATE, AnswerError, AnswerService
 from .config import ConfigError, env, live_mode, load_catalog, project_root
 from .corpus import CorpusError
@@ -210,56 +210,17 @@ async def log_rejected(request: Request, exc: RequestValidationError):
     return JSONResponse({"detail": jsonable_encoder(exc.errors())}, status_code=422)
 
 
-# Корень отдает страницу, а не 404. Ссылка на сервис стоит в резюме, и человек,
-# который по ней пришел, должен за десять секунд понять, что это и как
-# попробовать, а не увидеть «Not Found» (так и случилось при первой проверке).
+# Корень отдает форму поиска, а не 404. Ссылка на сервис стоит в резюме, и
+# человек, который по ней пришел, должен попробовать запрос сразу, без чтения
+# `/docs` (страница собрана в `rufinrag.page`).
 @app.get("/", response_class=HTMLResponse)
 def index():
     current = state.get("service")
-    catalog = load_catalog()
     if current is None:
-        body = f"<p>Сервис не готов: {state.get('error')}</p>"
-    else:
-        chunks = f"{len(current.corpus):,}".replace(",", " ")
-        body = (
-            f"<p>Корпус: {chunks} фрагмента, версия "
-            f"<code>{current.corpus_version}</code>. Связка по умолчанию: "
-            f"<code>{catalog.default}</code>.</p>"
-        )
-    return f"""<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ru-fin-rag</title>
-<style>
-body {{ font: 16px/1.5 system-ui, sans-serif; max-width: 42rem;
-       margin: 2rem auto; padding: 0 1rem; }}
-code, pre {{ background: #f4f4f5; border-radius: 4px; }}
-pre {{ padding: 0.75rem; overflow-x: auto; }}
-code {{ padding: 0.1rem 0.3rem; }}
-</style></head>
-<body>
-<h1>ru-fin-rag</h1>
-<p>Поиск по нормативным актам Банка России: «Вестник Банка России» с 2013 года, фрагменты
-со ссылкой на источник в каждом ответе.</p>
-{body}
-<h2>Попробовать</h2>
-<p><a href="/docs">/docs</a> это интерактивная страница, где запрос можно отправить из
-браузера. <a href="/health">/health</a> отдает версию корпуса и состояние ступеней.</p>
-<pre>curl -s -X POST /search \\
-  -H 'Content-Type: application/json' \\
-  -d '{{"query": "порядок формирования резервов по ссудам", "top": 3}}'</pre>
-<p>Ручка <code>/answer</code> отдает то же самое ответом с цитатами: выдержки из найденных
-фрагментов со ссылкой на акт, раздел и пункты. Если опоры в корпусе под вопрос нет, она
-отказывается отвечать и печатает число, по которому так решено.</p>
-<pre>curl -s -X POST /answer \\
-  -H 'Content-Type: application/json' \\
-  -d '{{"query": "порядок формирования резервов по ссудам"}}'</pre>
-<h2>Что важно знать</h2>
-<p>Это бесплатный тариф: 512 МБ памяти, общий процессор, сон после 15 минут без трафика.
-После сна первый запрос ждет пробуждения. Плотная ступень поиска в онлайне выключена, она
-требует 1,1 ГБ памяти, и ответ помечает это полем <code>degraded</code>.</p>
-<p>Код и отчет с числами: <a href="https://github.com/nata2627/ru-fin-rag">github.com/nata2627/ru-fin-rag</a></p>
-</body></html>"""
+        return page.render(None, None, MAX_QUERY_CHARS)
+    if "acts" not in state:
+        state["acts"] = len({chunk.act.act_id for chunk in current.corpus.chunks})
+    return page.render(len(current.corpus), state["acts"], MAX_QUERY_CHARS)
 
 
 @app.get("/health")

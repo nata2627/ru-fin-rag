@@ -124,3 +124,17 @@ def test_root_example_survives_the_f_string(client):
     example = page[page.index("<pre>") : page.index("</pre>")]
     assert example.count("\\\n") == 2, "пример curl собрался в одну строку"
     assert '"query"' in example
+
+
+def test_root_page_is_a_search_form(client):
+    """Форма шлет запрос в `/answer` и рисует ответ из полей, без строки про генерацию."""
+    page = client.get("/").text
+    assert '<form id="ask">' in page
+    assert 'fetch("/answer"' in page
+    assert "support" in page and "citations" in page
+    assert "RUFINRAG_LLM" not in page
+    assert "просыпается" in page
+    assert 'href="/docs"' in page and "github.com/nata2627/ru-fin-rag" in page
+    assert "__" not in page, "подстановка в шаблон не прошла"
+    assert page.count('<a href="#">') >= 3
+    assert "<script src" not in page and "<link" not in page
