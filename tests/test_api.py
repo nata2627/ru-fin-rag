@@ -134,6 +134,7 @@ def test_root_page_is_a_search_form(client):
     assert "support" in page and "citations" in page
     assert "RUFINRAG_LLM" not in page
     assert "просыпается" in page
+    assert "не вводите персональные данные" in page
     assert 'href="/docs"' in page and "github.com/nata2627/ru-fin-rag" in page
     assert "__" not in page, "подстановка в шаблон не прошла"
     assert page.count('class="chip"') >= 3

@@ -35,6 +35,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Журнал запросов лежит в приватном репозитории ru-fin-rag-events: в нем
+      # тексты чужих запросов, и публиковать их незачем (решение 19.11.2026).
+      # Ключ развертывания без срока и пишет только в этот репозиторий, так что
+      # автономность от него не зависит от истекающего токена.
+      - name: Check out the private query log
+        uses: actions/checkout@v4
+        with:
+          repository: nata2627/ru-fin-rag-events
+          ssh-key: ${{ secrets.EVENTS_DEPLOY_KEY }}
+          path: data/events
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -102,7 +113,7 @@ jobs:
         run: python scripts/probe_service.py
 
       # Журнал запросов живет на эфемерном диске хостинга и пропадает вместе с
-      # контейнером, а сам сервис коммитить в репозиторий не может: для этого
+      # контейнером, а сам сервис коммитить в репозиторий журнала не может: для этого
       # нужен был бы токен со сроком, который однажды истечет. Поэтому строки
       # забирает прогон. Шаг не роняет прогон ни при одном внешнем отказе:
       # спящий сервис, незаданный секрет и пустой журнал это нормальные
@@ -181,7 +192,7 @@ jobs:
             results/corpus-update.json results/regression.json results/regulation.json \
             results/monitoring.json results/dag.md results/registry.json \
             results/corpus.json results/index.json results/corpus-published.json \
-            data/events results/events.json results/uptime.json README.md \
+            results/events.json results/uptime.json README.md \
             docs/measurements.md docs/running.md
           if git diff --cached --quiet; then
             echo "нечего коммитить: корпус и метрики не изменились"
@@ -199,6 +210,24 @@ jobs:
             git pull --rebase --autostash origin main
             git push
           fi
+
+      # Новые строки уходят в приватный репозиторий журнала и тогда, когда
+      # прогон упал на шаге после выгрузки: события на хостинге живут до
+      # перезапуска контейнера, и терять их из-за чужой поломки незачем.
+      - name: Push the query log to the private repository
+        if: always()
+        working-directory: data/events
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "новых событий нет"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Query log drain"
+          git pull --rebase origin main
+          git push origin HEAD:main
 
       # Срабатывает на поломке, на отказе cbr.ru, на алерте мониторинга и на
       # молчании живой ссылки. Три последних случая прогон не роняют, но и молчать о них нельзя: issue это

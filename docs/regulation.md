@@ -11,9 +11,10 @@ cbr.ru перечень публикаций «Вестника», докачи�
 прогона его и запускает. Результат коммитит бот: `data/corpus/chunks.jsonl.gz`,
 `data/corpus/skipped.json`, `results/corpus-update.json`, `results/regression.json`,
 `results/regulation.json`, `results/monitoring.json`, `results/dag.md`,
-`results/registry.json`, `data/events/`, `results/events.json` и сам `README.md`
+`results/registry.json`, `results/events.json` и сам `README.md`
 (в нем прогон перед сверкой перепишет таблицу навыков). Пуш в `main` переразворачивает сервис
-на хостинге сам, отдельного шага деплоя нет.
+на хостинге сам, отдельного шага деплоя нет. Журнал запросов прогон коммитит отдельно, в
+приватный репозиторий `ru-fin-rag-events`.
 
 Шаг выгрузки журнала не роняет прогон ни при одном внешнем отказе: спящий сервис, незаданный
 секрет и пустой журнал это нормальные состояния, а красный `main` остановил бы часы приемки

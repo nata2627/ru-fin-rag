@@ -11,7 +11,6 @@ on:
     branches: [main]
     paths:
       - "results/**"
-      - "data/events/**"
       - "scripts/build_dashboard.py"
       - "src/**"
       - ".github/workflows/pages.yml"
@@ -47,6 +46,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+
+      # Журнал запросов лежит в приватном репозитории ru-fin-rag-events: в нем
+      # тексты чужих запросов, и публиковать их незачем (решение 19.11.2026).
+      # Ключ развертывания без срока и пишет только в этот репозиторий, так что
+      # автономность от него не зависит от истекающего токена.
+      - name: Check out the private query log
+        uses: actions/checkout@v4
+        with:
+          repository: nata2627/ru-fin-rag-events
+          ssh-key: ${{ secrets.EVENTS_DEPLOY_KEY }}
+          path: data/events
 
       - uses: actions/setup-python@v5
         with:

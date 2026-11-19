@@ -196,7 +196,7 @@ def test_from_env_off_disables_the_log(monkeypatch):
 
 
 def test_default_event_dir_is_the_service_data_dir(monkeypatch):
-    """В рабочем режиме события пишутся в data/events и едут в репозиторий."""
+    """В рабочем режиме события пишутся в data/events, откуда их забирает выгрузка."""
     monkeypatch.delenv("RUFINRAG_EVENT_LOG", raising=False)
     monkeypatch.delenv("RUFINRAG_EVENT_DIR", raising=False)
     log = events.EventLog.from_env()

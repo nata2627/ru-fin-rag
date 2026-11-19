@@ -63,6 +63,7 @@ button { background: var(--accent); color: #fff; border: 0; border-radius: 7px;
          padding: 9px 20px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 button:hover { filter: brightness(1.08); }
 button:disabled { opacity: .6; cursor: default; }
+.privacy { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
 .examples span { font-size: 13px; color: var(--muted); margin-right: 2px; }
 .chip { font-size: 13.5px; color: var(--accent-ink); background: var(--accent-soft);
@@ -118,6 +119,8 @@ footer a:hover { text-decoration: underline; }
        placeholder="Например, порядок формирования резервов по ссудам">
 <button id="go" type="submit">Найти</button>
 </form>
+<div class="privacy">Запросы сохраняются в закрытом журнале проекта без адреса и cookies,
+не вводите персональные данные.</div>
 <div class="examples"><span>Примеры:</span>__EXAMPLES__</div>
 <div id="out">
 <div class="how">
