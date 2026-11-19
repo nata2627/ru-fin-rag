@@ -3,20 +3,20 @@
   "machine": "x86_64 Linux 7.0.0-1019-azure",
   "journal": {
     "dir": "/home/runner/work/ru-fin-rag/ru-fin-rag/data/events",
-    "events": 0,
-    "queries": 0,
-    "answered": 0,
+    "events": 9,
+    "queries": 9,
+    "answered": 9,
     "rejected": 0,
     "unavailable": 0,
     "feedback": 0,
-    "days": 0,
-    "first_day": null,
-    "last_day": null
+    "days": 1,
+    "first_day": "2026-11-19",
+    "last_day": "2026-11-19"
   },
   "window": {
     "needed": 50,
-    "collected": 0,
-    "days": 0
+    "collected": 9,
+    "days": 1
   },
   "thresholds": {
     "measured_at": "2026-10-24",
@@ -38,7 +38,7 @@
   "vocab": 49643,
   "reference_queries": 1182,
   "status": "dormant",
-  "reason": "запросов в журнале 0 из 50 нужных для окна: правило дрейфа и правило доли без хорошего ответа не включены. Пороги выведены из разброса на замороженном наборе, а не из трафика",
+  "reason": "запросов в журнале 9 из 50 нужных для окна: правило дрейфа и правило доли без хорошего ответа не включены. Пороги выведены из разброса на замороженном наборе, а не из трафика",
   "signals": [
     {
       "name": "benchmark_regression",
