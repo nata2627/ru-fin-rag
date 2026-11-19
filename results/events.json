@@ -1,28 +1,32 @@
 {
-  "drains": 10,
+  "drains": 11,
   "last_drain": {
-    "at": "2026-11-19T10:25:20Z",
+    "at": "2026-11-19T17:54:43Z",
     "url": "https://ru-fin-rag.onrender.com",
     "status": "ok",
     "service_version": "0.1.0",
-    "service_uptime_seconds": 44484.9,
-    "written_by_process": 0,
+    "service_uptime_seconds": 20220.0,
+    "written_by_process": 9,
     "restart_window": true,
-    "offered_lines": 0,
-    "files": 0,
+    "offered_lines": 9,
+    "files": 1,
     "truncated": false,
-    "added": 0,
+    "added": 9,
     "duplicates": 0,
-    "files_touched": []
+    "files_touched": [
+      "queries-2026-11-19.jsonl"
+    ]
   },
   "repo": {
-    "files": [],
-    "days": 0,
-    "lines": 0,
-    "query_events": 0,
+    "files": [
+      "queries-2026-11-19.jsonl"
+    ],
+    "days": 1,
+    "lines": 9,
+    "query_events": 9,
     "feedback_events": 0
   },
   "failed_drains_in_a_row": 0,
-  "drains_with_restart_window": 9,
+  "drains_with_restart_window": 10,
   "note": "выгрузка журнала запросов с хостинга в репозиторий, числа отсюда в публичные тексты не берутся: файл меняется каждым прогоном"
 }
