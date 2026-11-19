@@ -136,5 +136,5 @@ def test_root_page_is_a_search_form(client):
     assert "просыпается" in page
     assert 'href="/docs"' in page and "github.com/nata2627/ru-fin-rag" in page
     assert "__" not in page, "подстановка в шаблон не прошла"
-    assert page.count('<a href="#">') >= 3
+    assert page.count('class="chip"') >= 3
     assert "<script src" not in page and "<link" not in page
