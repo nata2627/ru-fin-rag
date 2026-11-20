@@ -1,6 +1,6 @@
 {
   "measured_at": "2026-11-20",
-  "machine": "x86_64 Linux 7.0.0-1019-azure",
+  "machine": "x86_64 Linux 7.0.0-1016-aws",
   "journal": {
     "dir": "/home/runner/work/ru-fin-rag/ru-fin-rag/data/events",
     "events": 9,
@@ -58,5 +58,5 @@
     "signals_fired": [],
     "text": ""
   },
-  "seconds": 0.4
+  "seconds": 0.3
 }
