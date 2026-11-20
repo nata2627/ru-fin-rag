@@ -98,7 +98,7 @@ Airflow, Docker, locust, MLflow, GitHub Actions, GitHub Pages, Render.
 | Роутер на инструментах, отрицательный результат | [`router.py`](src/rufinrag/router.py) | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | [`router.json`](results/router.json) |
 | Граф ссылок между актами, отрицательный результат | [`graph.py`](src/rufinrag/graph.py) | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | [`graph-expansion.json`](results/graph-expansion.json) |
 | Воспроизводимость выдачи от прогона к прогону | [`check_reproducibility.py`](scripts/check_reproducibility.py) | состав топ-10 совпал у 199 из 200 запросов | [`reproducibility.json`](results/reproducibility.json) |
-| Приемка автономности по факту, а не по обещанию | [`record_acceptance.py`](scripts/record_acceptance.py) | прогонов 57, зеленых 54, нужно 14 дней | [`acceptance.json`](results/acceptance.json) |
+| Приемка автономности по факту, а не по обещанию | [`record_acceptance.py`](scripts/record_acceptance.py) | прогонов 58, зеленых 55, нужно 14 дней | [`acceptance.json`](results/acceptance.json) |
 
 Чего проект не закрывает (временные ряды, A/B на пользователях, распределенная обработка,
 рекомендательные системы) и почему, сказано в [`docs/limitations.md`](docs/limitations.md).
