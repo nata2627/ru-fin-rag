@@ -79,5 +79,20 @@ jobs:
         with:
           path: site
 
-      - id: deploy
+      # Изредка deploy-pages не видит только что загруженный артефакт: API
+      # артефактов отстает, и прогон падает с "No artifacts named github-pages",
+      # хотя артефакт в нем есть (2 из 69 прогонов к 21.11.2026). Повтор через
+      # минуту этот случай закрывает, настоящая ошибка упадет и во второй раз.
+      - id: deploy_first
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - if: steps.deploy_first.outcome == 'failure'
+        run: sleep 60
+
+      - id: deploy_retry
+        if: steps.deploy_first.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - id: deploy
+        run: echo "page_url=${{ steps.deploy_first.outputs.page_url || steps.deploy_retry.outputs.page_url }}" >> "$GITHUB_OUTPUT"
