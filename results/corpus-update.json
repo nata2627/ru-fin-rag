@@ -1,8 +1,8 @@
 {
-  "checked_at": "2026-11-20T21:50:45",
-  "status": "source_unavailable",
-  "index_acts": 0,
-  "wanted_acts": 0,
+  "checked_at": "2026-11-21T09:52:11",
+  "status": "ok",
+  "index_acts": 6081,
+  "wanted_acts": 1659,
   "known_acts": 1555,
   "skipped_before": 99,
   "new_acts_in_index": 0,
@@ -10,6 +10,5 @@
   "new_chunks": 0,
   "issues_downloaded": 0,
   "dropped": {},
-  "source_error": "не удалось получить https://www.cbr.ru/about_br/publ/vestnik-search/: 403 Client Error: Forbidden for url: https://www.cbr.ru/about_br/publ/vestnik-search/?UniDbQuery.Posted=True&UniDbQuery.stext=%D0%9F",
-  "seconds": 7.9
+  "seconds": 28.0
 }
