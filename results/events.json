@@ -1,11 +1,11 @@
 {
-  "drains": 18,
+  "drains": 19,
   "last_drain": {
-    "at": "2026-11-22T20:46:20Z",
+    "at": "2026-11-23T10:49:53Z",
     "url": "https://ru-fin-rag.onrender.com",
     "status": "ok",
     "service_version": "0.1.0",
-    "service_uptime_seconds": 9867.4,
+    "service_uptime_seconds": 16844.5,
     "written_by_process": 0,
     "restart_window": true,
     "offered_lines": 0,
@@ -25,6 +25,6 @@
     "feedback_events": 0
   },
   "failed_drains_in_a_row": 0,
-  "drains_with_restart_window": 17,
+  "drains_with_restart_window": 18,
   "note": "выгрузка журнала запросов с хостинга в репозиторий, числа отсюда в публичные тексты не берутся: файл меняется каждым прогоном"
 }
