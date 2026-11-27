@@ -1,10 +1,10 @@
 {
   "since": "2026-11-14T19:13:39Z",
-  "checks_total": 25,
-  "checks_ok": 24,
+  "checks_total": 26,
+  "checks_ok": 25,
   "silent_in_a_row": 0,
   "last": {
-    "at": "2026-11-26T23:01:37Z",
+    "at": "2026-11-27T10:55:13Z",
     "url": "https://ru-fin-rag.onrender.com",
     "ok": true,
     "attempts": 1,
