@@ -5,7 +5,7 @@
 
 **[Живой сервис](https://ru-fin-rag.onrender.com)** · [запрос из браузера](https://ru-fin-rag.onrender.com/docs) · [дашборд журнала](https://nata2627.github.io/ru-fin-rag/) · [набор на HuggingFace](https://huggingface.co/datasets/nata2627/ru-fin-retrieval) · [переранжировщик на HuggingFace](https://huggingface.co/nata2627/ru-fin-reranker) · [исследование качества](retrieval/)
 
-Сервис поиска и ответа по нормативным актам Банка России. На 27.11.2026 в корпусе 1555 акта и
+Сервис поиска и ответа по нормативным актам Банка России. На 28.11.2026 в корпусе 1555 акта и
 62 606 фрагмента, новые акты докачивает ночной прогон. Сервис живет без моей машины, рук и
 денег: API на бесплатном тарифе Render, расписание на GitHub Actions, дашборд на GitHub Pages.
 
@@ -93,7 +93,7 @@ Airflow, Docker, locust, MLflow, GitHub Actions, GitHub Pages, Render.
 | Онлайн сравнение связок и перестановочный тест | [`interleaving.py`](src/rufinrag/interleaving.py), [`compare_configs.py`](scripts/compare_configs.py) | 0,6126 против 0,5711, разница 0,0414 | [`compare-configs.json`](results/compare-configs.json) |
 | Правило размера выборки и остановки, записанное до данных | [`plan_sample_size.py`](scripts/plan_sample_size.py), [`interleaving.py`](src/rufinrag/interleaving.py) | альфа 0,05, мощность 0,80, целевой эффект 0,02 | [`sample-size.json`](results/sample-size.json) |
 | Порог алерта по разбросу доливки и проверка деградацией | [`monitoring.py`](src/rufinrag/monitoring.py), [`measure_alert_threshold.py`](scripts/measure_alert_threshold.py) | порог 0,020 по 40 прогонам доливки, учебная деградация поймана на просадке 0,0216, самая большая незамеченная 0,0108 | [`alert-threshold.json`](results/alert-threshold.json), [`alert-drill.json`](results/alert-drill.json) |
-| Регламент по расписанию без ее машины | [`nightly.yml`](.github/workflows/nightly.yml), [`dags/`](dags/) | 73 прогонов, следимая метрика 0,5712 | [`regulation.json`](results/regulation.json) |
+| Регламент по расписанию без ее машины | [`nightly.yml`](.github/workflows/nightly.yml), [`dags/`](dags/) | 74 прогонов, следимая метрика 0,5712 | [`regulation.json`](results/regulation.json) |
 | Ответ с цитатами и отказ без опоры | [`answer.py`](src/rufinrag/answer.py), [`generation.py`](src/rufinrag/generation.py) | ссылка на релевантный фрагмент 731 из 976, отказов 15 из 991 | [`answer-quality.json`](results/answer-quality.json) |
 | Роутер на инструментах, отрицательный результат | [`router.py`](src/rufinrag/router.py) | маршруты: акты 892, граф 84, отказ 15; качество не изменилось | [`router.json`](results/router.json) |
 | Граф ссылок между актами, отрицательный результат | [`graph.py`](src/rufinrag/graph.py) | 4376 дуг, ссылки внутрь у 1173 актов из 1555, прибавки нет | [`graph-expansion.json`](results/graph-expansion.json) |
